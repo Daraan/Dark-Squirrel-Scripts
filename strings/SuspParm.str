@@ -1,0 +1,151 @@
+//To be used with telliameds HighlySuspicious script with replaces the Standard SuspiciousReactions.
+
+//[How fast an AI forgets about an incident, every fade_time the _basefactor of an object goes down by 0.01]
+// the factor for an object will be reduced by (time/fade_time)*0.01
+// if fade_time is zero, then no factor adjustment will be made
+fade_time: "0"
+
+
+// for each alert level, if the sum of all suspicious links exceeds
+// the threshold, the alert level will be raised
+alert_level_3: "6.0"
+alert_level_2: "5.0"
+alert_level_1: "3.0"
+
+
+// the time after which the alert level is relaxed.
+// the level is lowered one level then the time for that level takes effect
+// the default is 10 seconds for each level
+alert_time_3: "20s"
+alert_time_2: "10s"
+alert_time_1: "5s"
+
+
+
+//--------------------------------
+
+// "type" is actually the name of the suspicious type
+// with "glass" being used for objects that descend from "Windows"
+// "banner" for "ExBanner" and "rope" for "RopeArrowRope"
+// the base factor for a suspicious type
+
+// the all these factors are added together
+//type_factor
+
+//[These special factors are only used and evaluated upon discovery]
+// this is multiplied by the number of other suspicious links of any type
+//type_factor_others
+
+//[To say it a bit diffrent for each object of the same type this value is ADDED. 1 missing loot is 0.5, 2 missing loot are 0.5+0.75, 3 are 0.5+0.5+'1' <-- this '1' will also trigger _alert
+//The number of other suspicious objects that the AI is aware of is counted, as well as the number that have the same suspicious type. These counts are multiplied by type_factor_others and type_factor_similar then added to the base level. Then a random factor from 0.0 to type_factor_random is added. 
+
+// this is multiplied by the number of other suspicious links of the same type
+//type_factor_similar
+
+// add a random factor between 0 and the given value.
+//type_factor_random
+
+
+//--------------------------------
+
+// how to react if the total factor for a type is greater than 1.0
+
+// raise the alert level. The time is taken from the global setting
+//type_alert
+//type_alert_time
+
+// goto the object and frob it. An Owns link will be created to prevent other
+// AI from reacting to the same object, and the suspicious property will be checked
+// again before frobbing
+//type_frob
+
+// add an AIWatchObj link to the object. the link will be removed a number of seconds
+// later (or not at all)
+//type_watch
+//type_watch_time
+
+// this is specific to gaslights. the gaslight will only be frobbed if it is turned off
+// and should be turned on. Any other non-null value will make the light be frobbed
+// unconditionally
+//gaslight_frob: "on"
+
+
+
+//////////////////////////
+//DScript Settings
+//////////////////////////
+
+generic_factor: "0.5"
+
+torch_factor: "0.5"
+torch_factor_similar: "0.25"
+
+gaslight_frob: "on"
+gaslight_factor: "0.3"
+gaslight_factor_random: "1.0"
+gaslight_factor_similar: "0.1"
+
+door_frob: "true"
+door_factor: "1"
+door_watch: "true"
+door_watch_time: "5m"
+
+lock_frob: "true"
+lock_factor: "1"
+lock_watch: "true"
+lock_watch_time: "5m"
+
+//A cut banner will definitly set Alert to 1. If a second cut banner is detected 2+3=5 => Alert_Level_2 or higher.
+banner_factor: "2"
+banner_factor_others: "0.25"
+banner_factor_similar: "1"
+banner_alert: "1"
+
+//If 0.5 + other missing objects x0.25 + all other susp x0.1 >= 1 will alert.
+missingloot_factor: "0.5"
+missingloot_factor_similar: "0.25"			//2 others
+missingloot_factor_others: "0.15"			//4 others
+missingloot_alert: "2"
+
+//High base values will result in higher alerts even when later minor supspicious events got detected.
+//strangely ropes don't seem to work properly.
+rope_factor: "2.5"
+rope_factor_similar: "0.5"
+rope_alert: "1"
+
+//glass + player = 5 => alert maybe you want to reduce this.
+glass_factor: "3.5" 
+glass_alert: "1"
+
+//I added these to the sword as well to simulate a threat. A drawn swordwill trigger these.
+blood_factor: "5"
+blood_alert: "3"
+
+
+///////////////////////////
+//Player and difficulty related settings
+
+//makes the AI aware of the player (if hes visible). Can be delted with AIWatchObj when the player goes out of range.
+player_factor: "1.5"
+
+//added these to be used with difficulty metaproperties.
+
+player0_factor: "0.5"
+player1_factor: "1"
+player2_factor: "2"
+
+//----------------------------------
+//Alternative: Already suspicious guards checking you out. Should be used with DImUndercoverForgetMe=1
+// UNCOMENT TO USE - delete/comment the above.
+//player0_factor: "0.5"
+//player0_factor_others: "0.1"	//5 strikes.
+//player0_alert: "2"
+
+//player1_factor: "0.8"
+//player1_factor_others: "0.05"	//4 strikes.
+//player1_alert: "2"
+
+//player3_factor: "0.9"
+//player3_factor_others: "0.04"	//3 strikes.
+//player3_alert: "2"
+
