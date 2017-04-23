@@ -1,8 +1,10 @@
 #############Undercover scripts##########
-//T2 ONLY!
+//T2 ONLY! v0.24
 
 //IF you're not using DImUndercover I would suggest you comment everything out or delete this file.
-//As I'm replacing the standard weapon scrips to make them suspicious
+//As I'm REPLACING THE STANDARD WEAPON SCRIPTS scrips to make them suspicious
+##Real propblem is actually the bow, while sword and blackjack can be made suspicious just by addin the property (that's all the melee scripts do here) the bow needs special handling.
+
 if (GetDarkGame() == 2)
 {
 
@@ -12,7 +14,7 @@ class Arrow extends SqRootScript
 
 	function UnEquipMe()
 	{
-		Property.Set("Player","SuspObj","Suspicious Type",GetData("Selected"))		
+		Property.Set("Player","SuspObj","Suspicious Type",GetData("Selected"))	//Added
 		Bow.UnEquip();
 		DrkInv.RemoveSpeedControl("BowDraw");
 	}
@@ -34,7 +36,7 @@ class Arrow extends SqRootScript
 		}
 		else
 		{
-			Link.DestroyMany("~AISuspiciousLink","Player","@Creature")
+			Link.DestroyMany("~AISuspiciousLink","Player","@Creature") //Added
 			Property.Set("Player","SuspObj","Suspicious Type","blood") //Instant alert if seen.
 			Bow.StartAttack();
 			DrkInv.AddSpeedControl("BowDraw", 0.75, 1.0);
@@ -45,13 +47,13 @@ class Arrow extends SqRootScript
 	{
 		local retval = Bow.FinishAttack();
 		DrkInv.RemoveSpeedControl("BowDraw");
-		Property.Set("Player","SuspObj","Suspicious Type",GetData("Selected"))
+		Property.Set("Player","SuspObj","Suspicious Type",GetData("Selected")) //Added
 		Reply(retval);
 	}
 
 	function OnInvSelect()
 	{
-		SetData("Selected", Property.Get("Player", "SuspObj","Suspicious Type"))
+		SetData("Selected", Property.Get("Player", "SuspObj","Suspicious Type"))//Changed to save the type.
 		Bow.SetArrow(self);
 		Bow.Equip();
 	}
@@ -98,9 +100,9 @@ class BlackJack extends SqRootScript
 		Weapon.FinishAttack(message().Frobber, message().SrcObjId);
 	}
 
-	function OnInvSelect()
+	function OnInvSelect()	//Added; this could also be put in a constructor but then would work on decorative swords as well
 	{
-		Property.Add(self,"SuspObj")
+		Property.Add(self,"SuspObj")					
 		Property.Set(self,"SuspObj","Is Suspicious",true)
 		Property.Set(self,"SuspObj","Suspicious Type","blood")
 		Weapon.Equip(self, eDarkWeaponType.kDWT_BlackJack);
@@ -140,7 +142,7 @@ class Sword extends SqRootScript
 		Weapon.FinishAttack(message().Frobber, message().SrcObjId);
 	}
 
-	function OnInvSelect()
+	function OnInvSelect() //Added; this could also be put in a constructor but then would work on decorative swords as well
 	{
 		Property.Add(self,"SuspObj")
 		Property.Set(self,"SuspObj","Is Suspicious",true)
