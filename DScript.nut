@@ -1,14 +1,16 @@
 /*#########################################
-DScript Version 0.24
+DScript Version 0.24b
 Use at your liking. All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
 
 DarkUI.TextMessage("Here for fast test");
 ##########################################*/
 
 /*TABLE OF CONTENT
-
+#
 -Base Functions
-Scipts:
+#
+
+SCRIPTS:
 DBaseTrap
 -DLowerTrap
 -DRelayTrap
@@ -24,6 +26,7 @@ DHub
 -DTrapTeleporter
 -DTeleportPlayerTrap
 -DPortal
+
 -DEditorTrap
 
 
@@ -127,10 +130,9 @@ function DCheckString(r,adv)
 						else // +- operator
 							{
 							local removeset = DCheckString(t.slice(1),1)
-							local idx=null
 							foreach (k in removeset)
 								{
-								idx = objset.find(k)
+								local idx = objset.find(k)
 								if (idx!=null) {objset.remove(idx)}
 								}
 							}
