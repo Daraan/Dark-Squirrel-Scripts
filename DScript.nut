@@ -346,15 +346,16 @@ if (mssg=="Timer")
 	
 	}
 ##
-//Getting correct source in case of frob:
-if (typeof bmsg == "sFrobMsg")
-	{SourceObj=bmsg.Frobber}
-else{SourceObj = bmsg.from}	
+	
 
 #Let it fail?
 local FailChance = DGetParam(script+"FailChance",0,DN)
 if (FailChance > 0) {if (FailChance >= Data.RandInt(0,100)){return}}
 
+//Getting correct source in case of frob:
+if (typeof bmsg == "sFrobMsg")
+	{SourceObj=bmsg.Frobber}
+else{SourceObj = bmsg.from}
 
 	if ("DoOn" in this)																							//Checks if the script actually has an On function.
 	{
@@ -405,12 +406,12 @@ function OnMessage()
 }
 ##################
 
-class DLowerTrap extends DBaseTrap								//This is just a test script
+class DLowerTrap extends DBaseTrap		//This is just a test script
 {
 
-DefOn = "TurnOn"												//Default On message that this script is waiting for but differing from the standard TurnOn
+DefOn = "TurnOn"	//Default On message that this script is waiting for but differing from the standard TurnOn
 
-constructor()
+constructor()		// A function that will be called after compiling (so EVEN IN THE EDITOR) and when the object/ script intance is created.
 {}
 
 
