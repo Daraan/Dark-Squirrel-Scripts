@@ -1,16 +1,14 @@
 /*#########################################
-DScript Version 0.24b
+DScript Version 0.25
 Use at your liking. All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
 
 DarkUI.TextMessage("Here for fast test");
 ##########################################*/
 
 /*TABLE OF CONTENT
-#
--Base Functions
-#
 
-SCRIPTS:
+-Base Functions
+Scipts:
 DBaseTrap
 -DLowerTrap
 -DRelayTrap
@@ -26,7 +24,6 @@ DHub
 -DTrapTeleporter
 -DTeleportPlayerTrap
 -DPortal
-
 -DEditorTrap
 
 
@@ -130,9 +127,10 @@ function DCheckString(r,adv)
 						else // +- operator
 							{
 							local removeset = DCheckString(t.slice(1),1)
+							local idx=null
 							foreach (k in removeset)
 								{
-								local idx = objset.find(k)
+								idx = objset.find(k)
 								if (idx!=null) {objset.remove(idx)}
 								}
 							}
@@ -237,61 +235,61 @@ function DCapacitorCheck(script,DN,OnOff="")
 
 function DCountCapCheck(script,DN,func)
 {
-local abort = null
-if (IsDataSet(script+"Capacitor")){if(DCapacitorCheck(script,DN)){abort = true}else{abort=false}}
-if (IsDataSet(script+"OnCapacitor")&&func==1){if(DCapacitorCheck(script,DN,"On")){if (abort==null){abort = true}}else{abort=false}}						//Well this looks a bit strange but so the parameters won't interfere with each other.
-if (IsDataSet(script+"OffCapacitor")&&func==0){if(DCapacitorCheck(script,DN,"Off")){if (abort==null){abort = true}}else{abort=false}}
-if (abort){return}
+	local abort = null
+	if (IsDataSet(script+"Capacitor")){if(DCapacitorCheck(script,DN)){abort = true}else{abort=false}}
+	if (IsDataSet(script+"OnCapacitor")&&func==1){if(DCapacitorCheck(script,DN,"On")){if (abort==null){abort = true}}else{abort=false}}						//Well this looks a bit strange but so the parameters won't interfere with each other.
+	if (IsDataSet(script+"OffCapacitor")&&func==0){if(DCapacitorCheck(script,DN,"Off")){if (abort==null){abort = true}}else{abort=false}}
+	if (abort){return}
 
 
 
-if (IsDataSet(script+"Counter"))
-	{
-		local CountOnly = DGetParam(script+"CountOnly",0,DN)
-		if (CountOnly == 0 || CountOnly+1 == func +2)
-			{
-			local Count = SetData(script+"Counter",GetData(script+"Counter")+1)
-			if (Count > DGetParam(script+"Count",0,DN).tointeger()){return}}											//DHub compability
-	}
-
-	
-//Negative Fail chance for after Count/Capa check
-local FailChance = DGetParam(script+"FailChance",0,DN).tointeger()
-if (FailChance < 0) {if (FailChance <= Data.RandInt(-100,0)){return}}
-
-
-// All Checks green? Then Go or delay it?
-
-local d = DGetParam(script+"Delay",false,DN).tofloat()
-if (d)
-	{
-	//Stop old timers if wanted.
-	if (IsDataSet(script+"DelayTimer")&& DGetParam(script+"ExclusiveDelay",false,DN))
+	if (IsDataSet(script+"Counter"))
 		{
-			KillTimer(GetData(script+"DelayTimer"))
-		}
-	
-	if (IsDataSet(script+"InfRepeat"))					//Stop Inf Repeat
-	{
-			if (GetData(script+"InfRepeat") != func)
+			local CountOnly = DGetParam(script+"CountOnly",0,DN)
+			if (CountOnly == 0 || CountOnly+1 == func +2)
 				{
-					KillTimer(GetData(script+"DelayTimer"))
-					ClearData(script+"DelayTimer")
-					ClearData(script+"InfRepeat")
-				}
-	}
-	else
-	{
+				local Count = SetData(script+"Counter",GetData(script+"Counter")+1)
+				if (Count > DGetParam(script+"Count",0,DN).tointeger()){return}}											//DHub compability
+		}
 
-		local r=DGetParam(script+"Repeat",0,DN).tointeger()
-
-		if (r==-1){SetData(script+"InfRepeat",func)}
 		
-		SetData(script+"DelayTimer",DSetTimerData(script+"Delayed",d,func,SourceObj,r,d))
-	}
-	}
-else
-	{if (func){this.DoOn(DN)}else{this.DoOff(DN)}}
+	//Negative Fail chance for after Count/Capa check
+	local FailChance = DGetParam(script+"FailChance",0,DN).tointeger()
+	if (FailChance < 0) {if (FailChance <= Data.RandInt(-100,0)){return}}
+
+
+	// All Checks green? Then Go or delay it?
+
+	local d = DGetParam(script+"Delay",false,DN).tofloat()
+	if (d)
+		{
+		//Stop old timers if wanted.
+		if (IsDataSet(script+"DelayTimer")&& DGetParam(script+"ExclusiveDelay",false,DN))
+			{
+				KillTimer(GetData(script+"DelayTimer"))
+			}
+		
+		if (IsDataSet(script+"InfRepeat"))					//Stop Inf Repeat
+		{
+				if (GetData(script+"InfRepeat") != func)
+					{
+						KillTimer(GetData(script+"DelayTimer"))
+						ClearData(script+"DelayTimer")
+						ClearData(script+"InfRepeat")
+					}
+		}
+		else
+		{
+
+			local r=DGetParam(script+"Repeat",0,DN).tointeger()
+
+			if (r==-1){SetData(script+"InfRepeat",func)}
+			
+			SetData(script+"DelayTimer",DSetTimerData(script+"Delayed",d,func,SourceObj,r,d))
+		}
+		}
+	else
+		{if (func){this.DoOn(DN)}else{this.DoOff(DN)}}
 
 }
 
@@ -346,16 +344,15 @@ if (mssg=="Timer")
 	
 	}
 ##
-	
+//Getting correct source in case of frob:
+if (typeof bmsg == "sFrobMsg")
+	{SourceObj=bmsg.Frobber}
+else{SourceObj = bmsg.from}	
 
 #Let it fail?
 local FailChance = DGetParam(script+"FailChance",0,DN)
 if (FailChance > 0) {if (FailChance >= Data.RandInt(0,100)){return}}
 
-//Getting correct source in case of frob:
-if (typeof bmsg == "sFrobMsg")
-	{SourceObj=bmsg.Frobber}
-else{SourceObj = bmsg.from}
 
 	if ("DoOn" in this)																							//Checks if the script actually has an On function.
 	{
@@ -406,12 +403,12 @@ function OnMessage()
 }
 ##################
 
-class DLowerTrap extends DBaseTrap		//This is just a test script
+class DLowerTrap extends DBaseTrap								//This is just a test script
 {
 
-DefOn = "TurnOn"	//Default On message that this script is waiting for but differing from the standard TurnOn
+DefOn = "TurnOn"												//Default On message that this script is waiting for but differing from the standard TurnOn
 
-constructor()		// A function that will be called after compiling (so EVEN IN THE EDITOR) and when the object/ script intance is created.
+constructor()
 {}
 
 
@@ -421,13 +418,13 @@ function OnMessage()
 local DN=userparams()
 base.OnMessage()
 local script="DLowerTrap"
-DarkUI.TextMessage("Capacitor:= "+GetData(script+"Capacitor")+"/"+DGetParam(script+"Capacitor",1,DN)+"  OnCap= "+GetData(script+"OnCapacitor")+"/"+DGetParam(script+"OnCapacitor",1,DN)+"  OffCap= "+GetData(script+"OffCapacitor")+"/"+DGetParam(script+"OffCapacitor",1,DN)+"  Counter= "+GetData(script+"Counter")+"/"+DGetParam(script+"Count",0,DN))		
+//DarkUI.TextMessage("Capacitor:= "+GetData(script+"Capacitor")+"/"+DGetParam(script+"Capacitor",1,DN)+"  OnCap= "+GetData(script+"OnCapacitor")+"/"+DGetParam(script+"OnCapacitor",1,DN)+"  OffCap= "+GetData(script+"OffCapacitor")+"/"+DGetParam(script+"OffCapacitor",1,DN)+"  Counter= "+GetData(script+"Counter")+"/"+DGetParam(script+"Count",0,DN))		
 
-if (MessageIs("Damage"))
-{print(message().message +" c:"+ message().culprit +"\n")
-print(message().from +"too"+ message().to +"\n"+"player was"+ObjID("Player"))
-}
+local from = Camera.GetFacing()
 
+from = vector(sin(from.y)*cos(from.z),sin(from.y)*sin(from.z),cos(from.y))
+
+DarkUI.TextMessage(from)
 }
 function OnTimer()
 {
@@ -448,51 +445,48 @@ function DoOff(DN)
 
 }
 
-
-
 }
+
 
 ####################################################################
 class DRelayTrap extends DBaseTrap
+####################################################################
 {
+function DSendMessage(t,msg)
+{
+		if (msg[0]!='[')
+			{SendMessage(t,msg)}
+		else
+		{
+			local ar=split(msg,"[]")
+			ar.remove(0)
+			if (!GetDarkGame())																		//T1/G compability
+				{ActReact.Stimulate(t,ar[1],ar[0].tofloat(),self)}
+			else
+				{ActReact.Stimulate(t,ar[1],ar[0].tofloat())}
+		}
+}
+
 function DoOn(DN)
 {
-	foreach (msg in DGetParam("DRelayTrapTOn","TurnOn",DN,1))
+local script = GetClassName()
+	foreach (msg in DGetParam(script+"TOn","TurnOn",DN,1))
 	{
-		foreach (t in DGetParam("DRelayTrapOnTarget",DGetParam("DRelayTrapTarget","&ControlDevice",DN,1),DN,1))
+		foreach (t in DGetParam(script+"OnTarget",DGetParam(script+"OnTDest",DGetParam(script+"Target",DGetParam(script+"TDest","&ControlDevice",DN,1),DN,1),DN,1),DN,1))
 		{
-			if (msg[0]!='[')
-				{SendMessage(t,msg)}
-			else
-			{
-				local ar=split(msg,"[]")
-				ar.remove(0)
-				if (!GetDarkGame())																		//T1/G compability
-					{ActReact.Stimulate(t,ar[1],ar[0].tofloat(),self)}
-				else
-					{ActReact.Stimulate(t,ar[1],ar[0].tofloat())}
-			}
+			DSendMessage(t,msg)
 		}
 	}
 }
 
 function DoOff(DN)
 {
-	foreach (msg in DGetParam("DRelayTrapTOff","TurnOff",DN,1))
+local script = GetClassName()
+	foreach (msg in DGetParam(script+"TOff","TurnOff",DN,1))
 	{
-		foreach (t in DGetParam("DRelayTrapOffTarget",DGetParam("DRelayTrapTarget","&ControlDevice",DN,1),DN,1))
+		foreach (t in DGetParam(script+"OffTarget",DGetParam(script+"OffTDest",DGetParam(script+"Target",DGetParam(script+"TDest","&ControlDevice",DN,1),DN,1),DN,1),DN,1))
 		{
-			if (msg[0]!='[')
-				{SendMessage(t,msg)}
-			else
-			{
-				local ar=split(msg,"[]")
-				ar.remove(0)
-				if (!GetDarkGame())																		//T1/G compability
-					{ActReact.Stimulate(t,ar[1],ar[0].tofloat(),self)}
-				else
-					{ActReact.Stimulate(t,ar[1],ar[0].tofloat())}
-			}
+			DSendMessage(t,msg)
 		}
 				
 
@@ -505,53 +499,53 @@ function DoOff(DN)
 
 class DHub extends SqRootScript   //NOT A BASE SCRIPT
 {
-/*
-Valuable Parameters.
-Relay=Message you want to send
-Target= where 			
-Delay=
-DelayMax				//Enables a random delay between Delay and DelayMax
-ExclusiveDelay=1		//Abort future messages
-Repeat=					//-1 until the message is received again.		
-Count=					//How often the script will work. Receiving ResetCounter will reset this
-Capacitor=				//Will only relay when the messages is received that number of times
-CapacitorFalloff=		//Every __ms reduces the stored capacitor by 1
-FailChance				//Chance to fail a relay. if negative it will affect Count even if the message is not sent
-Every Parameter can be set as default for every message with DHubParameterName or individualy for every message (have obv. priority)
+	/*
+	Valuable Parameters.
+	Relay=Message you want to send
+	Target= where 			
+	Delay=
+	DelayMax				//Enables a random delay between Delay and DelayMax
+	ExclusiveDelay=1		//Abort future messages
+	Repeat=					//-1 until the message is received again.		
+	Count=					//How often the script will work. Receiving ResetCounter will reset this
+	Capacitor=				//Will only relay when the messages is received that number of times
+	CapacitorFalloff=		//Every __ms reduces the stored capacitor by 1
+	FailChance				//Chance to fail a relay. if negative it will affect Count even if the message is not sent
+	Every Parameter can be set as default for every message with DHubParameterName or individualy for every message (have obv. priority)
 
 
-Design Note example:
-DHubYourMessage="TOn=RelayMessage;TDest=DestinationObject;Delay
-DHubTurnOn="Relay=TurnOff;To=player;Delay=5000;Repeat=3"
-*/
+	Design Note example:
+	DHubYourMessage="TOn=RelayMessage;TDest=DestinationObject;Delay
+	DHubTurnOn="Relay=TurnOff;To=player;Delay=5000;Repeat=3"
+	*/
 
 
-/* THIS IS NOT IMPLEMENTED:
-If DHubCount is a negative number a trap wide counter will be used. Non negative Message_Count parameters will behave normaly.
+	/* THIS IS NOT IMPLEMENTED:
+	If DHubCount is a negative number a trap wide counter will be used. Non negative Message_Count parameters will behave normaly.
 
-NOTE: Using Message_Count with a negative values is not advised. It will not cause an error but could set a wrong starting count if that Message is the first valid one.
-Examples:
-DHubTurnOn="Count=1" will only once relay a message after receiving TurnOn
+	NOTE: Using Message_Count with a negative values is not advised. It will not cause an error but could set a wrong starting count if that Message is the first valid one.
+	Examples:
+	DHubTurnOn="Count=1" will only once relay a message after receiving TurnOn
 
-DHubCountNormal
---
-DHubCount=-3;
-DHubTurnOff="==";
-DHubTurnOn="==";
-DHubTweqStarting="Count=0"
+	DHubCountNormal
+	--
+	DHubCount=-3;
+	DHubTurnOff="==";
+	DHubTurnOn="==";
+	DHubTweqStarting="Count=0"
 
-Relaying TurnOn or TurnOff BOTH will increase the counter until 3 messages in total have been relayed.
-TweqStarting messages will not increase the counter and will still be relayed when 3 other messages have been relayed.
+	Relaying TurnOn or TurnOff BOTH will increase the counter until 3 messages in total have been relayed.
+	TweqStarting messages will not increase the counter and will still be relayed when 3 other messages have been relayed.
 
-Possible Future addition:
-non zero Counts will increase the hub Count; and could additionally be blocked then, too.
+	Possible Future addition:
+	non zero Counts will increase the hub Count; and could additionally be blocked then, too.
 
 
-if (CountMax < 0){CountData= "DHubCounter"}else{CountData="DHub"+msg+"Counter"}
-//first time setting script var or else grabbing Data
-if (IsDataSet(CountData)){CurCount=GetData(CountData)}
-else {SetData(CountData,Count)}
-*/
+	if (CountMax < 0){CountData= "DHubCounter"}else{CountData="DHub"+msg+"Counter"}
+	//first time setting script var or else grabbing Data
+	if (IsDataSet(CountData)){CurCount=GetData(CountData)}
+	else {SetData(CountData,Count)}
+	*/
 
 
 //Storing the default stuff in an array.
@@ -562,226 +556,502 @@ DefOn=null
 i=null
 
 constructor() 		//Initializing Skript Data
-{
-	local ie=!IsEditor()
-	local DN=userparams()
-	local def = 0
-	
-	//Not implemented yet
-	/*if (DGetParam("DHubCount",0,DN)<0){SetData("DHubCounter",0)}else{ClearData("DHubCounter")}
-	if (DGetParam("DHubCapacitor",1,DN) < 0){SetData("DHubCapacitor",0)}else{ClearData("DHubCapacitor")}*/ 
-
-
-	foreach (k,v in DN)
 	{
-		if (startswith(k,"DHub"))
-		{//DefDN[		1			2			3				4					5					6			7				8			9				10]
-		def = [null,"DHubRelay","DHubTarget","DHubCount","DHubCapacitor","DHubCapacitorFalloff","DHubFailChance","DHubDelay","DHubDelayMax","DHubRepeat","DHubExclusiveDelay"].find(k)
-		if (!def)
-		{
-			if (ie){continue} 		//Initial data is set in the Editor. And data changes during game. Continue to recreate the DefDN.
-			if (DGetStringParam("Count",DGetParam("DHubCount",0,DN),v))
-				{
-				SetData(k+"Counter",0)	
-				}
-			else {ClearData(k+"Counter")}
-	
-			if (DGetStringParam("Capacitor",DGetParam("DHubCapacitor",1,DN),v) != 1)
-				{
-				SetData(k+"Capacitor",0)			
-				}
-			else {ClearData(k+"Capacitor")}
-		}
-		else //Make a default array.
-		{
-			DefDN[def*2-1]=v
-		}
-		}
-	}	
-}
+		local ie=!IsEditor()
+		local DN=userparams()
+		local def = 0
+		
+		//Not implemented yet
+		/*if (DGetParam("DHubCount",0,DN)<0){SetData("DHubCounter",0)}else{ClearData("DHubCounter")}
+		if (DGetParam("DHubCapacitor",1,DN) < 0){SetData("DHubCapacitor",0)}else{ClearData("DHubCapacitor")}*/ 
 
+
+		foreach (k,v in DN)
+		{
+			if (startswith(k,"DHub"))
+			{//DefDN[		1			2			3				4					5					6			7				8			9				10]
+			def = [null,"DHubRelay","DHubTarget","DHubCount","DHubCapacitor","DHubCapacitorFalloff","DHubFailChance","DHubDelay","DHubDelayMax","DHubRepeat","DHubExclusiveDelay"].find(k)
+			if (!def)
+			{
+				if (ie){continue} 		//Initial data is set in the Editor. And data changes during game. Continue to recreate the DefDN.
+				if (DGetStringParam("Count",DGetParam("DHubCount",0,DN),v))
+					{
+					SetData(k+"Counter",0)	
+					}
+				else {ClearData(k+"Counter")}
+		
+				if (DGetStringParam("Capacitor",DGetParam("DHubCapacitor",1,DN),v) != 1)
+					{
+					SetData(k+"Capacitor",0)			
+					}
+				else {ClearData(k+"Capacitor")}
+			}
+			else //Make a default array.
+			{
+				DefDN[def*2-1]=v
+			}
+			}
+		}	
+	}
+##############
 
 
 function OnMessage()
-{
-local lhub = userparams();
-local bmsg = message()
-local msg = bmsg.message
-local command = ""
-local l=endswith(msg,"ResetCount")
-local msg2=msg
+	{
+	local lhub = userparams();
+	local bmsg = message()
+	local msg = bmsg.message
+	local command = ""
+	local l=endswith(msg,"ResetCount")
+	local msg2=msg
 
-//Check special Messages and set [source]
-//Reset single counts and repeats.
-if (l || endswith(msg,"StopRepeat"))
-{
-	msg2 = msg.slice(0,-10)
-	if (msg2 != "")
-		{
-		msg2= "DHub"+msg2
-		if (l)
-			{SetData(msg2+"Counter",0)}
-		else
+	//Check special Messages and set [source]
+	//Reset single counts and repeats.
+	if (l || endswith(msg,"StopRepeat"))
+	{
+		msg2 = msg.slice(0,-10)
+		if (msg2 != "")
 			{
-			if (IsDataSet(msg2+"DelayTimer"))
+			msg2= "DHub"+msg2
+			if (l)
+				{SetData(msg2+"Counter",0)}
+			else
 				{
-				KillTimer(GetData(msg2+"DelayTimer"))
-				ClearData(msg2+"DelayTimer")
-				if (IsDataSet(msg2+"InfRepeat")){ClearData(msg2+"InfRepeat")}
-				}
-			}
-		}
-	else
-		{
-		if (l)
-			foreach (k,v in lhub)
-				{
-				if (startswith(k,"DHub")&& !([null,"DHubRelay","DHubCount","DHubOn","DHubTarget","DHubCapacitor","DHubCapacitorFalloff","DHubFailChance","DHubDelay","DHubDelayMax","DHubRepeat","DHubExclusiveDelay"].find(k)))
+				if (IsDataSet(msg2+"DelayTimer"))
 					{
-					if (IsDataSet(k+"Counter")){SetData(k+"Counter",0)}
+					KillTimer(GetData(msg2+"DelayTimer"))
+					ClearData(msg2+"DelayTimer")
+					if (IsDataSet(msg2+"InfRepeat")){ClearData(msg2+"InfRepeat")}
 					}
 				}
+			}
 		else
 			{
-			foreach (k,v in lhub)
-				{
-				if (startswith(k,"DHub")&& !([null,"DHubRelay","DHubCount","DHubOn","DHubTarget","DHubCapacitor","DHubCapacitorFalloff","DHubFailChance","DHubDelay","DHubDelayMax","DHubRepeat","DHubExclusiveDelay"].find(k)))
+			if (l)
+				foreach (k,v in lhub)
 					{
-					if (IsDataSet(k+"InfRepeat"))
+					if (startswith(k,"DHub")&& !([null,"DHubRelay","DHubCount","DHubOn","DHubTarget","DHubCapacitor","DHubCapacitorFalloff","DHubFailChance","DHubDelay","DHubDelayMax","DHubRepeat","DHubExclusiveDelay"].find(k)))
 						{
-						KillTimer(GetData(k+"DelayTimer"))
-						ClearData(k+"DelayTimer")
-						ClearData(k+"InfRepeat")
+						if (IsDataSet(k+"Counter")){SetData(k+"Counter",0)}
+						}
+					}
+			else
+				{
+				foreach (k,v in lhub)
+					{
+					if (startswith(k,"DHub")&& !([null,"DHubRelay","DHubCount","DHubOn","DHubTarget","DHubCapacitor","DHubCapacitorFalloff","DHubFailChance","DHubDelay","DHubDelayMax","DHubRepeat","DHubExclusiveDelay"].find(k)))
+						{
+						if (IsDataSet(k+"InfRepeat"))
+							{
+							KillTimer(GetData(k+"DelayTimer"))
+							ClearData(k+"DelayTimer")
+							ClearData(k+"InfRepeat")
+							}
 						}
 					}
 				}
 			}
-		}
-}
+	}
 
 
-if (typeof bmsg == "sFrobMsg")
-	{SourceObj=bmsg.Frobber}
-else{SourceObj = bmsg.from}
+	if (typeof bmsg == "sFrobMsg")
+		{SourceObj=bmsg.Frobber}
+	else{SourceObj = bmsg.from}
 
-		
-//End special message check.	
-DefOn="null" //Reset so a Timer won't activate it	
+			
+	//End special message check.	
+	DefOn="null" //Reset so a Timer won't activate it	
 
-if (msg=="Timer")
-{
-	local msgn = bmsg.name
-	if (endswith(msgn,"Falloff")||endswith(msgn,"Delayed"))
+	if (msg=="Timer")
 	{
-			msgn= msgn.slice(0,-7)
-		if (endswith(msgn,"Delayed"))
-			{SourceObj=split(bmsg.data,"+")[1].tointeger()}
-
-		command = DGetParam(msgn,false,lhub)
-		if (command)
+		local msgn = bmsg.name
+		if (endswith(msgn,"Falloff")||endswith(msgn,"Delayed"))
 		{
-			local SubDN ={}
-			local CArray = split(command,";=")
-			l = CArray.len()
-			for (local v=0;v<20;v+=2)					//Setting default parameter.
+				msgn= msgn.slice(0,-7)
+			if (endswith(msgn,"Delayed"))
+				{SourceObj=split(bmsg.data,"+")[1].tointeger()}
+
+			command = DGetParam(msgn,false,lhub)
+			if (command)
 			{
-				SubDN[msgn+DefDN[v]]<-DefDN[v+1]
+				local SubDN ={}
+				local CArray = split(command,";=")
+				l = CArray.len()
+				for (local v=0;v<20;v+=2)					//Setting default parameter.
+				{
+					SubDN[msgn+DefDN[v]]<-DefDN[v+1]
+				}
+				for (local v=0;v<l;v=v+2)
+				{
+					SubDN[msgn+CArray[v]]=CArray[v+1]
+				}
+				DBaseFunction(SubDN,msgn)
 			}
-			for (local v=0;v<l;v=v+2)
-			{
-				SubDN[msgn+CArray[v]]=CArray[v+1]
-			}
-			DBaseFunction(SubDN,msgn)
 		}
 	}
-}
 
 
-command = DGetParam("DHub"+msg,null,lhub)
-if (command!=null)
-{
-i=1
-local SubDN ={}
-local CArray=split(command,";=")
-local FailChance=0
-
-msg2=msg
-DefOn=msg2
-
-//Creating a "Design Note" for every action and passing it on.
-while (command)
+	command = DGetParam("DHub"+msg,null,lhub)
+	if (command!=null)
 	{
-	if (i!=1){msg2=msg+i; CArray = split(command,";=")}
-	l = CArray.len()
-	SubDN.clear()
-	for (local v=0;v<20;v+=2)					//Setting default parameter.
-	{
-		SubDN["DHub"+msg2+DefDN[v]]<-DefDN[v+1]
-	}
-	if (command!="==")
-	{
-	for (local v=0;v<l;v+=2)							//Setting custom parameter. SubDN is now a 20 entry table
+	i=1
+	local SubDN ={}
+	local CArray=split(command,";=")
+	local FailChance=0
+
+	msg2=msg
+	DefOn=msg2
+
+	//Creating a "Design Note" for every action and passing it on.
+	while (command)
 		{
-		SubDN["DHub"+msg2+CArray[v]]=CArray[v+1]
+		if (i!=1){msg2=msg+i; CArray = split(command,";=")}
+		l = CArray.len()
+		SubDN.clear()
+		for (local v=0;v<20;v+=2)					//Setting default parameter.
+		{
+			SubDN["DHub"+msg2+DefDN[v]]<-DefDN[v+1]
 		}
-	}
-	FailChance=DGetParam("DHub"+msg2+"FailChance",DefDN[11],SubDN).tointeger()	//sucks a bit to have this in the loop.
-	if (FailChance == 0){DCountCapCheck("DHub"+msg2,SubDN,1)}
-		else {if (!(FailChance >= Data.RandInt(0,100))){DCountCapCheck("DHub"+msg2,SubDN,1)}}
+		if (command!="==")
+		{
+		for (local v=0;v<l;v+=2)							//Setting custom parameter. SubDN is now a 20 entry table
+			{
+			SubDN["DHub"+msg2+CArray[v]]=CArray[v+1]
+			}
+		}
+		FailChance=DGetParam("DHub"+msg2+"FailChance",DefDN[11],SubDN).tointeger()	//sucks a bit to have this in the loop.
+		if (FailChance == 0){DCountCapCheck("DHub"+msg2,SubDN,1)}
+			else {if (!(FailChance >= Data.RandInt(0,100))){DCountCapCheck("DHub"+msg2,SubDN,1)}}
 
-	i++
-	command = DGetParam("DHub"+msg+i,false,lhub)
-	}	
-}
-}
+		i++
+		command = DGetParam("DHub"+msg+i,false,lhub)
+		}	
+	}
+	}
 
 
 
 
 //Here the Message is sent.
 function DoOn(DN)
-{
-	local baseDN=userparams()
-	local m=message()
-	local mssg=m.message
-	local idx=""
-	
-	if (i!=1){idx=i}
-	
-	if (mssg=="Timer")
 	{
-		if (endswith(m.name,"Delayed"))
-			{
-			mssg= m.name.slice(4,-7)
-			idx=""
-			}
-
-	}
-	
-	foreach (msg in DGetParam("DHub"+mssg+idx+"Relay",0,DN,1))
-	{
-		foreach (t in DGetParam("DHub"+mssg+idx+"Target",0,DN,1))
+		local baseDN=userparams()
+		local m=message()
+		local mssg=m.message
+		local idx=""
+		
+		if (i!=1){idx=i}
+		
+		if (mssg=="Timer")
 		{
-			if (msg[0]!='[')
-				{SendMessage(t,msg)}
-			else
+			if (endswith(m.name,"Delayed"))
+				{
+				mssg= m.name.slice(4,-7)
+				idx=""
+				}
+
+		}
+		
+		foreach (msg in DGetParam("DHub"+mssg+idx+"Relay",0,DN,1))
+		{
+			foreach (t in DGetParam("DHub"+mssg+idx+"Target",0,DN,1))
 			{
-				local ar=split(msg,"[]")
-				//ar.remove(0)
-				if (!GetDarkGame())																		//T1/G compability = 0
-					{ActReact.Stimulate(t,ar[2],ar[1].tofloat(),self)}
+				if (msg[0]!='[')
+					{SendMessage(t,msg)}
 				else
-					{ActReact.Stimulate(t,ar[2],ar[1].tofloat())}
+				{
+					local ar=split(msg,"[]")
+					//ar.remove(0)
+					if (!GetDarkGame())																		//T1/G compability = 0
+						{ActReact.Stimulate(t,ar[2],ar[1].tofloat(),self)}
+					else
+						{ActReact.Stimulate(t,ar[2],ar[1].tofloat())}
+				}
 			}
 		}
-	}
 
-}
+	}
 
 }
 ################################
 ## END of HUB
 ################################
+
+
+####################################################################
+class DArmAttachment extends DBaseTrap
+####################################################################
+{
+DefOn="InvSelect"
+
+function DoOn(DN)
+{
+SetOneShotTimer("Equip",0.5)
+}
+
+function OnTimer()
+{
+	if (message().name == "Equip")
+	{
+		local DN=userparams()
+		local o = null
+		local t = DGetParam("DArmAttachmentUseObject",false,DN)
+		local m = DGetParam("DArmAttachmentModel",self,DN)
+
+		// print("m1= "+m)
+		if (m ==self && !t)
+			{m = Property.Get(self,"ModelName")}
+		t = t.tointeger()
+		print("m2= "+m)
+		if (t)
+			{
+			o = Object.Create(m)
+			Property.SetSimple(o,"RenderType",0)
+			}
+		else
+			{
+			o = Object.Create(-1)
+			Property.Add(o,"ModelName")
+			Property.SetSimple(o,"ModelName",m)
+			// print("model is: "+Property.Get(o,"ModelName",DGetParam("DArmAttachmentModel","stool",DN)))
+			}
+
+		if (t < 2)
+			Physics.DeregisterModel(o)
+		if (t != 3)
+			Property.SetSimple(o,"HasRefs",0)
+		//Weapon.Equip(self)
+		local ar = split(DGetParam("DArmAttachmentRot","0,0,0",DN),",")
+		local ar2 = split(DGetParam("DArmAttachmentPos","0,0,0",DN),",") //0.2,-0.6,-0.3
+		local vr = vector(ar[0].tofloat(),ar[1].tofloat(),ar[2].tofloat())
+		local vp = vector(ar2[0].tofloat(),ar2[1].tofloat(),ar2[2].tofloat())
+
+		local l = Link.Create("DetailAttachement",o,Object.Named("PlyrArm"))
+		LinkTools.LinkSetData(l,"Type",2)
+		LinkTools.LinkSetData(l,"joint",10)
+		LinkTools.LinkSetData(l,"rel pos",vp)
+		LinkTools.LinkSetData(l,"rel rot",vr)
+
+	}
+}
+
+}
+
+####################################################################
+class DHitScanTrap extends DRelayTrap
+####################################################################
+{
+/*When activated will scan if there is one object / solid between two objects. Imagine it as a scanning laser beam between two objects DHitScanTrapFrom and DHitScanTrapTo, the script object is used as default if none is specified. 
+If the from object is the player the camera position is used if the To object is also the player the beam will be centered at the players view - for example to check if hes exactly facing something.
+
+The Object that was hit will receive the message specified by DHitScanTrapHitMsg. By default when any object is hit a TurnOn will be sent to CD Linked objects. Of course these can be changed via DHitScanTrapTOn and DHitScanTrapTDest.
+Alternativly if just a special set of objects should trigger a TurnOn then these can be specified via DHitScanTrapTarget.
+
+*/
+
+function DoOn(DN)
+{
+/*
+int ObjRaycast(vector from, vector to, vector & hit_location, object & hit_object, int ShortCircuit, BOOL bSkipMesh, object ignore1, object ignore2);
+		// perform a raycast on objects and terrain (expensive, don't use excessively)
+	//   'ShortCircuit' - if 1, the raycast will return immediately upon hitting an object, without determining if there's
+	//                    any other object hit closer to ray start
+	//                    if 2, the raycast will return immediately upon hitting any terrain or object (most efficient
+	//                    when only determining if there is a line of sight or not)
+	//   'bSkipMesh'    - if TRUE the raycast will not include mesh objects (ie. characters) in the cast
+	//   'ignore1'      - is an optional object to exclude from the raycast (useful when casting from the location of
+	//                    an object to avoid the cast hitting the source object)
+	//   'ignore2'      - is an optional object to exclude from the raycast (useful in combination with ignore2 when
+	//                    testing line of sight between two objects, to avoid raycast hitting source or target object)
+	// returns 0 if nothing was hit, 1 for terrain, 2 for an object, 3 for mesh object (ie. character)
+	// for return types 2 and 3 the hit object will be returned in 'hit_object'
+*/
+
+	local from = DGetParam("DHitScanTrapFrom",self,DN)	
+	local to = DGetParam("DHitScanTrapTo",self,DN)
+	local target = DGetParam("DHitScanTrapTarget",null,DN,1)
+	local vfrom = Object.Position(from)
+	local vto = Object.Position(to)
+	local v = vto-vfrom
+		if (from == "player")
+		{
+			vfrom = Camera.GetPosition()
+			vfrom = vector(sin(from.y)*cos(from.z),sin(from.y)*sin(from.z),cos(from.y))
+			DarkUI.TextMessage(vfrom)
+		}	
+
+	local hobj = object()
+	local hloc = vector()		
+
+	local result = Engine.ObjRaycast(vfrom,vto,hloc,hobj,0,false,from,to)
+		hobj = hobj.tointeger()										//Needs to be 'converted' back.
+
+	foreach (msg in DGetParam("DHitScanTrapHitMsg","DHitScan",DN,1))	//Message to hitted obj
+		{
+			DSendMessage(hobj,msg)
+		}
+		
+	local t2 = ""
+	foreach (t in target)
+		{
+		if (t == "Player" || t =="player")
+			  t = ObjID("Player")
+		if (t == hobj)
+			base.DoOn(DN)
+		}
+
+
+}
+}
+
+####################################################################
+class DRay extends DBaseTrap
+####################################################################
+/* This script will create one or multiple SFX effects between two objects and scale it up accordingly. The effect is something you have to design before hand ParticleBeam(-3445) is a good template. Two notes before, on the archetype the Particle Group is not active and uses a T1 only bitmap.
+NOTE: This script uses only the SFX->'Particle Launch Info'rmation therefore the X value in gravity vector in 'Particle' should be 0.
+
+Following parameters are used:
+DRayFrom, DRayTo	These define the start/end objects of the SFX. If the parameter is not used the script object is used)
+DRaySFX				Which SFX object should be used. Can be concrete.
+
+DRayScaling	0 or 1	Default (0) will increase the bounding box where the particles start. 
+					1 will increase their lifetime use this option if you want it to behave more like a "shooter".
+
+DRayAttach	(not working) will attach one end of the ray to the from object via detail attachment. By sending alternating TurnOn/Off Updates you can link two none symetrical moving objects together.
+					
+Each parameter can target multiple objects also more than one special effect can be used at the same time.
+
+
+*/
+
+
+{
+
+
+
+function DoOn(DN)
+{
+local fromset = DGetParam("DRayFrom",self,DN,1)
+local toset = DGetParam("DRayTo",self,DN,1)
+local type = DGetParam("DRayScaling",0,DN)
+local attach = DGetParam("DRayAttach",false,DN)
+
+	foreach (sfx in DGetParam("DRaySFX","ParticleBeam",DN,1))
+	{
+		foreach (from in fromset)
+		{
+			foreach (to in toset)
+			{
+				if (to == from)
+					continue
+				local vfrom = Object.Position(from)
+				local vto = Object.Position(to)
+				local v = vto-vfrom
+
+				local d = v.Length()
+				//Bounding Box and Area of Effect
+				local vmax = Property.Get(sfx,"PGLaunchInfo","Velocity Max").x
+				local tmax = Property.Get(sfx,"PGLaunchInfo","Max time")
+				local bmin = Property.Get(sfx,"PGLaunchInfo","Box Min")
+				local bmax = Property.Get(sfx,"PGLaunchInfo","Box Max")
+				local o = null
+				//Checking if a SFX is already present or if it should be updated.
+				foreach (l in Link.GetAll("ScriptParams",from))
+					{
+					if (LinkDest(l) == to)
+						{
+						local data = split(LinkTools.LinkGetData(l,""),"+")
+						if (data[1].tointeger() == sfx)
+							{
+							o = data[2].tointeger()
+							break
+							}
+						}
+					else
+						o = null
+					}
+				if (!o)	//create new SFX
+					{
+					o = Object.Create(sfx)
+					// Link.Create("Owns",from,o)
+					LinkTools.LinkSetData(Link.Create("ScriptParams",from,to),"","DRay+"+sfx+"+"+o)
+					}
+
+				local h = vector(v.x,v.y,0).GetNormalized()
+				local facing = null
+				if (type != 0) //
+				{
+					//Don't change if not needed:
+					if (tmax != d/vmax)
+						{Property.Set(o,"PGLaunchInfo","Min time",d/vmax)
+						Property.Set(o,"PGLaunchInfo","Max time",d/vmax)}
+					if (h.y < 0)
+						facing = vector(0,asin(v.z/d)/DtR+180,acos(-h.x)/DtR)
+					else
+						facing = vector(0,asin(-v.z/d)/DtR,acos(h.x)/DtR)
+				}
+				else
+				{
+				
+					//new length
+					local extra = vmax*tmax
+					local newb = (d-extra)/2
+					// don't update Particles when there was no box change:
+					if (bmax.x != newb)
+						{
+						bmax.x=newb
+						bmin.x=-newb
+
+						Property.Set(o,"PGLaunchInfo","Box Max",bmax)
+						Property.Set(o,"PGLaunchInfo","Box Min",bmin)
+						vfrom+=(v/2)
+						local n = vmax*tmax+abs(bmin.x)+bmax.x
+						Property.Set(o,"ParticleGroup","number of particles",(d/n*Property.Get(sfx,"ParticleGroup","number of particles").tointeger()))
+						}
+					
+					
+					if (h.y < 0)
+						facing = vector(0,asin(v.z/d)/DtR,acos(-h.x)/DtR)
+					else
+						facing = vector(0,asin(v.z/d)/DtR,acos(h.x)/DtR+180)
+				}
+				// if (attach)
+					// {
+					// local l = Link.Create("DetailAttachement",o,from)
+					//LinkTools.LinkSetData(l, "rel rot", vector(facing.z-Object.Facing(from).z,facing.y-Object.Facing(from).y,0))
+					//LinkTools.LinkSetData(l, "rel pos", vfrom)
+					// }
+				// else
+				Object.Teleport(o,vfrom,facing)
+				
+			}
+		}
+	}
+	
+	
+}
+
+
+function DoOff(DN)
+{
+	foreach (from in DGetParam("DRayFrom",self,DN,1))
+	{
+		foreach (l in Link.GetAll("ScriptParams",from))
+			{
+				local data = split(LinkTools.LinkGetData(l,""),"+")
+				if (data[0] == "DRay")
+					{
+					print("destroy:  "+data[2]+"   "+Object.Destroy(data[2].tointeger()))
+					Link.Destroy(l)
+					}
+			}
+		
+
+	}
+}
+
+}
+
 
 #########################################
 class DCopyPropertyTrap extends DBaseTrap
@@ -1193,7 +1463,7 @@ function OnTimer()
 	if (GetData("Active"))
 	{
 		local v=Camera.GetFacing()
-
+		// DarkUI.TextMessage(vector(sin(v.y-90)*cos(v.z),sin(v.y-90)*sin(v.z),cos(v.y-90)))
 		local pitch=v.y
 		local heading=v.z+180
 		v.z=90-v.z
