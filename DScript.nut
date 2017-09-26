@@ -1,5 +1,5 @@
 /*#########################################
-DScript Version 0.28b
+DScript Version 0.28c
 Use at your liking. All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
 
 DarkUI.TextMessage("Here for fast test");
@@ -8,6 +8,7 @@ DarkUI.TextMessage("Here for fast test");
 /*TABLE OF CONTENT
 
 -Base Functions
+
 Scipts:
 DBaseTrap
 -DLowerTrap
@@ -34,17 +35,17 @@ DHub
 const DtR = 0.01745			// DegToRad PI/180
 
 ############Getting Parameter functions###########
-function DGetAllDescendants(at,objset)							//Emulation of the "@"-parameter. BruteForce crawl. Don't know if there is a better way.
+function DGetAllDescendants(at,objset)	//Emulation of the "@"-parameter. BruteForce crawl. Haven't found a better internal way.
 {
-foreach ( l in Link.GetAll("~MetaProp",at))
-{
-local id=LinkDest(l);
-	if (id>0){objset.append(id)}
-	else {DGetAllDescendants(id,objset)}
-}
+	foreach ( l in Link.GetAll("~MetaProp",at))
+	{
+	local id=LinkDest(l);
+		if (id>0){objset.append(id)}
+		else {DGetAllDescendants(id,objset)}
+	}
 return objset
 }
-
+	
 function DCheckString(r,adv)
 {
 	//handling non strings
@@ -59,7 +60,7 @@ function DCheckString(r,adv)
 		case "bool":
 			return r
 		}
-		
+	 //special 'normal' strings	
 	switch (r)
 		{
 		case "[me]":
@@ -86,7 +87,7 @@ function DCheckString(r,adv)
 				{
 					r=r.tointeger()
 				}
-				else					//@switches
+				else				//@switches
 				{
 					r=ObjID(r)
 				}
@@ -104,7 +105,7 @@ function DCheckString(r,adv)
 					{
 					r=r.tointeger()
 					}
-				else					//@switches
+				else				//@switches
 					{
 					r=ObjID(r)
 					}
@@ -146,31 +147,31 @@ function DCheckString(r,adv)
 }
 
 
-
-function DGetParam(par,def=null,DN=null,adv=false)	//Function to return parameters, returns given default value. if adv=1 an array of objects will be returned.
+//Function to return parameters, returns given default value. if adv=1 an array of objects will be returned.
+function DGetParam(par,def=null,DN=null,adv=false)
 {
-if(!DN){DN=userparams()}						//The Design Note has to be passed on to a) save userparams() calls and b) this script works for artificial tables and class objects as well.
-if (par in DN)
-	{
-	return DCheckString(DN[par],adv)			//will return arrayed or single objs(adv=1).
-	}
-else 
-	{	
-	return DCheckString(def,adv)
-	}
+	if(!DN){DN=userparams()}//The Design Note has to be passed on to a) save userparams() calls and b) this script works for artificial tables and class objects as well.
+	if (par in DN)
+		{
+		return DCheckString(DN[par],adv)	//will return arrayed or single objs(adv=1).
+		}
+	else 
+		{	
+		return DCheckString(def,adv)
+		}
 }
 
 
-function DGetStringParam(param,def,str,adv=false,cuts=";=")				//Like the above function but works with strings instead of a table. To get an (object) array set adv=1.
+function DGetStringParam(param,def,str,adv=false,cuts=";=") //Like the above function but works with strings instead of a table. To get an (object) array set adv=1.
 {
-str=str.tostring()
-local div = split(str,cuts);
-local key = div.find(param);
+	str=str.tostring()
+	local div = split(str,cuts);
+	local key = div.find(param);
 
-if (key)
-	{return DCheckString(div[key+1],adv)}
-else 
-	{return DCheckString(def,adv)}
+	if (key)
+		{return DCheckString(div[key+1],adv)}
+	else 
+		{return DCheckString(def,adv)}
 }
 
 #######TimerData
@@ -498,17 +499,20 @@ class DHub extends SqRootScript   //NOT A BASE SCRIPT
 {
 	/*
 	Valuable Parameters.
-	Relay=Message you want to send
+	Every Parameter can be set as default for every message with DHubParameterName or individualy for every message (have obv. priority)
+	
+	Relay=Message 			//you want to send
 	Target= where 			
 	Delay=
-	DelayMax				//Enables a random delay between Delay and DelayMax
+	DelayMax			//Enables a random delay between Delay and DelayMax
 	ExclusiveDelay=1		//Abort future messages
-	Repeat=					//-1 until the message is received again.		
-	Count=					//How often the script will work. Receiving ResetCounter will reset this
-	Capacitor=				//Will only relay when the messages is received that number of times
+	Repeat=				//-1 until the message is received again.		
+	Count=				//How often the script will work. Receiving ResetCounter will reset this
+	Capacitor=			//Will only relay when the messages is received that number of times
 	CapacitorFalloff=		//Every __ms reduces the stored capacitor by 1
-	FailChance				//Chance to fail a relay. if negative it will affect Count even if the message is not sent
-	Every Parameter can be set as default for every message with DHubParameterName or individualy for every message (have obv. priority)
+	FailChance			//Chance to fail a relay. if negative it will affect Count even if the message is not sent
+	
+	
 
 
 	Design Note example:
@@ -570,7 +574,7 @@ constructor() 		//Initializing Skript Data
 			def = [null,"DHubRelay","DHubTarget","DHubCount","DHubCapacitor","DHubCapacitorFalloff","DHubFailChance","DHubDelay","DHubDelayMax","DHubRepeat","DHubExclusiveDelay"].find(k)
 			if (!def)
 			{
-				if (ie){continue} 		//Initial data is set in the Editor. And data changes during game. Continue to recreate the DefDN.
+				if (ie){continue} 	//Initial data is set in the Editor. And data changes during game. Continue to recreate the DefDN.
 				if (DGetStringParam("Count",DGetParam("DHubCount",0,DN),v))
 					{
 					SetData(k+"Counter",0)	
@@ -656,7 +660,7 @@ function OnMessage()
 	else{SourceObj = bmsg.from}
 
 			
-	//End special message check.	
+	//End special message check.----------------------------------
 	DefOn="null" //Reset so a Timer won't activate it	
 
 	if (msg=="Timer")
@@ -774,11 +778,18 @@ function DoOn(DN)
 ## END of HUB
 ################################
 
+
 #########################################
 class DStdButton extends DRelayTrap
+/*Has all the StdButton features- even TrapControlFlags work. Once will lock the Object - as well as the DRelayTrap features, so basically this can save some script markers which only wait for a Button TurnOn
+
+Additional:
+If the button is locked the joint will not activate and the Schema specified by DStdButtonLockSound will be played, by default "noluck" the wrong lockpick sound. 
+*/
 #########################################
 {
 
+	
 ###StdController
 DefOn="DIOn"
 DefOff="DIOff"
@@ -874,6 +885,7 @@ function OnTimer()
 			{m = Property.Get(self,"ModelName")}
 		t = t.tointeger()
 		print("m2= "+m)
+//TODO: Switch better maybe?
 		if (t)
 			{
 			o = Object.Create(m)
@@ -910,15 +922,15 @@ function OnTimer()
 
 ####################################################################
 class DHitScanTrap extends DRelayTrap
-####################################################################
-{
 /*When activated will scan if there is one object / solid between two objects. Imagine it as a scanning laser beam between two objects DHitScanTrapFrom and DHitScanTrapTo, the script object is used as default if none is specified. 
 If the from object is the player the camera position is used if the To object is also the player the beam will be centered at the players view - for example to check if hes exactly facing something.
 
 The Object that was hit will receive the message specified by DHitScanTrapHitMsg. By default when any object is hit a TurnOn will be sent to CD Linked objects. Of course these can be changed via DHitScanTrapTOn and DHitScanTrapTDest.
 Alternativly if just a special set of objects should trigger a TurnOn then these can be specified via DHitScanTrapTriggers.
-
 */
+####################################################################
+{
+
 
 function DoOn(DN)
 {
@@ -975,9 +987,10 @@ int ObjRaycast(vector from, vector to, vector & hit_location, object & hit_objec
 }
 }
 
+
+
 ####################################################################
 class DRay extends DBaseTrap
-####################################################################
 /* This script will create one or multiple SFX effects between two objects and scale it up accordingly. The effect is something you have to design before hand ParticleBeam(-3445) is a good template. Two notes before, on the archetype the Particle Group is not active and uses a T1 only bitmap.
 NOTE: This script uses only the SFX->'Particle Launch Info'rmation therefore the X value in gravity vector in 'Particle' should be 0.
 
@@ -992,12 +1005,9 @@ DRayAttach	(not working) will attach one end of the ray to the from object via d
 					
 Each parameter can target multiple objects also more than one special effect can be used at the same time.
 
-
 */
-
-
+####################################################################
 {
-
 
 
 function DoOn(DN)
@@ -1195,7 +1205,7 @@ function DoOn(DN)
 
 
 
-#############Undercover scripts##########
+#############Undercover scripts#####################################
 //weapons scripts are in DUndercover.nut
 
 #########################################
@@ -1437,6 +1447,8 @@ function DoOn(DN)
 			else //custom Metas
 			{
 				if (Object.Exists(ObjID("M-DUndercoverPlayer"))){Object.AddMetaProperty("Player","M-DUndercoverPlayer")}
+				
+			//TODO: For every bit Loop?
 				if (modes | 1)
 					{
 					Object.AddMetaProperty(t,"M-DUndercover1")
