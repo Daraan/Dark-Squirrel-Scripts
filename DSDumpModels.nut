@@ -32,7 +32,7 @@ Before you can use this script you have to do some additional work as a complete
 
 8.) Best to create your airbrushes now, when you see how small and big objects are distributed. I had no problems with ~400x200 air brushes.
 
-TAKING SCREENSHOTS:
+TAKING SCREENSHOTS: 
 
 	!--> WARNING: In cam_ext.cfg use screenshot_format BMP. PNG will TAKE AGES and possibly skip models! <---!
 	
