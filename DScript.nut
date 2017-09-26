@@ -1,5 +1,5 @@
 /*#########################################
-DScript Version 0.25
+DScript Version 0.28b
 Use at your liking. All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
 
 DarkUI.TextMessage("Here for fast test");
@@ -304,44 +304,45 @@ function DBaseFunction(DN,script) //this got turned into a function so DHub can 
 	local bmsg=message()
 	local mssg =bmsg.message
 
-if (mssg == "ResetCount"){if (IsDataSet(script+"Counter")){SetData(script+"Counter",0)}}	
+	if (mssg == "ResetCount")
+		{if (IsDataSet(script+"Counter")){SetData(script+"Counter",0)}}	
 	
 if (mssg=="Timer")
 	{
-	local msg = bmsg.name
+		local msg = bmsg.name
 
-	if (msg==script+"Falloff")
-		{
-			local cfo = bmsg.data																//Check between On/Off/""Falloff
-			local dat=GetData(script+cfo+"Capacitor")-1
-			if (dat>-1)
-				{SetData(script+cfo+"Capacitor",dat)
-				SetData(script+cfo+"FalloffTimer",SetOneShotTimer(script+"Falloff",DGetParam(script+cfo+"CapacitorFalloff",0,DN).tofloat(),cfo))}
-			else 
-				{
-				ClearData(script+cfo+"FalloffTimer")
-				}
-		}
-	//DELAY AND REPEAT
-	if (msg==script+"Delayed")
-		{
-			local ar =DGetTimerData(bmsg.data)
-			ar[0]= ar[0].tointeger()	//func
-			SourceObj=ar[1].tointeger()
-			if (ar[0]){this.DoOn(DN)}else{this.DoOff(DN)}
-			ar[2] = ar[2].tointeger()			//Repeats left?
-			if (ar[2]!=0)
-				{
-				if (ar[2]!=-1){ar[2]-=1}
-				ar[3]=ar[3].tofloat()
-				SetData(script+"DelayTimer",DSetTimerData(script+"Delayed",ar[3],ar[0],SourceObj,ar[2],ar[3]))
-				}
-			else
-				{
-				ClearData(script+"DelayTimer")
-				}
-		}
-	
+		if (msg==script+"Falloff")
+			{
+				local cfo = bmsg.data																//Check between On/Off/""Falloff
+				local dat=GetData(script+cfo+"Capacitor")-1
+				if (dat>-1)
+					{SetData(script+cfo+"Capacitor",dat)
+					SetData(script+cfo+"FalloffTimer",SetOneShotTimer(script+"Falloff",DGetParam(script+cfo+"CapacitorFalloff",0,DN).tofloat(),cfo))}
+				else 
+					{
+					ClearData(script+cfo+"FalloffTimer")
+					}
+			}
+		//DELAY AND REPEAT
+		if (msg==script+"Delayed")
+			{
+				local ar =DGetTimerData(bmsg.data)
+				ar[0]= ar[0].tointeger()	//func
+				SourceObj=ar[1].tointeger()
+				if (ar[0]){this.DoOn(DN)}else{this.DoOff(DN)}
+				ar[2] = ar[2].tointeger()			//Repeats left?
+				if (ar[2]!=0)
+					{
+					if (ar[2]!=-1){ar[2]-=1}
+					ar[3]=ar[3].tofloat()
+					SetData(script+"DelayTimer",DSetTimerData(script+"Delayed",ar[3],ar[0],SourceObj,ar[2],ar[3]))
+					}
+				else
+					{
+					ClearData(script+"DelayTimer")
+					}
+			}
+		
 	}
 ##
 //Getting correct source in case of frob:
@@ -467,34 +468,30 @@ function DSendMessage(t,msg)
 		}
 }
 
-function DoOn(DN)
+function DRelayMessages(OnOff,DN)
 {
 local script = GetClassName()
-	foreach (msg in DGetParam(script+"TOn","TurnOn",DN,1))
+	foreach (msg in DGetParam(script+"T"+OnOff,"Turn"+OnOff,DN,1))
 	{
-		foreach (t in DGetParam(script+"OnTarget",DGetParam(script+"OnTDest",DGetParam(script+"Target",DGetParam(script+"TDest","&ControlDevice",DN,1),DN,1),DN,1),DN,1))
+		foreach (t in DGetParam(script+OnOff+"Target",DGetParam(script+OnOff+"TDest",DGetParam(script+"Target",DGetParam(script+"TDest","&ControlDevice",DN,1),DN,1),DN,1),DN,1))
 		{
 			DSendMessage(t,msg)
 		}
 	}
+}
+
+
+function DoOn(DN)
+{
+	DRelayMessages("On",DN)
 }
 
 function DoOff(DN)
 {
-local script = GetClassName()
-	foreach (msg in DGetParam(script+"TOff","TurnOff",DN,1))
-	{
-		foreach (t in DGetParam(script+"OffTarget",DGetParam(script+"OffTDest",DGetParam(script+"Target",DGetParam(script+"TDest","&ControlDevice",DN,1),DN,1),DN,1),DN,1))
-		{
-			DSendMessage(t,msg)
-		}
-				
-
-	}
-}
+	DRelayMessages("Off",DN)
 }
 
-
+}
 
 
 class DHub extends SqRootScript   //NOT A BASE SCRIPT
@@ -777,6 +774,80 @@ function DoOn(DN)
 ## END of HUB
 ################################
 
+#########################################
+class DStdButton extends DRelayTrap
+#########################################
+{
+
+###StdController
+DefOn="DIOn"
+DefOff="DIOff"
+
+function OnBeginScript()
+   {
+      if(Property.Possessed(self,"CfgTweqJoints"))
+		Property.Add(self,"JointPos");
+	Physics.SubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);
+   }
+
+function OnEndScript()
+   {
+      Physics.UnsubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);
+   }
+   
+   
+   
+function ButtonPush(DN)
+   {
+         if (Property.Get(self,"Locked"))
+			{
+			//Sound.PlayEnvSchema(-1709,"Event Activate",self,null,eEnvSoundLoc.kEnvSoundAtObjLoc)
+			Sound.PlaySchemaAtObject(self,DGetParam("DStdButtonLockSound","noluck",DN),self)
+			return
+			}
+		Sound.PlayEnvSchema(self,"Event Activate",self,null,eEnvSoundLoc.kEnvSoundAtObjLoc)
+		ActReact.React("tweq_control",1.0,self,0,eTweqType.kTweqTypeJoints,eTweqDo.kTweqDoActivate)
+		DarkGame.FoundObject(self);
+		
+		local trapflags=0
+		local on = true
+         if(Property.Possessed(self,"TrapFlags"))
+            trapflags=Property.Get(self,"TrapFlags");
+
+         if((on && !(trapflags & TRAPF_NOON)) ||
+            (!on && !(trapflags & TRAPF_NOOFF)))
+         {
+            if(trapflags & TRAPF_INVERT)
+               on=!on;
+            //Link.BroadcastOnAllLinks(self,on?"TurnOn":"TurnOff","ControlDevice");
+            SendMessage(self,on?"DIOn":"DIOff")
+         }
+         if(trapflags & TRAPF_ONCE)
+            Property.SetSimple(self,"Locked",true);
+   }
+      
+
+
+
+function  OnPhysCollision()
+   {
+      if(message().collSubmod==4)
+      {
+        if(! (Object.InheritsFrom(message().collObj,"Avatar")
+              || Object.InheritsFrom(message().collObj,"Creature")))
+        {
+           ButtonPush(userparams());
+        }
+      }
+   }
+function OnFrobWorldEnd()
+   {
+      ButtonPush(userparams());
+   }
+
+
+}
+
 
 ####################################################################
 class DArmAttachment extends DBaseTrap
@@ -845,7 +916,7 @@ class DHitScanTrap extends DRelayTrap
 If the from object is the player the camera position is used if the To object is also the player the beam will be centered at the players view - for example to check if hes exactly facing something.
 
 The Object that was hit will receive the message specified by DHitScanTrapHitMsg. By default when any object is hit a TurnOn will be sent to CD Linked objects. Of course these can be changed via DHitScanTrapTOn and DHitScanTrapTDest.
-Alternativly if just a special set of objects should trigger a TurnOn then these can be specified via DHitScanTrapTarget.
+Alternativly if just a special set of objects should trigger a TurnOn then these can be specified via DHitScanTrapTriggers.
 
 */
 
@@ -869,7 +940,7 @@ int ObjRaycast(vector from, vector to, vector & hit_location, object & hit_objec
 
 	local from = DGetParam("DHitScanTrapFrom",self,DN)	
 	local to = DGetParam("DHitScanTrapTo",self,DN)
-	local target = DGetParam("DHitScanTrapTarget",null,DN,1)
+	local triggers = DGetParam("DHitScanTrapTriggers",null,DN,1)
 	local vfrom = Object.Position(from)
 	local vto = Object.Position(to)
 	local v = vto-vfrom
@@ -892,12 +963,12 @@ int ObjRaycast(vector from, vector to, vector & hit_location, object & hit_objec
 		}
 		
 	local t2 = ""
-	foreach (t in target)
+	foreach (t in triggers)
 		{
 		if (t == "Player" || t =="player")
 			  t = ObjID("Player")
 		if (t == hobj)
-			base.DoOn(DN)
+			DRelayMessages("On",DN)
 		}
 
 
@@ -1214,8 +1285,8 @@ function OnFrobWorldEnd()
       {
         local newobj=Object.Create("MissingLoot");
 
-         Object.Teleport(newobj, vector(0,0,0), vector(0,0,0), self);
-
+         Object.Teleport(newobj, vector(), vector(), self);
+		 Property.Add(newobj,"SuspObj")
          Property.Set(newobj,"SuspObj","Is Suspicious",true);
          Property.Set(newobj,"SuspObj","Suspicious Type","blood");
 	
@@ -1560,6 +1631,59 @@ function DoOff(DN=null)
 
 }
 
+#########################################
+class DAddScript extends DBaseTrap
+#########################################
+{
+// This script can be used as a RootScript to use the DAddScriptFunc
+
+function DAddScriptFunc(DN)
+{
+	local script= GetClassName()
+	local add = DGetParam(script+"Script",false,DN)
+	local nDN = DGetParam(script+"DN",false,DN)
+
+	foreach (t in DGetParam(script+"Target","&ControlDevice",DN,1))
+		{
+		if (nDN)
+			{Property.Add(t,"DesignNote")
+			Property.SetSimple(t,"DesignNote",nDN)
+			}
+		
+		if (!add)
+			continue
+		
+		Property.Add(t,"Scripts")
+		local i = Property.Get(t,"Scripts","Script 3")
+		if (i == 0 || i == "" || Property.Get(Object.Archetype(t),"Scripts","Script 3"))
+			{
+				Property.Set(t,"Scripts","Script 3",add)
+			}
+			else
+			{
+				print(script+" Error on ("+self+"): Object ("+t+") has script slot 4 in use with "+i+" - Don't want to change that. Please fall back to adding a Metaproperty.")
+			}
+		}
+}
+
+
+	function DRemoveSciptFunc(DN)
+	{
+		foreach (t in DGetParam(script+"Target","&ControlDevice",DN,1))
+			{Property.Set(t,"Scripts","Script 3","")}
+	}
+
+	function DoOn(DN)
+	{
+		DAddScriptFunc(DN)
+	}
+
+	function DoOff(DN)
+	{
+		DRemoveSciptFunc(DN)
+	}
+
+}
 
 
 //####################  Portal Scripts ###################################
@@ -1669,6 +1793,7 @@ class DTrapTeleporter extends DTPBase
 }
 
 
+
 #########################################
 class DPortal extends DTPBase
 #########################################
@@ -1682,14 +1807,19 @@ If any of the DTp_ parameters is specified and not 0 they will take priority and
 DefOn="PhysEnter"
 target=[]
 
-function OnSim()
+function OnBeginScript()
 {
-Physics.SubscribeMsg(self,ePhysScriptMsgType.kEnterExitMsg)
+	Physics.SubscribeMsg(self,ePhysScriptMsgType.kEnterExitMsg)
+}
+
+function OnEndScript()
+{
+	Physics.UnsubscribeMsg(self,ePhysScriptMsgType.kEnterExitMsg)
 }
 
 function DoOn(DN)
 {
-target = DGetParam("DPortalTarget",message().transObj,DN,1)
+	target = DGetParam("DPortalTarget",message().transObj,DN,1)
 	//As PhysEnter sometimes fires twice and so a double teleport occures we make a small delay here, the rest is handled in the base script. As OnTimer() is there. :/
 	if(IsDataSet("PortalTimer"))
      {
@@ -1724,6 +1854,9 @@ target.clear()
 }}
 
 }
+
+
+
 
 ###################In Editor Mode Trap#################################
 class DEditorTrap extends SqRootScript
