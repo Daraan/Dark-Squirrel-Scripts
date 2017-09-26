@@ -1,5 +1,5 @@
 #############Undercover scripts##########
-//T2 ONLY! v0.24
+//T2 ONLY! For DScript Version v0.24+
 
 //IF you're not using DImUndercover I would suggest you comment everything out or delete this file.
 //As I'm REPLACING THE STANDARD WEAPON SCRIPTS scrips to make them suspicious
