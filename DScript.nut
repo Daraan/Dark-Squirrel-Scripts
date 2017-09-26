@@ -11,7 +11,7 @@ DarkUI.TextMessage("Here for fast test");
 Scipts:
 DBaseTrap
 -DLowerTrap
--DRelayTrap
+-DRelayTrap 
 DHub
 -DDrunkPlayerTrap
 -DCopyPropertyTrap
