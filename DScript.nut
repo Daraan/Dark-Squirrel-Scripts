@@ -778,6 +778,62 @@ function DoOn(DN)
 ## END of HUB
 ################################
 
+class DImportObj extends DBaseTrap
+{
+
+function DoOn()
+{
+local file = DGetParam("DImportObjFile","ImportObj.txt")
+local omax = Data.GetString(file, "OAmount", string def = "", string relpath = "obj");
+local i = 1
+
+for (i=1,i <= omax,i++)
+	{
+	local data = Data.GetString(file, "Obj"+i, string def = "", string relpath = "obj")
+	data=split(data,"=;")
+	local l = Link.GetOne("~MetaProp","MISSING")
+	local a = LinkDest(l)
+	//Check if an empty Archetype is avaliable
+	if (! a<0)
+		{
+		print("DImportObj - ERROR: No more Archetypes in MISSING for Obj"+i)
+		return false
+		}
+	local parent = data[1]
+	if (! ObjID(parent)<0)
+		{
+		print("DImportObj - ERROR: New Parent Archetypes for Obj"+i+" does not exist. Check your Hirarchy or ImportObj.txt")
+		continue
+		}
+	local name = data[3]
+	if (Object.Exists(name))
+		{
+		print("DImportObj - ERROR: Archetype with name "+name+"already exists (Obj"+i+"). Check your Hirarchy or ImportObj.txt")
+		continue
+		}
+	//Checks done go
+	//Changeing location
+	Link.Create("~MetaProp",parent,a)
+	Link.Destroy(l)
+	
+	//Add Properties?
+	local j = data.len()
+	if (j > 5)
+		{
+		for (k=5,k<j, k=k+2)
+			{
+			local prop=split(data[k],":")
+			if (prop.len()==1)
+				Property.SetSimple(a,prop[0],DCheckString(data[k+1],false))
+			else
+				Property.Set(a,prop[0],prop[1],DCheckString(data[k+1],false))
+			}
+		}
+	}
+}
+
+
+}
 
 #########################################
 class DStdButton extends DRelayTrap
