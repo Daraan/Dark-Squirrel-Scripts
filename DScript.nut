@@ -1737,7 +1737,10 @@ class DModelByCount extends DStackToQVar
 	
 	constructor()
 	{
-		Property.SetSimple(self,"ModelName",GetProperty("CfgTweqModels","Model "+(GetProperty("StackCount")-1)))
+		local stack = GetProperty("StackCount")-1
+		if (stack>5)
+			stack=5		
+		Property.SetSimple(self,"ModelName",GetProperty("CfgTweqModels","Model "+stack))
 	}
 }
 
