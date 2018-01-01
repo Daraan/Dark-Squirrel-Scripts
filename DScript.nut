@@ -1734,6 +1734,11 @@ class DModelByCount extends DStackToQVar
 		local o = GetObjOnPlayer(Object.Archetype(self))
 		Property.SetSimple(o,"ModelName",Property.Get(o,"CfgTweqModels","Model "+stack))
 	}
+	
+	constructor()
+	{
+		Property.SetSimple(self,"ModelName",GetProperty("CfgTweqModels","Model "+(GetProperty("StackCount")-1)))
+	}
 }
 
 #########################################
