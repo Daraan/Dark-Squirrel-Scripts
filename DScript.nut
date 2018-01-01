@@ -1,52 +1,28 @@
 /*#########################################
-DScript Version 0.28c
+DScript Version 0.30a
 Use at your liking. All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
 
 DarkUI.TextMessage("Here for fast test");
 ##########################################*/
 
-/*TABLE OF CONTENT
 
--Base Functions
-
-Scipts:
-DBaseTrap
--DLowerTrap
--DRelayTrap 
-DHub
--DDrunkPlayerTrap
--DCopyPropertyTrap
--DWatchMe
--DCompileTrap
---Undercover scripts
-
--------
--DTPBase
--DTrapTeleporter
--DTeleportPlayerTrap
--DPortal
--DEditorTrap
-
-
-
-*/
 #################BASE FUNCTIONS###############
 
 const DtR = 0.01745			// DegToRad PI/180
 
 ############Getting Parameter functions###########
-function DGetAllDescendants(at,objset)	//Emulation of the "@"-parameter. BruteForce crawl. Haven't found a better internal way.
+function DGetAllDescendants(at,objset)							//Emulation of the "@"-parameter. BruteForce crawl. Don't know if there is a better way.
 {
-	foreach ( l in Link.GetAll("~MetaProp",at))
-	{
-	local id=LinkDest(l);
-		if (id>0){objset.append(id)}
-		else {DGetAllDescendants(id,objset)}
-	}
+foreach ( l in Link.GetAll("~MetaProp",at))
+{
+local id=LinkDest(l);
+	if (id>0){objset.append(id)}
+	else {DGetAllDescendants(id,objset)}
+}
 return objset
 }
-	
-function DCheckString(r,adv)
+
+function DCheckString(r,adv=false)
 {
 	//handling non strings
 	switch (typeof(r))
@@ -60,7 +36,7 @@ function DCheckString(r,adv)
 		case "bool":
 			return r
 		}
-	 //special 'normal' strings	
+		
 	switch (r)
 		{
 		case "[me]":
@@ -87,7 +63,7 @@ function DCheckString(r,adv)
 				{
 					r=r.tointeger()
 				}
-				else				//@switches
+				else					//@switches
 				{
 					r=ObjID(r)
 				}
@@ -105,7 +81,7 @@ function DCheckString(r,adv)
 					{
 					r=r.tointeger()
 					}
-				else				//@switches
+				else					//@switches
 					{
 					r=ObjID(r)
 					}
@@ -121,7 +97,7 @@ function DCheckString(r,adv)
 			case '+':
 				local ar= split(r,"+")
 				ar.remove(0)
-				foreach (i,t in ar)
+				foreach (t in ar)
 					{
 						if (t[0]!= '-')
 							{objset.extend(DCheckString(t,1))}
@@ -140,6 +116,12 @@ function DCheckString(r,adv)
 			case '#':
 				objset.append(r.slice(1).tointeger())
 				break
+			case '.':										//Not sure if this is the best operator choice.
+				objset.append(r.slice(1).tofloat())
+				break
+			case '<':	//vector
+				local ar= split(r,"<,")
+				return vector(ar[1].tofloat(),ar[2].tofloat(),ar[3].tofloat())		
 			default : 
 				objset.append(r)																//problem for example +42 gives back a "42"-string which is not an object... and TurnOn can't be converted into an integer.
 		}
@@ -147,22 +129,22 @@ function DCheckString(r,adv)
 }
 
 
-//Function to return parameters, returns given default value. if adv=1 an array of objects will be returned.
-function DGetParam(par,def=null,DN=null,adv=false)
+
+function DGetParam(par,def=null,DN=null,adv=false)	//Function to return parameters, returns given default value. if adv=1 an array of objects will be returned.
 {
-	if(!DN){DN=userparams()}//The Design Note has to be passed on to a) save userparams() calls and b) this script works for artificial tables and class objects as well.
+	if(!DN){DN=userparams()}						//The Design Note has to be passed on to a) save userparams() calls and b) this script works for artificial tables and class objects as well.
 	if (par in DN)
 		{
-		return DCheckString(DN[par],adv)	//will return arrayed or single objs(adv=1).
+		return DCheckString(DN[par],adv)			//will return arrayed or single objs(adv=1).
 		}
 	else 
 		{	
 		return DCheckString(def,adv)
-		}
+	}
 }
 
 
-function DGetStringParam(param,def,str,adv=false,cuts=";=") //Like the above function but works with strings instead of a table. To get an (object) array set adv=1.
+function DGetStringParam(param,def,str,adv=false,cuts=";=")				//Like the above function but works with strings instead of a table. To get an (object) array set adv=1.
 {
 	str=str.tostring()
 	local div = split(str,cuts);
@@ -347,26 +329,25 @@ if (mssg=="Timer")
 	}
 ##
 //Getting correct source in case of frob:
-if (typeof bmsg == "sFrobMsg")
-	{SourceObj=bmsg.Frobber}
-else{SourceObj = bmsg.from}	
+	if (typeof bmsg == "sFrobMsg")
+		{SourceObj=bmsg.Frobber}
+	else{SourceObj = bmsg.from}	
 
 #Let it fail?
-local FailChance = DGetParam(script+"FailChance",0,DN)
-if (FailChance > 0) {if (FailChance >= Data.RandInt(0,100)){return}}
+	local FailChance = DGetParam(script+"FailChance",0,DN)
+	if (FailChance > 0) 
+		{if (FailChance >= Data.RandInt(0,100)){return}}
 
 
-	if ("DoOn" in this)																							//Checks if the script actually has an On function.
-	{
-		if (DGetParam(script+"On",DGetParam("DefOn","TurnOn",this),DN,1).find(mssg)!=null){DCountCapCheck(script,DN,1)}
-	}
-
-
-	
-	if ("DoOff" in this)
-	{
-		if (DGetParam(script+"Off",DGetParam("DefOff","TurnOff",this),DN,1).find(mssg)!=null){DCountCapCheck(script,DN,0)}
-	}
+		if ("DoOn" in this)		//Checks if the script actually has an On function.
+		{
+			if (DGetParam(script+"On",DGetParam("DefOn","TurnOn",this,1),DN,1).find(mssg)!=null){DCountCapCheck(script,DN,1)}
+		}
+		
+		if ("DoOff" in this)
+		{
+			if (DGetParam(script+"Off",DGetParam("DefOff","TurnOff",this,1),DN,1).find(mssg)!=null){DCountCapCheck(script,DN,0)}
+		}
 	
 }
 
@@ -385,48 +366,50 @@ If no parameter is set the scripts normaly respond to TurnOn and TurnOff, if you
 */
 
 SourceObj=0				//if a message is delayed the source object is lost, it will be stored inside the timer and then when the timer triggers it will be made availiable again.
+					//Why is this here???
+	constructor()			//Setting up save game persistent data.
+	{
+		if (!IsEditor()){return}	//Initial data is set in the Editor.
+		local DN = userparams();
+		local script = GetClassName()
+		if (DGetParam(script+"Count",0,DN)){SetData(script+"Counter",0)}else{ClearData(script+"Counter")}
+		if (DGetParam(script+"Capacitor",1,DN) != 1){SetData(script+"Capacitor",0)}else{ClearData(script+"Capacitor")}
+		if (DGetParam(script+"OnCapacitor",1,DN) != 1){SetData(script+"OnCapacitor",0)}else{ClearData(script+"OnCapacitor")}
+		if (DGetParam(script+"OffCapacitor",1,DN) != 1){SetData(script+"OffCapacitor",0)}else{ClearData(script+"OffCapacitor")}
+	}
 
-constructor()			//Setting up save game persistent data.
-{
-	if (!IsEditor()){return}	//Initial data is set in the Editor.
-	local DN = userparams();
-	local script = GetClassName()
-	if (DGetParam(script+"Count",0,DN)){SetData(script+"Counter",0)}else{ClearData(script+"Counter")}
-	if (DGetParam(script+"Capacitor",1,DN) != 1){SetData(script+"Capacitor",0)}else{ClearData(script+"Capacitor")}
-	if (DGetParam(script+"OnCapacitor",1,DN) != 1){SetData(script+"OnCapacitor",0)}else{ClearData(script+"OnCapacitor")}
-	if (DGetParam(script+"OffCapacitor",1,DN) != 1){SetData(script+"OffCapacitor",0)}else{ClearData(script+"OffCapacitor")}
-}
 
-
-function OnMessage()
-{
-	DBaseFunction(userparams(),GetClassName())
-}
+	function OnMessage()
+	{
+		DBaseFunction(userparams(),GetClassName())
+	}
 }
 ##################
 
+		
 class DLowerTrap extends DBaseTrap								//This is just a test script
 {
 
 DefOn = "TurnOn"												//Default On message that this script is waiting for but differing from the standard TurnOn
-
 constructor()
-{}
+{
 
 
+
+}
 
 function OnMessage()
 {
-local DN=userparams()
-base.OnMessage()
-local script="DLowerTrap"
-//DarkUI.TextMessage("Capacitor:= "+GetData(script+"Capacitor")+"/"+DGetParam(script+"Capacitor",1,DN)+"  OnCap= "+GetData(script+"OnCapacitor")+"/"+DGetParam(script+"OnCapacitor",1,DN)+"  OffCap= "+GetData(script+"OffCapacitor")+"/"+DGetParam(script+"OffCapacitor",1,DN)+"  Counter= "+GetData(script+"Counter")+"/"+DGetParam(script+"Count",0,DN))		
+	local DN=userparams()
+	base.OnMessage()
+	local script="DLowerTrap"
+	//DarkUI.TextMessage("Capacitor:= "+GetData(script+"Capacitor")+"/"+DGetParam(script+"Capacitor",1,DN)+"  OnCap= "+GetData(script+"OnCapacitor")+"/"+DGetParam(script+"OnCapacitor",1,DN)+"  OffCap= "+GetData(script+"OffCapacitor")+"/"+DGetParam(script+"OffCapacitor",1,DN)+"  Counter= "+GetData(script+"Counter")+"/"+DGetParam(script+"Count",0,DN))		
 
-local from = Camera.GetFacing()
+	local from = Camera.GetFacing()
 
-from = vector(sin(from.y)*cos(from.z),sin(from.y)*sin(from.z),cos(from.y))
+	from = vector(sin(from.y)*cos(from.z),sin(from.y)*sin(from.z),cos(from.y))
 
-DarkUI.TextMessage(from)
+	DarkUI.TextMessage(from)
 }
 function OnTimer()
 {
@@ -435,7 +418,6 @@ function OnTimer()
 
 function DoOn(DN)
 {
-
 	SetOneShotTimer("fd",1)
 	Link.BroadcastOnAllLinks(self,"TurnOn","ControlDevice")
 }
@@ -450,12 +432,14 @@ function DoOff(DN)
 }
 
 
+
+
 ####################################################################
 class DRelayTrap extends DBaseTrap
 ####################################################################
 {
-function DSendMessage(t,msg)
-{
+	function DSendMessage(t,msg)
+	{
 		if (msg[0]!='[')
 			{SendMessage(t,msg)}
 		else
@@ -467,30 +451,38 @@ function DSendMessage(t,msg)
 			else
 				{ActReact.Stimulate(t,ar[1],ar[0].tofloat())}
 		}
-}
+	}
 
-function DRelayMessages(OnOff,DN)
-{
-local script = GetClassName()
-	foreach (msg in DGetParam(script+"T"+OnOff,"Turn"+OnOff,DN,1))
+	function DRelayMessages(OnOff,DN)
 	{
-		foreach (t in DGetParam(script+OnOff+"Target",DGetParam(script+OnOff+"TDest",DGetParam(script+"Target",DGetParam(script+"TDest","&ControlDevice",DN,1),DN,1),DN,1),DN,1))
+	local script = GetClassName()
+		foreach (msg in DGetParam(script+"T"+OnOff,"Turn"+OnOff,DN,1))
 		{
-			DSendMessage(t,msg)
+			foreach (t in DGetParam(script+OnOff+"Target",DGetParam(script+OnOff+"TDest",DGetParam(script+"Target",DGetParam(script+"TDest","&ControlDevice",DN,1),DN,1),DN,1),DN,1))
+			{
+				DSendMessage(t,msg)
+			}
 		}
 	}
-}
 
 
-function DoOn(DN)
-{
-	DRelayMessages("On",DN)
-}
+	function DoOn(DN)
+	{
+		if (DGetParam("DRelayTrapToQVar",false,DN))
+			{
+				Quest.Set(DGetParam("DRelayTrapToQVar",null,DN),SourceObj,eQuestDataType.kQuestDataUnknown)
+			}
+		DRelayMessages("On",DN)
+	}
 
-function DoOff(DN)
-{
-	DRelayMessages("Off",DN)
-}
+	function DoOff(DN)
+	{
+		if (DGetParam("DRelayTrapToQVar",false,DN))
+		{
+			Quest.Set(DGetParam("DRelayTrapToQVar",null,DN),SourceObj,eQuestDataType.kQuestDataUnknown)
+		}
+		DRelayMessages("Off",DN)
+	}
 
 }
 
@@ -499,20 +491,17 @@ class DHub extends SqRootScript   //NOT A BASE SCRIPT
 {
 	/*
 	Valuable Parameters.
-	Every Parameter can be set as default for every message with DHubParameterName or individualy for every message (have obv. priority)
-	
-	Relay=Message 			//you want to send
+	Relay=Message you want to send
 	Target= where 			
 	Delay=
-	DelayMax			//Enables a random delay between Delay and DelayMax
+	DelayMax				//Enables a random delay between Delay and DelayMax
 	ExclusiveDelay=1		//Abort future messages
-	Repeat=				//-1 until the message is received again.		
-	Count=				//How often the script will work. Receiving ResetCounter will reset this
-	Capacitor=			//Will only relay when the messages is received that number of times
+	Repeat=					//-1 until the message is received again.		
+	Count=					//How often the script will work. Receiving ResetCounter will reset this
+	Capacitor=				//Will only relay when the messages is received that number of times
 	CapacitorFalloff=		//Every __ms reduces the stored capacitor by 1
-	FailChance			//Chance to fail a relay. if negative it will affect Count even if the message is not sent
-	
-	
+	FailChance				//Chance to fail a relay. if negative it will affect Count even if the message is not sent
+	Every Parameter can be set as default for every message with DHubParameterName or individualy for every message (have obv. priority)
 
 
 	Design Note example:
@@ -574,7 +563,7 @@ constructor() 		//Initializing Skript Data
 			def = [null,"DHubRelay","DHubTarget","DHubCount","DHubCapacitor","DHubCapacitorFalloff","DHubFailChance","DHubDelay","DHubDelayMax","DHubRepeat","DHubExclusiveDelay"].find(k)
 			if (!def)
 			{
-				if (ie){continue} 	//Initial data is set in the Editor. And data changes during game. Continue to recreate the DefDN.
+				if (ie){continue} 		//Initial data is set in the Editor. And data changes during game. Continue to recreate the DefDN.
 				if (DGetStringParam("Count",DGetParam("DHubCount",0,DN),v))
 					{
 					SetData(k+"Counter",0)	
@@ -660,7 +649,7 @@ function OnMessage()
 	else{SourceObj = bmsg.from}
 
 			
-	//End special message check.----------------------------------
+	//End special message check.	
 	DefOn="null" //Reset so a Timer won't activate it	
 
 	if (msg=="Timer")
@@ -781,15 +770,9 @@ function DoOn(DN)
 
 #########################################
 class DStdButton extends DRelayTrap
-/*Has all the StdButton features- even TrapControlFlags work. Once will lock the Object - as well as the DRelayTrap features, so basically this can save some script markers which only wait for a Button TurnOn
-
-Additional:
-If the button is locked the joint will not activate and the Schema specified by DStdButtonLockSound will be played, by default "noluck" the wrong lockpick sound. 
-*/
 #########################################
 {
 
-	
 ###StdController
 DefOn="DIOn"
 DefOff="DIOff"
@@ -885,7 +868,6 @@ function OnTimer()
 			{m = Property.Get(self,"ModelName")}
 		t = t.tointeger()
 		print("m2= "+m)
-//TODO: Switch better maybe?
 		if (t)
 			{
 			o = Object.Create(m)
@@ -922,15 +904,15 @@ function OnTimer()
 
 ####################################################################
 class DHitScanTrap extends DRelayTrap
+####################################################################
+{
 /*When activated will scan if there is one object / solid between two objects. Imagine it as a scanning laser beam between two objects DHitScanTrapFrom and DHitScanTrapTo, the script object is used as default if none is specified. 
 If the from object is the player the camera position is used if the To object is also the player the beam will be centered at the players view - for example to check if hes exactly facing something.
 
 The Object that was hit will receive the message specified by DHitScanTrapHitMsg. By default when any object is hit a TurnOn will be sent to CD Linked objects. Of course these can be changed via DHitScanTrapTOn and DHitScanTrapTDest.
 Alternativly if just a special set of objects should trigger a TurnOn then these can be specified via DHitScanTrapTriggers.
-*/
-####################################################################
-{
 
+*/
 
 function DoOn(DN)
 {
@@ -987,10 +969,9 @@ int ObjRaycast(vector from, vector to, vector & hit_location, object & hit_objec
 }
 }
 
-
-
 ####################################################################
 class DRay extends DBaseTrap
+####################################################################
 /* This script will create one or multiple SFX effects between two objects and scale it up accordingly. The effect is something you have to design before hand ParticleBeam(-3445) is a good template. Two notes before, on the archetype the Particle Group is not active and uses a T1 only bitmap.
 NOTE: This script uses only the SFX->'Particle Launch Info'rmation therefore the X value in gravity vector in 'Particle' should be 0.
 
@@ -1005,9 +986,12 @@ DRayAttach	(not working) will attach one end of the ray to the from object via d
 					
 Each parameter can target multiple objects also more than one special effect can be used at the same time.
 
+
 */
-####################################################################
+
+
 {
+
 
 
 function DoOn(DN)
@@ -1165,7 +1149,7 @@ class DWatchMe extends DBaseTrap
 Alternativly a custom OnMessage can be defined with a DWatchMeOn="" in the Design Note.
 Also the targets can be changed with: DWatchMeTarget=""
  
-If the Archtype(or other ancestor) has an AI->Utility->Watch links default option it gets copied and  
+If the Archetype(or other ancestor) has an AI->Utility->Watch links default option it gets copied and  
 additionally writes the object number of this object into the Response Step Argument 1.
 */
 DefOn ="BeginScript" 		//By default reacts to BeginScript instead of TurnOn
@@ -1205,7 +1189,7 @@ function DoOn(DN)
 
 
 
-#############Undercover scripts#####################################
+#############Undercover scripts##########
 //weapons scripts are in DUndercover.nut
 
 #########################################
@@ -1447,8 +1431,6 @@ function DoOn(DN)
 			else //custom Metas
 			{
 				if (Object.Exists(ObjID("M-DUndercoverPlayer"))){Object.AddMetaProperty("Player","M-DUndercoverPlayer")}
-				
-			//TODO: For every bit Loop?
 				if (modes | 1)
 					{
 					Object.AddMetaProperty(t,"M-DUndercover1")
@@ -1613,7 +1595,8 @@ function OnTimer()
 	if (mn.name=="DrunkTimer")
 	{
 		local mnA=DGetTimerData(mn.data)
-		for(local i=0;i<=4;i++){mnA[i]=mnA[i].tofloat()}
+		for(local i=0;i<=4;i++)
+			{mnA[i]=mnA[i].tofloat()}
 		mnA[5]=mnA[5].tointeger()
 		mnA[6]=mnA[6].tointeger()
 		mnA[6] += 1
@@ -1695,6 +1678,73 @@ function DAddScriptFunc(DN)
 		DRemoveSciptFunc(DN)
 	}
 
+}
+
+#########################################
+class DStackToQVar extends DBaseTrap
+#########################################
+{
+DefOn="+Contained+Create+Combine"
+
+	function GetObjOnPlayer(type)					//Will return the (only one) object contained by the player of the given archetype.
+	{
+		foreach ( l in Link.GetAll("Contains","player"))
+		{
+		if (Object.Archetype(LinkDest(l))==type)
+			{
+			return LinkDest(l)
+			}
+		}
+	}
+
+	function StackToQVar(qvar=false)
+	{
+	local o = GetObjOnPlayer(Object.Archetype(self))
+		if (qvar&&qvar!="")
+			Quest.Set(qvar,Property.Get(o,"StackCount"),2)
+		return Property.Get(o,"StackCount")
+	}
+
+	function DoOn(DN)
+	{
+		StackToQVar(DGetParam("DStackToQVarVar",Property.Get(self,"TrapQVar"),DN))
+	}
+}
+
+#########################################
+class DModelByCount extends DStackToQVar
+#########################################
+{
+
+	function DoOn(DN)
+	{
+		local stack = StackToQVar()-1
+		if (stack>5)
+			stack=5
+			
+		if (message().message == "Create")
+			Property.SetSimple(self,"ModelName",Property.Get(self,"CfgTweqModels","Model 0"))
+			
+		local o = GetObjOnPlayer(Object.Archetype(self))
+		Property.SetSimple(o,"ModelName",Property.Get(o,"CfgTweqModels","Model "+stack))
+	}
+}
+
+#########################################
+class SafeDevice extends SqRootScript
+#########################################
+{
+
+function OnFrobWorldEnd()
+	{
+		Object.AddMetaProperty(self,"FrobInert")
+	}
+
+function OnTweqComplete()
+	{
+	Object.RemoveMetaProperty(self,"FrobInert")
+	}
+	
 }
 
 
@@ -1904,4 +1954,27 @@ if ( DGetParam("DEditorTrapOn",0,dn)==1 )
 //######################## Personal//Scripts ###############################
 
 
+/*TABLE OF CONTENT
 
+-Base Functions
+Scipts:
+DBaseTrap
+-DLowerTrap
+-DRelayTrap
+DHub
+-DDrunkPlayerTrap
+-DCopyPropertyTrap
+-DWatchMe
+-DCompileTrap
+--Undercover scripts
+
+-------
+-DTPBase
+-DTrapTeleporter
+-DTeleportPlayerTrap
+-DPortal
+-DEditorTrap
+
+
+
+*/
