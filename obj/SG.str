@@ -1,0 +1,105 @@
+ObjMax: "43" ; //The script stops if not specified after 100, so if below you don't have to add this line.;;;;;;
+Obj0: "Parent;Scroll;Name;Maps";;;;
+Obj1: "Parent;Maps;Name;MapPack;ModelName;ghkoA;EdComment;Map Pack by Greenhorn http://spirited-tech.com/thief/2018/09/05/map-pack-by-greenhorn/"
+Obj2: "Parent;MapPack;Name;MapPack2;ModelName;ghkoB";;
+Obj3: "Parent;MapPack;Name;MapPackRolled;ModelName;ghkzrA";;
+Obj4: "Parent;MapPack;Name;MapPackRolled2;ModelName;ghkzrB";;
+Obj5: "Parent;MapPack;Name;MapPack3;ModelName;ghszkA";;
+Obj6: "Parent;MapPack;Name;MapPack3Rolled;ModelName;ghszkB";;
+Obj8: "Parent;Equipment;Name;RCLightSupplies;ModelName;candles;EdComment;By Rose Cottage http://spirited-tech.com/thief/2018/08/29/light-supplies-by-team-rose-cottage/"
+Obj9: "Parent;Equipment;Name;RCBattery;ModelName;battery;EdComment;by Team Rose Cottage"
+Obj10: "Parent;Equipment;Name;CraftingTools;EdComment;http://spirited-tech.com/thief/2018/08/16/modern-tools-pack-by-gort/";;
+Obj11: "Parent;CraftingTools;Name;GoHammer;ModelName;cwhmmr";;
+Obj12: "Parent;CraftingTools;Name;GoRuler;ModelName;fldruler";;
+Obj13: "Parent;CraftingTools;Name;GoHackSaw;ModelName;hksaw";;
+Obj14: "Parent;CraftingTools;Name;GoWoodSaw;ModelName;wdsaw";;
+Obj15: "Parent;CraftingTools;Name;GoScrwDriver;ModelName;scrwdr01";;
+Obj16: "Parent;CraftingTools;Name;GoScrwDriver2;ModelName;scrwdr02";;
+Obj17: "Parent;CraftingTools;Name;GoWrench;ModelName;wrnch01";;
+Obj18: "Parent;CraftingTools;Name;LHandSaw;ModelName;Handsaw;EdComment;http://spirited-tech.com/thief/2018/08/13/handsaw-by-larryg/"
+Obj19: "Parent;CraftingTools;Name;DrillSet;ModelName;DrillSet;EdComment;Check for more and settings http://spirited-tech.com/thief/2018/08/12/drill-set-by-nielsen74/"
+Obj20: "Parent;CraftingTools;Name;ScewNChiselSet;ModelName;ChiselScrew;EdComment;http://spirited-tech.com/thief/2018/08/12/chisel-scewdrivers-pack-by-nielsen74/"
+Obj21: "Parent;ScewNChiselSet;Name;N7Screw;ModelName;Screwd2";;
+Obj22: "Parent;ScewNChiselSet;Name;N7Chisel;ModelName;Chisel1";;
+Obj23: "Parent;OfficeSupplies;Name;N7Scale;ModelName;ScaleWeight";;
+Obj24: "Parent;N7Scale;Name;N7Weights;ModelName;Weights";;
+Obj25: "Parent;Lab_Equipment;Name;RCMicroscope;ModelName;micro";;
+Obj26: "Parent;Barrel;Name;Pallets";;;;
+Obj27: "Parent;Pallets;FORCE;DPallet;ModelName;Dpallet";;
+Obj28: "Parent;Pallets;Name;SluPallet;ModelName;palette;EdComment;http://spirited-tech.com/thief/2018/06/06/palettes-pack-by-sluggs/"
+Obj29: "Parent;Pallets;Name;SluPalletWBoxes;ModelName;palette2";;
+Obj30: "Parent;Decorative;Name;Ropes;ModelName;ST_Rope;EdComment;http://spirited-tech.com/thief/2017/12/09/ropes-by-soul-tear/"
+Obj31: "Parent;Ropes;Name;STRopeBundle;ModelName;ST_RopeHank";;
+Obj32: "Parent;Ropes;Name;STRopeBundle2;ModelName;ST_RopeB";;
+Obj33: "Parent;Tables;Name;MedicalTables;ModelName;meditable1;EdComment;http://spirited-tech.com/thief/2016/04/16/medical-tables-by-team-cosas/"
+Obj34: "Parent;MedicalTables;Name;CoSaSMeditable2;ModelName;meditable2";;
+Obj35: "Parent;MedicalTables;Name;CoSaSMeditable3;ModelName;meditable3";;
+Obj36: "Parent;Equipment;Name;MedicalEquipment";;;;
+Obj37: "Parent;MedicalEquipment;Name;SyringeGORT;ModelName;Syringe;EdComment;http://spirited-tech.com/thief/2016/02/13/syringes-pack-by-gort/"
+Obj38: "Parent;MedicalEquipment;Name;SyringeKit;ModelName;SyrKitFL;EdComment;Jointed"
+Obj39: "Parent;SyringeKit;Name;SyringeKitEmpty;ModelName;SyrKitMT";;
+Obj40: "Parent;MiscGizmos;Name;Power Components";;;;
+Obj41: "Parent;Power Components;Name;PwrPartsOldRS;ModelName;oldcompsRS;EdComment;TEXTURE MISSING IN ZIP. Give pcompsRS and coilRS the same coordinates and they'll be perfectly lined up.  /n http://spirited-tech.com/thief/2015/04/27/random-power-components-by-r-soul/"
+Obj42: "Parent;Power Components;Name;PwrPartsRS;ModelName;pcompsRS";;
+Obj43: "Parent;Power Components;Name;PwrCoilRS;ModelName;pcoilRS";;
+Obj44: "Parent;DTrees;Name;3bTree;ModelName;3bTree";;
+Obj45: "Parent;DTrees;Name;3bTreelod2;ModelName;3bTreelod2";;
+Obj46: "Parent;DTreeParts;Name;3bTrunkHP;ModelName;3bTrunkHP";;
+Obj47: "Parent;DTreeParts;Name;3bTrunklod1;ModelName;3bTrunklod1";;
+Obj48: "Parent;DTreeParts;Name;3bTrunklod2;ModelName;3bTrunklod2";;
+Obj49: "Parent;DTreeParts;Name;3bTrunkLP;ModelName;3bTrunkLP";;
+Obj50: "Parent;DTrees;Name;3cTree;ModelName;3cTree";;
+Obj51: "Parent;DTreeParts;Name;3cTrunk;ModelName;3cTrunk";;
+Obj52: "Parent;DTreeParts;Name;3cTrunklod1;ModelName;3cTrunklod1";;
+Obj53: "Parent;DTreeParts;Name;3cTrunklod2;ModelName;3cTrunklod2";;
+Obj54: "Parent;DTrees;Name;3dTree;ModelName;3dTree";;
+Obj55: "Parent;DTreeParts;Name;3dTrunk;ModelName;3dTrunk";;
+Obj56: "Parent;DTreeParts;Name;3dTrunklod1;ModelName;3dTrunklod1";;
+Obj57: "Parent;DTreeParts;Name;3dTrunklod2;ModelName;3dTrunklod2";;
+Obj58: "Parent;DTreeParts;Name;4aLeaveslod2;ModelName;4aLeaveslod2";;
+Obj59: "Parent;DTrees;Name;4aTree;ModelName;4aTree";;
+Obj60: "Parent;DTreeParts;Name;4aTrunk;ModelName;4aTrunk";;
+Obj61: "Parent;DTreeParts;Name;4aTrunklod2;ModelName;4aTrunklod2";;
+Obj62: "Parent;DTreeParts;Name;4bLeaves;ModelName;4bLeaves";;
+Obj63: "Parent;DTreeParts;Name;4bLeaveslod2;ModelName;4bLeaveslod2";;
+Obj64: "Parent;DTrees;Name;4bTree;ModelName;4bTree";;
+Obj65: "Parent;DTreeParts;Name;4bTrunk;ModelName;4bTrunk";;
+Obj66: "Parent;DTreeParts;Name;4bTrunklod1;ModelName;4bTrunklod1";;
+Obj67: "Parent;DTreeParts;Name;4bTrunklod2;ModelName;4bTrunklod2";;
+Obj68: "Parent;DTreeParts;Name;5aLeaves;ModelName;5aLeaves";;
+Obj69: "Parent;DTrees;Name;5aTree;ModelName;5aTree";;
+Obj70: "Parent;DTreeParts;Name;5aTrunk;ModelName;5aTrunk";;
+Obj71: "Parent;DTreeParts;Name;5bLeaves;ModelName;5bLeaves";;
+Obj72: "Parent;DTreeParts;Name;5bTreeHelper;ModelName;5bTreeHelper";;
+Obj73: "Parent;DTreeParts;Name;5bTrunk;ModelName;5bTrunk";;
+Obj74: "Parent;DTreeParts;Name;5bTrunkHP;ModelName;5bTrunkHP";;
+Obj75: "Parent;DTreeParts;Name;5bTrunklod1;ModelName;5bTrunklod1";;
+Obj76: "Parent;DTreeParts;Name;6aLeaves;ModelName;6aLeaves";;
+Obj77: "Parent;DTrees;Name;6aTreeHelper;ModelName;6aTreeHelper";;
+Obj78: "Parent;DTreeParts;Name;6aTrunk;ModelName;6aTrunk";;
+Obj79: "Parent;DTreeParts;Name;7aLeaves;ModelName;7aLeaves";;
+Obj80: "Parent;DTreeParts;Name;7aTreeHelper;ModelName;7aTreeHelper";;
+Obj81: "Parent;DTreeParts;Name;7aTrunk;ModelName;7aTrunk";;
+Obj82: "Parent;DTreeParts;Name;8aLeaves;ModelName;8aLeaves";;
+Obj83: "Parent;DTreeParts;Name;8aLeavesHelper;ModelName;8aLeavesHelper";;
+Obj84: "Parent;DTreeParts;Name;8aTrunk1;ModelName;8aTrunk1";;
+Obj85: "Parent;DTreeParts;Name;8aTrunk2;ModelName;8aTrunk2";;
+Obj86: "Parent;DTreeParts;Name;8aTrunk3;ModelName;8aTrunk3";;
+Obj87: "Parent;DTreeParts;Name;8aTrunkHelper;ModelName;8aTrunkHelper";;
+Obj88: "Parent;DTreeParts;Name;9aLeaves;ModelName;9aLeaves";;
+Obj89: "Parent;DTreeParts;Name;9aLeavesb;ModelName;9aLeavesb";;
+Obj90: "Parent;DTreeParts;Name;9aLeavesblod1;ModelName;9aLeavesblod1";;
+Obj91: "Parent;DTreeParts;Name;9aLeavesC;ModelName;9aLeavesC";;
+Obj92: "Parent;DTreeParts;Name;9aLeaveslod1;ModelName;9aLeaveslod1";;
+Obj93: "Parent;DTrees;Name;9aTree;ModelName;9aTree";;
+Obj94: "Parent;DTreeParts;Name;9aTrunk;ModelName;9aTrunk";;
+Obj95: "Parent;DTrees;Name;9bTree;ModelName;9bTree";;
+Obj96: "Parent;AirPotion;Name;AirPotion2;ModelName;airpot2";;
+Obj97: "Parent;Clocks;Name;Alarmclock;ModelName;DAlarmclock";;
+Obj98: "Parent;Hammers;Name;AncientMace;ModelName;AncientMace";;
+Obj99: "Parent;PottedPlants;Name;BambooSingle;ModelName;DBambooSingle";;
+Obj100: "Parent;PottedPlants;Name;BambooSingle2;ModelName;DBambooSingleB";;
+Obj101: "Parent;PottedPlants;Name;BambooSingle3;ModelName;DBambooSingleD";;
+Obj102: "Parent;Barrel 0;Name;SmalBarrel2;ModelName;barrel1B";;
+Obj103: "Parent;Barrel;Name;Barrel2;ModelName;BarrelB";;
+Obj104: "Parent;Key;Name;DBlackkey;ModelName;DBlackkey";;
