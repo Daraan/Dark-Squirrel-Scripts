@@ -1,0 +1,1091 @@
+ObjMax: "800"  //The script stops if not specified after 100, so if below you dont have to add this line.																						
+//Actually the Parent is optional - Obj#: "	 would be enough. Replace with SKIP to ignore that line 	New Parent Archetype - Replace Name with FORCE to also execute these changes even if the Archetype already exists.	New Archetype Name	Property1Name	Value - use the prefix # or . for numbers(-7 or DOT .0.2) and < for vectors <1,4,2.7.	DONT FORGET THE "																
+// = and 	  are interchangable so Parent	Arch	Name   is equal to   Parent=Arch	Name																		
+//This allows to create the .str file as a .csv in a spreadsheet programm. For the export: Field seperator is 	  clear the Text seperator to empty. It should definitly NOT be " .'																					
+//Notes For OpenOffice: Tag the Filter option when you use Save As. I don''t know about other programms and languages but for Germans the standard shift+2 and even Alt+32 ? ?  ARE NOT " < - So for example copy this one'	"	Meta	M-NotifyRegion	Link:ScriptParams:#-7	:No Field Name	Link:DetailAttachement:Gizmo	vhot/sub #:#7:rel pos:<1,2,0.3"															
+//If you have problems creating new Obj#: Parent fields you can use this function:    CONCATENATE("Obj"	ROW()	": ""Parent") zu deutsch VERKETTEN("Obj"	ZEILE()	": ""Parent")																		
+																						
+Obj0: "Parent	Trees	Name	DTrees	Scripts:Script 0	DAutoTxtRepl	PhysDims:Size	<1,1,16	RenderAlpha	#1"													
+Obj_2: "Parent	Trees	Name	DTreeParts	Scripts:Script 0	DAutoTxtRepl"																	
+Obj_1: "Parent	DTreeParts	Name	DTrunks	PhysDims:Size	<1,1,16"																	
+Obj1: "Parent	DTreeParts	Name	DLeaves	RenderAlpha	#1"																	
+Obj2: "Parent	DTrees	Name	1aTree	ModelName	1aTree"																	
+Obj3: "Parent	DTrunks	Name	1aTrunk	ModelName	DTrunk1a	ModelLOD:LOD 0 Model	DTrunk1a	ModelLOD:LOD 1 Model	DTrunk1aLod1	ModelLOD:LOD 2 Model	DTrunk1aLod2"											
+Obj7: "Parent	DLeaves	Name	1aLeaves	ModelName	DLeaves1a	ModelLOD:LOD 0 Model	DLeaves1a	ModelLOD:LOD 1 Model	DLeaves1aLod1"													
+Obj9: "Parent	DLeaves	Name	1bLeaves	ModelName	DLeaves1b	ModelLOD:LOD 0 Model	DLeaves1b	ModelLOD:LOD 1 Model	DLeaves1bLod1	ModelLOD:LOD 2 Model	DLeaves1bLod2"											
+Obj13: "Parent	DTrunks	Name	1bTrunk	ModelName	DTrunk1b	ModelLOD:LOD 0 Model	DTrunk1b	ModelLOD:LOD 1 Model	DTrunk1bLod1	ModelLOD:LOD 2 Model	DTrunk1bLod2"											
+Obj_9: "Parent	Bushes	Name	DBushes	RenderAlpha	#1"																	
+Obj17: "SKIP	DBushes	Name	2aBush	ModelName	2aBush"																	
+Obj18: "Parent	DBushes	Name	2aBushLeaves	ModelName	2aBushLeaves"																	
+Obj19: "Parent	2aBushLeaves	Name	2aBushTrunkR	ModelName	2aBushTrunk"																	
+Obj20: "Parent	DLeaves	Name	2aLeaves	ModelName	DLeaves2a	ModelLOD:LOD 0 Model	DLeaves2a	ModelLOD:LOD 1 Model	DLeaves2aLod1"													
+Obj22: "Parent	DTrees	Name	2aTree	ModelName	2aTree"																	
+Obj23: "Parent	DTrunks	Name	2aTrunk	ModelName	DTrunk2a	ModelLOD:LOD 0 Model	DTrunk2a	ModelLOD:LOD 1 Model	DTrunk2aLod1"													
+Obj26: "Parent	DLeaves	Name	2bLeaves	ModelName	DLeaves2b	ModelLOD:LOD 0 Model	DLeaves2b	ModelLOD:LOD 1 Model	DLeaves2bLod1"													
+Obj27: "SKIP	DLeaves	Name	2bLeaveslod2	ModelName	2bLeavesLod2"																	
+Obj28: "Parent	DTrees	Name	2bTree	ModelName	2bTree"																	
+Obj29: "Parent	DTrunks	Name	2bTrunk	ModelName	DTrunk2b	ModelLOD:LOD 0 Model	DTrunk2b	ModelLOD:LOD 1 Model	DTrunk2bLod1	ModelLOD:LOD 2 Model	DTrunk2bLod2"											
+Obj32: "Parent	DLeaves	Name	3aLeaves	ModelName	DLeaves3a	ModelLOD:LOD 0 Model	DLeaves3a	ModelLOD:LOD 1 Model	DLeaves3aLod1"													
+Obj35: "Parent	DTrees	Name	3aTree	ModelName	3aTree	ModelLOD:LOD 0 Model	3aTree	ModelLOD:LOD 1 Model	3aTreelod1	ModelLOD:LOD 2 Model	3aTreelod2"											
+Obj38: "Parent	DTrunks	Name	3aTrunk	ModelName	DTrunk3a	ModelLOD:LOD 0 Model	DTrunk3a	ModelLOD:LOD 1 Model	DTrunk3aLod1	ModelLOD:LOD 2 Model	DTrunk3aLod2"											
+Obj41: "Parent	DLeaves	Name	3bLeaves	ModelName	DLeaves3b	ModelLOD:LOD 0 Model	DLeaves3b	ModelLOD:LOD 1 Model	DLeaves3bLod1	ModelLOD:LOD 2 Model	DLeaves3bLod2"											
+Obj44: "Parent	DTrees	Name	3bTree	ModelName	3bTree	ModelLOD:LOD 0 Model	3bTree	ModelLOD:LOD 1 Model	3bTreelod2"													
+Obj46: "Parent	DTrunks	Name	3bTrunk	ModelName	DTrunk3b	ModelLOD:LOD 0 Model	DTrunk3b	ModelLOD:LOD 1 Model	DTrunk3bLod1	ModelLOD:LOD 2 Model	DTrunk3bLod2"											
+Obj50: "Parent	DTrees	Name	3cTree	ModelName	3cTree"																	
+Obj51: "Parent	DTrunks	Name	3cTrunk	ModelName	DTrunk3c	ModelLOD:LOD 0 Model	DTrunk3c	ModelLOD:LOD 1 Model	DTrunk3cLod1	ModelLOD:LOD 2 Model	DTrunk3cLod2"											
+Obj54: "Parent	DTrees	Name	3dTree	ModelName	3dTree"																	
+Obj55: "Parent	DTrunks	Name	3dTrunk	ModelName	DTrunk3d	ModelLOD:LOD 0 Model	DTrunk3d	ModelLOD:LOD 1 Model	DTrunk3dLod1	ModelLOD:LOD 2 Model	DTrunk3dLod2"											
+Obj56: "Parent	DLeaves	Name	3cLeaves	ModelName	DLeaves3c"																	
+Obj57: "Parent	DLeaves	Name	3dLeaves	ModelName	DLeaves3d"																	
+Obj58: "Parent	DLeaves	Name	4aLeaves	ModelName	DLeaves4a	ModelLOD:LOD 0 Model	DLeaves4a	ModelLOD:LOD 1 Model	DLeaves4aLod1	ModelLOD:LOD 2 Model	DLeaves4aLod2"											
+Obj59: "Parent	DTrees	Name	4aTree	ModelName	4aTree"																	
+Obj60: "Parent	DTrunks	Name	4aTrunk	ModelName	DTrunk4a	ModelLOD:LOD 0 Model	DTrunk4a	ModelLOD:LOD 1 Model	DTrunk4aLod1"													
+Obj62: "Parent	DLeaves	Name	4bLeaves	ModelName	DLeaves4b	ModelLOD:LOD 0 Model	DLeaves4b	ModelLOD:LOD 1 Model	DLeaves4bLod1"													
+Obj64: "Parent	DTrees	Name	4bTree	ModelName	4bTree"																	
+Obj65: "Parent	DTrunks	Name	4bTrunk	ModelName	DTrunk4b	ModelLOD:LOD 0 Model	DTrunk4b	ModelLOD:LOD 1 Model	DTrunk4bLod1"													
+Obj67: "SKIP	DTrunks	Name	4bTrunklod2	ModelName	4bTrunklod2"																	
+Obj68: "Parent	DLeaves	Name	5aLeaves	ModelName	5aLeaves"																	
+Obj69: "Parent	DTrees	Name	5aTree	ModelName	5aTree"																	
+Obj70: "Parent	DTrunks	Name	5aTrunk	ModelName	5aTrunk"																	
+Obj71: "Parent	DLeaves	Name	5bLeaves	ModelName	5bLeaves"																	
+Obj72: "Parent	5bLeaves	Name	5bTreeHelper	ModelName	5bTreeHelper"																	
+Obj73: "Parent	DTrunks	TxtRpl only affect Lod	5bTrunk	ModelName	5bTrunk"	ModelLOD:LOD 0 Model	5bTrunk	ModelLOD:LOD 1 Model	5bTrunkLod1	OTxtRepr0	obj\\txt16\\transparent"											
+Obj74: "Parent	DTrunks	TxtRpl only affect Lod	5bTrunkMush	ModelName	5bTrunkHP	ModelLOD:LOD 0 Model	5bTrunkHP	ModelLOD:LOD 1 Model	5bTrunkLod1	OTxtRepr0	obj\\txt16\\Mush1"											
+Obj75: "SKIP	DTrunks	Name	5bTrunklod1	ModelName	5bTrunkLod1"																	
+Obj76: "Parent	DLeaves	Name	6aLeaves	ModelName	6aLeaves"																	
+Obj77: "Parent	DTrunks	Name	6aTrunk	ModelName	6aTrunk"																	
+Obj78: "SKIP	6aTrunk	Name	6aTreeHelper	ModelName	6aTreeHelper"																	
+Obj79: "Parent	DLeaves	Name	7aLeaves	ModelName	7aLeaves"																	
+Obj80: "Parent	DTrunks	Name	7aTrunk	ModelName	7aTrunk"																	
+Obj81: "SKIP	7aTrunk	Name	7aTreeHelper	ModelName	7aTreeHelper"																	
+Obj82: "Parent	DLeaves	Name	8aLeaves	ModelName	8aLeaves"																	
+Obj83: "Parent	DTrunks	Name	8aTrunk1	ModelName	8aTrunk1"																	
+Obj84: "SKIP	8aTrunk1	Name	8aLeavesHelper	ModelName	8aLeavesHelper"																	
+Obj85: "Parent	8aTrunk1	Name	8aTrunk2	ModelName	8aTrunk2"																	
+Obj86: "Parent	8aTrunk1	Name	8aTrunk3	ModelName	8aTrunk3"																	
+Obj87: "SKIP	8aTrunk1	Name	8aTrunkHelper	ModelName	8aTrunkHelper"																	
+Obj91: "Parent	DLeaves	Name	9aLeaves	ModelName	9aLeaves	ModelLOD:LOD 0 Model	9aLeaves	ModelLOD:LOD 1 Model	9aLeavesLod1"													
+Obj92: "SKIP	DLeaves	Name	9aLeaveslod1	ModelName	9aLeavesLod1"																	
+Obj93: "Parent	DTrees	Name	9aTree	ModelName	9aTree"																	
+Obj94: "Parent	DTrunks	Name	9aTrunk	ModelName	9aTrunk"																	
+Obj95: "Parent	9aTree	Name	9bTree	ModelName	9bTree"																	
+Obj96: "Parent	AirPotion	Name	AirPotion2	ModelName	airpot2"																	
+Obj97: "Parent	Clocks	Name	Alarmclock	ModelName	DAlarmclock"																	
+Obj98: "Parent	Hammers	Name	AncientMace	ModelName	AncientMace"																	
+Obj99: "Parent	PottedPlants	Name	BambooSingle	ModelName	DBambooSingle"																	
+Obj100: "Parent	PottedPlants	Name	BambooSingle2	ModelName	DBambooSingleB"																	
+Obj101: "Parent	PottedPlants	Name	BambooSingle3	ModelName	DBambooSingleD"																	
+Obj102: "Parent	Barrel 0	Name	SmalBarrel2	ModelName	barrel1B"																	
+Obj103: "Parent	Barrel	Name	Barrel2	ModelName	BarrelB"																	
+Obj104: "Parent	Key	Name	DBlackkey	ModelName	DBlackkey"																	
+Obj105: "Parent	slidy_door	Name	MetalMat	ModelName	MetalPlateS"																	
+Obj106: "Parent	Cabinet	Name	BlackCabinetSimple	ModelName	DBlackCabSimple"																	
+Obj107: "Parent	BlackCabinetSimple	Name	BlackCabinetJoint	ModelName	DBlackCabinet"																	
+Obj108: "Parent	Bucket	Name	BucketEmpty	ModelName	BucketEmpty"																	
+Obj109: "Parent	Bucket	Name	BucketFull2	ModelName	BucketFull"																	
+Obj110: "Parent	DBushes	Name	DBush1	ModelName	DBush1"																	
+Obj111: "Parent	DBushes	Name	DBush2	ModelName	DBush2"																	
+Obj112: "Parent	DBushes	Name	DBush3	ModelName	DBush3"																	
+Obj113: "Parent	DBushes	Name	DBush4	ModelName	DBush4"																	
+Obj114: "Parent	DBushes	Name	DPalmBush	ModelName	DPalmBush"																	
+Obj115: "Parent	Candle	Name	Candlestick2	ModelName	canhold2"																	
+Obj116: "Parent	MiscGizmos	Name	CannonX	ModelName	DCannon"																	
+Obj117: "Parent	WoodCrateSealed	Name	CartonBox	ModelName	DCartonBox"																	
+Obj118: "Parent	FancyTable	Name	DCarvedTableJoint	ModelName	DCarvedTable"																	
+Obj120: "Parent	Equipment	Name	ClockBomb	ModelName	DClockBomb"																	
+Obj121: "Parent	ClockBomb	Name	ClockBombSingle	ModelName	DBombSingle"																	
+Obj122: "Parent	ClockBomb	Name	ClockBombTimer	ModelName	DClockBombTimer"																	
+Obj_10: "Parent	Buildings	Name	Towers"																			
+Obj123: "Parent	Towers	Name	Clocktower	ModelName	clocktower"																	
+Obj124: "Parent	Towers	Name	ClockTower2R	ModelName	ClockTower2R"																	
+Obj125: "Parent	Coin	Name	Coin2	ModelName	coinrare"																	
+Obj126: "Parent	CopperCoinStack	Name	CopperCoinStack2	ModelName	CoinsCop2"																	
+Obj127: "Parent	GoldCoinStack	Name	GoldCoinStack2	ModelName	CoinsGol2"																	
+Obj128: "Parent	SilverCoinStack	Name	SilverCoinStack2	ModelName	CoinsSil2"																	
+Obj129: "Parent	Decorative	Name	Supporting"																			
+Obj130: "Parent	Supporting	Name	Archway2	ModelName	DArchway2"																	
+Obj131: "Parent	Supporting	Name	Archway3	ModelName	DArchway3"																	
+Obj132: "Parent	Supporting	Name	Archway5	ModelName	DArchway5"																	
+Obj133: "Parent	Supporting	Name	Archway6	ModelName	DArchway6"																	
+Obj134: "Parent	Flowerbed	Name	cosYel2	ModelName	cosPlant4"																	
+Obj135: "Parent	Flowerbed	Name	cosPink2	ModelName	cosPlant6"																	
+Obj136: "Parent	Flowerbed	Name	cosWhite2	ModelName	cosPlant7"																	
+Obj137: "Parent	Flowerbed	Name	cosBlue2	ModelName	cosPlant8"																	
+Obj138: "Parent	WoodCrateSealed	Name	DCrateOpen	ModelName	cropen"																	
+Obj139: "Parent	Weapon	Name	DCrossbow	ModelName	DCrossbow"																	
+Obj140: "Parent	Equipment	Name	Crowbar	ModelName	DCrowbar"																	
+Obj141: "Parent	Tiara	Name	Tiara2	ModelName	crown1"																	
+Obj142: "Parent	Tiara	Name	Tiara3	ModelName	crown2"																	
+Obj143: "Parent	Cabinet	Name	DCarvedCabinet	ModelName	DCarvedCabinet"																	
+Obj144: "Parent	FancyTable	Name	DCarvedTableEmpty	ModelName	DCarvTableEmpty"																	
+Obj145: "Parent	FancyTable	Name	DCarvedTableDrawer	ModelName	DCarvTablePart"																	
+Obj152: "Parent	Rings	Name	BigRing	ModelName	csbrace1"																	
+Obj153: "Parent	Tiara	Name	Bracelet	ModelName	csbrace2"																	
+Obj154: "Parent	Tiara	Name	Bracelet2	ModelName	csbrace3"																	
+Obj155: "Parent	Tiara	Name	Bracelet2R	ModelName	csbracr3"																	
+Obj156: "Parent	Tiara	Name	Brooch	ModelName	csbrooc1"																	
+Obj157: "Parent	Tiara	Name	Brooch2	ModelName	csbrooc2"																	
+Obj158: "Parent	Jewelry	Name	Studs	ModelName	cscuffr1"																	
+Obj159: "Parent	Studs	Name	Stud1	ModelName	cscuffs1"																	
+Obj160: "Parent	Studs	Name	Stud2	ModelName	cscuffs2"																	
+Obj161: "Parent	Studs	Name	Earring1	ModelName	csearng1"																	
+Obj162: "Parent	Studs	Name	Earring2	ModelName	csearng2"																	
+Obj163: "Parent	Studs	Name	EarringR	ModelName	csearnr1"																	
+Obj164: "Parent	Necklace	Name	Necklace2	ModelName	cslocki1"																	
+Obj165: "Parent	Necklace	Name	Necklace3	ModelName	cslockt1"																	
+Obj166: "Parent	Necklace	Name	Necklace4	ModelName	csnecki1"																	
+Obj167: "Parent	Necklace	Name	Necklace5	ModelName	csnecki2"																	
+Obj168: "Parent	Necklace	Name	Necklace6	ModelName	csnecki3"																	
+Obj169: "Parent	Necklace	Name	Necklace7	ModelName	csneckl1"																	
+Obj170: "Parent	Necklace	Name	Necklace8	ModelName	csneckl2"																	
+Obj171: "Parent	Necklace	Name	Necklace9	ModelName	csneckl3"																	
+Obj172: "Parent	Rings	Name	Ring1	ModelName	csring1"																	
+Obj173: "Parent	Rings	Name	Ring2	ModelName	csring2"																	
+Obj174: "Parent	Rings	Name	Ring3	ModelName	csring3"																	
+Obj175: "Parent	Rings	Name	BigRing2	ModelName	cstorc1"																	
+Obj176: "Parent	Furniture	Name	Arbor"																			
+Obj177: "Parent	Arbor	Name	DArborStand	ModelName	DArborStand"																	
+Obj178: "Parent	Arbor	Name	DArborTop	ModelName	DArborTop"																	
+Obj179: "Parent	Weapon	Name	DAxe	ModelName	DAxe"																	
+Obj180: "Parent	Crate	Name	BigBasket	ModelName	DBasket"																	
+Obj181: "Parent	Book	Name	DBooks	ModelName	DBookBrown	Scripts:Script 0	DAutoTxtRepl"															
+Obj182: "Parent	DBooks	Name	DBook	ModelName	DBook"																	
+Obj183: "Parent	DBooks	Name	DBook2	ModelName	DBook2"																	
+Obj184: "Parent	DBooks	Name	DBookB	ModelName	DBookB"																	
+Obj185: "Parent	DBooks	Name	DBookB2	ModelName	DBookB2"																	
+Obj186: "Parent	Furniture	Name	Bookshelf	ModelName	DBookshelf"																	
+Obj187: "Parent	Weapon	Name	DBow	ModelName	DBow"																	
+Obj188: "Parent	Cart	Name	DCart1	ModelName	DCart1	PhysDims:Size	<7.6,4.6,2	PhysDims:Offset 1	<-2,0,-0.5"													
+Obj189: "Parent	Cart	Name	DCart2	ModelName	DCart2"																	
+Obj190: "Parent	Clocks	Name	DClock	ModelName	DClock"																	
+Obj191: "Parent	Plumbing	Name	DConcreteDrain	ModelName	DConcreteDrain"																	
+Obj192: "Parent	DConcreteDrain	Name	DConcretePart	ModelName	DConcretePart"																	
+Obj193: "Parent	DConcreteDrain	Name	DConcretePipe	ModelName	DConcretePipe"																	
+Obj194: "Parent	DConcreteDrain	Name	DConcretePipeF	ModelName	DConcretePipeF"																	
+Obj195: "Parent	DConcreteDrain	Name	DConcreteT	ModelName	DConcreteT"																	
+Obj196: "Parent	DConcreteDrain	Name	DConcreteTF	ModelName	DConcreteTF"																	
+Obj197: "Parent	DConcreteDrain	Name	DConcreteTurn	ModelName	DConcreteTurn"																	
+Obj198: "Parent	DConcreteDrain	Name	DConcreteTurnF	ModelName	DConcreteTurnF"																	
+Obj199: "Parent	DConcreteDrain	Name	DConcreteTurnX	ModelName	DConcreteTurnX"																	
+Obj200: "Parent	Crystal	Name	DCrystals	ModelName	DCry"																	
+Obj201: "Parent	DCrystals	Name	DCrybin	ModelName	DCrybin"																	
+Obj202: "Parent	DCrystals	Name	DCryTransR	ModelName	DCryT"																	
+Obj203: "Parent	Buildings	Name	DepartBlockA	ModelName	DepartBlockA"																	
+Obj204: "Parent	DCrystals	Name	DWaterCry	ModelName	DWaterCry"																	
+Obj205: "Parent	DCrystals	Name	DWaterSeed	ModelName	DWaterSeed"																	
+Obj206: "Parent	DCrystals	Name	DFirecry	ModelName	DFirecry"																	
+Obj207: "Parent	DCrystals	Name	DFireSeed	ModelName	DFireSeed"																	
+Obj208: "Parent	DCrystals	Name	DGasCry	ModelName	DGasCry"																	
+Obj209: "Parent	DCrystals	Name	DGasSeed	ModelName	DGasSeed"																	
+Obj210: "Parent	DCrystals	Name	DMossCry	ModelName	DMossCry"																	
+Obj211: "Parent	DCrystals	Name	DMossSeed	ModelName	DMossSeed"																	
+Obj212: "Parent	DCrystals	Name	DSeed	ModelName	DSeed"																	
+Obj213: "Parent	DCrystals	Name	DSeedT	ModelName	DSeedT"																	
+Obj214: "Parent	Clocks	Name	DGrandClock	ModelName	DGrandClockFlat"																	
+Obj215: "Parent	DGrandClock	Name	DGrandClockOpen	ModelName	DGrandClockB"																	
+Obj216: "Parent	DGrandClock	Name	DGrandClock2Fingers	ModelName	DGrandClockC"																	
+Obj217: "Parent	DGrandClock	Name	DGrandClockDoor	ModelName	DGrandClockD"																	
+Obj218: "Parent	Buildings	Name	DHouse1	ModelName	DHouse1"																	
+Obj219: "Parent	DHouse1	Name	DHouse2	ModelName	DHouse2"																	
+Obj220: "Parent	DHouse1	Name	DHouse2b	ModelName	DHouse2b"																	
+Obj221: "Parent	DHouse1	Name	DHouse3	ModelName	DHouse3"																	
+Obj222: "Parent	DHouse1	Name	DHouse4	ModelName	DHouse4"																	
+Obj223: "Parent	DHouse1	Name	DHouse5	ModelName	DHouse5"																	
+Obj224: "Parent	DHouse1	Name	DHouse6	ModelName	DHouse6"																	
+Obj225: "Parent	DHouse1	Name	DHouse7	ModelName	DHouse7"																	
+Obj226: "Parent	DHouse1	Name	DHouse8	ModelName	DHouse8"																	
+Obj227: "Parent	DHouse1	Name	DHouse9	ModelName	DHouse9"																	
+Obj228: "Parent	DHouse1	Name	DHouse9b	ModelName	DHouse9b"																	
+Obj229: "Parent	sign	Name	WoodSignR	ModelName	WoodSignR"																	
+Obj230: "Parent	MoneyBox	Name	Woodbox	ModelName	DWoodbox"																	
+Obj231: "Parent	OutsidePlants	Name	DIvy	ModelName	DIvy"																	
+Obj232: "Parent	DIvy	Name	DIvyBendL	ModelName	DIvyBendL"																	
+Obj233: "Parent	DIvy	Name	DIvyBendR	ModelName	DIvyBendR"																	
+Obj234: "Parent	DIvy	Name	DIvyCorner	ModelName	DIvyCorner"																	
+Obj235: "Parent	DIvy	Name	DIvyDecal	ModelName	DIvyDecal"																	
+Obj236: "Parent	DIvy	Name	DIvyHanging	ModelName	DIvyHanging"																	
+Obj237: "Parent	DIvy	Name	DIvyRound	ModelName	DIvyRound"																	
+Obj238: "Parent	MoneyBox	Name	Medibox	ModelName	DMedibox"																	
+Obj239: "Parent	metal_ladder	Name	DockLadder	ModelName	DockLadder"																	
+Obj240: "Parent	MetalDoor21	Name	Door21b	ModelName	Door21b"																	
+Obj241: "Parent	Wood4x8	Name	door91B	ModelName	door91B"																	
+Obj242: "Parent	Scroll	Name	DParch	ModelName	DParch"																	
+Obj243: "Parent	DParch	Name	DParch2	ModelName	DParch2"																	
+Obj244: "Parent	DParch	Name	DParch2B	ModelName	DParch2B"																	
+Obj245: "Parent	DParch	Name	DParch2R	ModelName	DParch2R"																	
+Obj246: "Parent	DParch	Name	DParch2R2	ModelName	DParch2R2"																	
+Obj247: "Parent	DParch	Name	DParch3	ModelName	DParch3"																	
+Obj248: "Parent	DParch	Name	DParch3B	ModelName	DParch3B"																	
+Obj249: "Parent	DParch	Name	DParch3R	ModelName	DParch3R"																	
+Obj250: "Parent	DParch	Name	DParch3R2	ModelName	DParch3R2"																	
+Obj251: "Parent	DParch	Name	DParchB	ModelName	DParchB"																	
+Obj252: "Parent	DParch	Name	DParchB2	ModelName	DParchB2"																	
+Obj253: "Parent	DParch	Name	DParchBEmpty	ModelName	DParchBEmpty"																	
+Obj254: "Parent	DParch	Name	DParchBR	ModelName	DParchBR"																	
+Obj255: "Parent	DParch	Name	DParchBR2	ModelName	DParchBR2"																	
+Obj256: "Parent	DParch	Name	DParchEmpty	ModelName	DParchEmpty"																	
+Obj257: "Parent	DParch	Name	DParchR	ModelName	DParchR"																	
+Obj258: "Parent	DParch	Name	DParchR2	ModelName	DParchR2"																	
+Obj259: "Parent	Furniture	Name	Drawer	ModelName	Drawer"																	
+Obj260: "Parent	Drawer	Name	DrawerSimple	ModelName	Drawer2"																	
+Obj261: "Parent	Drawer	Name	DrawerEmpty	ModelName	DrawerMPart"																	
+Obj262: "Parent	Drawer	Name	DrawerPart0	ModelName	DrawerPart0"																	
+Obj263: "Parent	Drawer	Name	DrawerPart1	ModelName	DrawerPart1"																	
+Obj264: "Parent	Drawer	Name	DrawerPart2	ModelName	DrawerPart2"																	
+Obj265: "Parent	Drawer	Name	DrawerPart3	ModelName	DrawerPart3"																	
+Obj266: "Parent	TerrainLike	Name	Rocks"																			
+Obj267: "Parent	Rocks	Name	DRock1	ModelName	DRock1"																	
+Obj268: "Parent	Rocks	Name	DRock2	ModelName	DRock2"																	
+Obj269: "Parent	Rocks	Name	DRock2B	ModelName	DRock2B"																	
+Obj270: "Parent	Rocks	Name	DRock3	ModelName	DRock3"																	
+Obj271: "Parent	Rocks	Name	DRock3B	ModelName	DRock3B"																	
+Obj272: "Parent	Rocks	Name	DRock4	ModelName	DRock4"																	
+Obj273: "Parent	Rocks	Name	DRock5	ModelName	DRock5"																	
+Obj274: "Parent	Rocks	Name	DRock6	ModelName	DRock6"																	
+Obj275: "Parent	Rocks	Name	DRock7	ModelName	DRock7"																	
+Obj276: "Parent	DTrees	Name	DryTree	ModelName	DryTree"																	
+Obj277: "Parent	DTreeParts	Name	DryTreeBranches	ModelName	DryTreeBranches"																	
+Obj278: "Parent	DTreeParts	Name	DryTreeTrunk	ModelName	DryTreeTrunk"																	
+Obj279: "Parent	MoneyBox	Name	DSuitcase	ModelName	DSuitcase"																	
+Obj280: "Parent	DSuitcase	Name	DSuitcaseSimple	ModelName	DSuitcaseSimple"																	
+Obj281: "Parent	Equipment	Name	DTools"																			
+Obj282: "Parent	DTools	Name	DTAxe	ModelName	DTAxe"																	
+Obj283: "Parent	DTools	Name	DTHammer	ModelName	DTHammer"																	
+Obj284: "Parent	DTools	Name	DTHatchet	ModelName	DTHatchet"																	
+Obj285: "Parent	DTools	Name	DTPickaxe	ModelName	DTPickaxe"																	
+Obj286: "Parent	DTools	Name	DTPitchfork	ModelName	DTPitchfork"																	
+Obj287: "Parent	DTools	Name	DTRake	ModelName	DTRake"																	
+Obj288: "Parent	DTools	Name	DTShovel	ModelName	DTShovel"																	
+Obj289: "Parent	DTools	Name	DTSickle	ModelName	DTSickle"																	
+Obj290: "Parent	DTools	Name	DTSledge	ModelName	DTSledge"																	
+Obj291: "Parent	DTools	Name	DTSythe	ModelName	DTSythe"																	
+Obj292: "Parent	DTools	Name	DTSytheSmall	ModelName	DTSytheSmall"																	
+Obj293: "Parent	Windows	Name	GlasDoorWay	ModelName	dway1"																	
+Obj294: "Parent	Vegetation	Name	Small Plants	RenderAlpha	1"																	
+Obj295: "Parent	Small Plants	Name	DWeed1	ModelName	DWeed1"																	
+Obj296: "Parent	Small Plants	Name	DWeed2	ModelName	DWeed2"																	
+Obj297: "Parent	Small Plants	Name	DWeed3	ModelName	DWeed3"																	
+Obj298: "Parent	Small Plants	Name	DWeed4	ModelName	DWeed4"																	
+Obj299: "Parent	Small Plants	Name	DWeed5	ModelName	DWeed5"																	
+Obj300: "Parent	Small Plants	Name	DWeed5B	ModelName	DWeed5B"																	
+Obj301: "Parent	Small Plants	Name	DWeed6	ModelName	DWeed6"																	
+Obj302: "Parent	Small Plants	Name	DWeed6B	ModelName	DWeed6B"																	
+Obj303: "Parent	Small Plants	Name	DWeed7	ModelName	DWeed7"																	
+Obj304: "Parent	Small Plants	Name	DWeed7B	ModelName	DWeed7B"																	
+Obj305: "Parent	Small Plants	Name	DWeed8	ModelName	DWeed8"																	
+Obj306: "Parent	Small Plants	Name	DWeed9	ModelName	DWeed9"																	
+Obj307: "Parent	Small Plants	Name	DWeed10	ModelName	DWeed10"																	
+Obj308: "Parent	Cart	Name	DWheelbarrow	ModelName	DWheelbarrow"																	
+Obj309: "Parent	Cart	Name	DWheelbarrow2	ModelName	DWheelbarrow2"																	
+Obj310: "Parent	Windows	Name	DecoWindows	ModelName	DWin1"																	
+Obj311: "Parent	DecoWindows	Name	DWin2	ModelName	DWin2"																	
+Obj312: "Parent	DecoWindows	Name	DWin3	ModelName	DWin3"																	
+Obj313: "Parent	Cabinet	Name	DWoodcabinet	ModelName	DWoodcabinet"																	
+Obj314: "Parent	FernPlant	Name	Fern1	ModelName	DFern1"																	
+Obj315: "Parent	FernPlant	Name	Fern2	ModelName	DFern2"																	
+Obj316: "Parent	FernPlant	Name	Fern3	ModelName	DFern3"																	
+Obj317: "Parent	FirePlace	Name	FireWood	ModelName	FireWood74"																	
+Obj318: "Parent	Equipment	Name	FishingRod	ModelName	FishingRod"																	
+Obj319: "Parent	DTreeParts	Name	1aBushTrunk	ModelName	1aBushTrunk"																	
+Obj320: "Parent	Flowerbed	Name	DFlowerbedBig	ModelName	Flowerbed8"																	
+Obj322: "Parent	Pedestal	Name	DFountain	ModelName	DFountain"																	
+Obj323: "Parent	DFountain	Name	FountainWater	ModelName	DFountain2"																	
+Obj324: "Parent	DFountain	Name	FountainWater2	ModelName	DFountain3"																	
+Obj325: "Parent	OutsidePlants	Name	MushroomX"																			
+Obj326: "Parent	MushroomX	Name	VMushroom	ModelName	fungb3"																	
+Obj327: "Parent	MushroomX	Name	VMushroom2	ModelName	fungb4"																	
+Obj328: "Parent	Gemstone	Name	GemPile	ModelName	gempile"																	
+Obj329: "Parent	DTreeParts	Name	1aBushLeaves	ModelName	1aBushLeaves"																	
+Obj330: "Parent	MechanicalFan	Name	GiantFan	ModelName	gfan"																	
+Obj331: "Parent	MechanicalFan	Name	SmalFan	ModelName	gfan2"																	
+Obj332: "Parent	GoldEyeglasses	Name	GoldSpecs2	ModelName	goldspecs"																	
+Obj333: "Parent	Grass1	Vurt	V_Gras1	ModelName	v_grasj1"																	
+Obj334: "Parent	Grass1	Name	V_Gras2	ModelName	v_grasj2"																	
+Obj335: "Parent	Grass1	Name	V_Gras3	ModelName	v_grasj3"																	
+Obj336: "Parent	Gemstone	Cosas	Diamond01	ModelName	gstone01"																	
+Obj337: "Parent	Gemstone	Name	Saphire02	ModelName	gstone02"																	
+Obj338: "Parent	Gemstone	Name	SquareRuby03	ModelName	gstone03"																	
+Obj339: "Parent	Gemstone	Name	Opa04	ModelName	gstone04"																	
+Obj340: "Parent	Gemstone	Name	Ruby05	ModelName	gstone05"																	
+Obj341: "Parent	Gemstone	Name	Amethyst06	ModelName	gstone06"																	
+Obj342: "Parent	Gemstone	Name	Amber07	ModelName	gstone07"																	
+Obj343: "Parent	Gemstone	Name	Smaragd08	ModelName	gstone08"																	
+Obj344: "Parent	Fence	Personal	Vents	ModelName	Gvent"																	
+Obj345: "Parent	Weapons	Name	DHellebard	ModelName	DHellebard"																	
+Obj346: "Parent	Clocks	Personal	HourHand	ModelName	hour"																	
+Obj347: "Parent	Buildings	Name	JOHouse01	ModelName	house01	Scripts:Script 0	DAutoTxtRepl"															
+Obj348: "Parent	JOHouse01	Name	House01R	ModelName	House01R"																	
+Obj349: "Parent	JOHouse01	Name	JOHouse02	ModelName	house02"																	
+Obj350: "Parent	JOHouse01	Name	House02R	ModelName	House02R"																	
+Obj351: "Parent	JOHouse01	Name	JOHouse03	ModelName	house03"																	
+Obj352: "Parent	JOHouse01	Name	House03R	ModelName	House03R"																	
+Obj353: "Parent	JOHouse01	Name	House03RAlone	ModelName	House03RAlone"																	
+Obj354: "Parent	JOHouse01	Name	House03RSingle	ModelName	House03RSingle"																	
+Obj355: "Parent	JOHouse01	Name	House03RTower	ModelName	House03RTower"																	
+Obj356: "Parent	JOHouse01	Name	JOHouse04	ModelName	house04"																	
+Obj357: "Parent	JOHouse01	Name	House04R	ModelName	House04R"																	
+Obj358: "Parent	JOHouse01	Name	JOHouse05	ModelName	house05"																	
+Obj359: "Parent	JOHouse01	Name	House05R	ModelName	House05R"																	
+Obj360: "Parent	JOHouse01	Name	House05Rb	ModelName	House05Rb"																	
+Obj361: "Parent	JOHouse01	Name	House05RSingle	ModelName	House05RSingle"																	
+Obj362: "Parent	JOHouse01	Name	House05RTower	ModelName	House05RTower"																	
+Obj363: "Parent	JOHouse01	Name	JOHouse06	ModelName	house06"																	
+Obj364: "Parent	JOHouse01	Name	House06R	ModelName	House06R"																	
+Obj365: "Parent	Buildings	Name	House07A	ModelName	House07A"																	
+Obj366: "Parent	House07A	Name	House07A2	ModelName	House07A2"																	
+Obj367: "Parent	House07A	Name	House07B1	ModelName	House07B1"																	
+Obj368: "Parent	House07A	Name	House07B2	ModelName	House07B2"																	
+Obj369: "Parent	House07A	Name	House07B3	ModelName	House07B3"																	
+Obj370: "Parent	House07A	Name	House07C	ModelName	House07C"																	
+Obj371: "Parent	House07A	Name	House07D	ModelName	House07D"																	
+Obj372: "Parent	House07A	Name	House07Win1	ModelName	House07Win1"																	
+Obj373: "Parent	House07A	Name	House07Win2	ModelName	House07Win2"																	
+Obj374: "Parent	Buildings	Name	HousePartA	ModelName	HousePartA"																	
+Obj375: "Parent	HousePartA	Name	HousePartB	ModelName	HousePartB"																	
+Obj376: "Parent	HousePartA	Name	HousePartC	ModelName	HousePartC"																	
+Obj377: "Parent	HousePartA	Name	HousePartD	ModelName	HousePartD"																	
+Obj378: "Parent	HousePartA	Name	HousePartE	ModelName	HousePartE"																	
+Obj379: "Parent	HousePartA	Name	HousePartF	ModelName	HousePartF"																	
+Obj380: "Parent	HousePartA	Name	HousePartG	ModelName	HousePartG"																	
+Obj381: "Parent	OfficeSupplies	Name	Inkpot	ModelName	inkpot"																	
+Obj382: "Parent	DIvy	Name	Ivy2Decal	ModelName	Ivy2Decal"																	
+Obj383: "Parent	DIvy	Name	Ivy3Decal	ModelName	Ivy3Decal"																	
+Obj384: "Parent	Door	Name	JoDoor	ModelName	JoDoor	FrobInfo:WorldAction	[None]"															
+Obj385: "Parent	DecoWindows	Name	JoWin1	ModelName	JoWin1"																	
+Obj386: "Parent	DecoWindows	Name	JoWin2	ModelName	JoWin2"																	
+Obj387: "Parent	NumberButton	Name	lcbuttn2	ModelName	lcbuttn2"																	
+Obj388: "Parent	Button	Name	lcbutton	ModelName	lcbutton"																	
+Obj389: "Parent	Equipment	Name	Lighter3	ModelName	DLighter3"																	
+Obj390: "Parent	Gizmo	Name	Lightfrachain	ModelName	lightfrachain"																	
+Obj391: "Parent	Purse	Name	PurseBlack	ModelName	LotPouc1"																	
+Obj392: "Parent	Purse	Name	PurseBlackOpen	ModelName	LotPouc1i"																	
+Obj393: "Parent	Purse	Name	PurseOpen	ModelName	LotPouc2i"																	
+Obj394: "Parent	Purse	Name	PurseOpen2	ModelName	LotPouci"																	
+Obj395: "Parent	Purse	Name	PurseOrange	ModelName	LotPouc3"																	
+Obj396: "Parent	Purse	Name	PurseOrangeOpen	ModelName	LotPouc3i"																	
+Obj397: "Parent	Purse	Name	PurseBlue	ModelName	LotPouc4"																	
+Obj398: "Parent	Purse	Name	PurseBlueOpen	ModelName	LotPouc4i"																	
+Obj399: "Parent	Purse	Name	PurseGreen	ModelName	LotPouc5"																	
+Obj400: "Parent	Purse	Name	PurseGreenOpen	ModelName	LotPouc5i"																	
+Obj401: "Parent	Chair	Name	LeatherArmChair	ModelName	DArmChair"																	
+Obj402: "Parent	Clocks	Personal	MinuteHand	ModelName	minute"																	
+Obj403: "Parent	Equipment	Name	ModernBomb	ModelName	DBomb2"																	
+Obj404: "Parent	ModernBomb	Name	ModBombOn	ModelName	DBomb2On"																	
+Obj405: "Parent	Lucre	Name	MoneyBatch	ModelName	DMoneyBatch"																	
+Obj406: "Parent	MoneyBatch	Name	MoneyBatch2	ModelName	DMoneyBatch2"																	
+Obj407: "Parent	MoneyBatch	Name	MoneyBill	ModelName	DMoneyBill"																	
+Obj408: "Parent	MoneyBatch	Name	MoneyBill2	ModelName	DMoneyBill2"																	
+Obj409: "Parent	MoneyBatch	Name	MoneyBurned	ModelName	DMoneyBurned"																	
+Obj410: "Parent	MoneyBatch	Name	MoneyBurned2	ModelName	DMoneyBurned2"																	
+Obj411: "Parent	MushroomX	Name	MushroomsR	ModelName	DMushroomsR"																	
+Obj412: "Parent	MushroomX	Name	Mushrooms2R	ModelName	DMushrooms2R"																	
+Obj413: "Parent	WoodCrateSealed	Name	DCrate02	ModelName	DNCrate02"																	
+Obj414: "Parent	DCrate02	Name	DBox02	ModelName	DBox02	Scale	<0.3,0.3,0.15"															
+Obj415: "Parent	DCrate02	Name	DCrate02Open	ModelName	DNCrate02Open"																	
+Obj416: "Parent	Key	Name	DKey02	ModelName	DKey02"																	
+Obj417: "Parent	Key	Name	DKey03	ModelName	DKey03"																	
+Obj418: "SKIP	LockPick	Name	DLockPick3	ModelName	DLockPick3	EdComment	Will be updated"															
+Obj419: "SKIP	LockPick	Name	DLockPick3b	ModelName	DLockPick3b	EdComment	Will be updated"															
+Obj420: "Parent	Cheese	Name	DCheese	ModelName	DCheesePart"																	
+Obj421: "Parent	Cheese	Name	DCheeseRound2	ModelName	DCheese"																	
+Obj422: "Parent	Cheese	Name	DCheeseRound	ModelName	DCheese2"																	
+Obj423: "Parent	ClockFace	Personal	O_ClockFace	ModelName	oglass"																	
+Obj424: "Parent	Barrel	Name	DPallet	ModelName	Dpallet"																	
+Obj425: "Parent	Trees	Name	Palm1a	ModelName	Palm1a"																	
+Obj426: "Parent	DTreeParts	Name	Palm1aLeaves	ModelName	Palm1aLeaves"																	
+Obj427: "Parent	Palm1a	Name	Palm1b	ModelName	Palm1b"																	
+Obj428: "Parent	DTreeParts	Name	Palm1bLeaves	ModelName	Palm1bLeaves"																	
+Obj429: "Parent	DTreeParts	Name	Palm1Trunk	ModelName	Palm1Trunk"																	
+Obj430: "Parent	Palm1a	Name	Palm2a	ModelName	Palm2a"																	
+Obj431: "Parent	DTreeParts	Name	Palm2aLeaves	ModelName	Palm2aLeaves"																	
+Obj432: "Parent	Palm1a	Name	Palm2b	ModelName	Palm2b"																	
+Obj433: "Parent	DTreeParts	Name	Palm2bLeaves	ModelName	Palm2bLeaves"																	
+Obj434: "Parent	DTreeParts	Name	Palm2Trunk	ModelName	Palm2Trunk"																	
+Obj435: "Parent	Palm1a	Name	Palm3a	ModelName	Palm3a"																	
+Obj436: "Parent	DTreeParts	Name	Palm3aLeaves	ModelName	Palm3aLeaves"																	
+Obj437: "Parent	Palm1a	Name	Palm3b	ModelName	Palm3b"																	
+Obj438: "Parent	DTreeParts	Name	Palm3bLeaves	ModelName	Palm3bLeaves"																	
+Obj439: "Parent	DTreeParts	Name	Palm3Trunk	ModelName	Palm3Trunk"																	
+Obj440: "Parent	Palm1a	Name	Palm4a	ModelName	Palm4a"																	
+Obj441: "Parent	DTreeParts	Name	Palm4aLeaves	ModelName	Palm4aLeaves"																	
+Obj442: "Parent	Palm1a	Name	Palm4b	ModelName	Palm4b"																	
+Obj443: "Parent	DTreeParts	Name	Palm4bLeaves	ModelName	Palm4bLeaves"																	
+Obj444: "Parent	Palm1a	Name	Palm5a	ModelName	Palm5a"																	
+Obj445: "Parent	DTreeParts	Name	Palm5aLeaves	ModelName	Palm5aLeaves"																	
+Obj446: "Parent	Palm1a	Name	Palm5b	ModelName	Palm5b"																	
+Obj447: "Parent	DTreeParts	Name	Palm5bLeaves	ModelName	Palm5bLeaves"																	
+Obj448: "Parent	DTreeParts	Name	Palm5Trunk	ModelName	Palm5Trunk"																	
+Obj449: "Parent	Palm1a	Name	Palm6a	ModelName	Palm6a"																	
+Obj450: "Parent	DTreeParts	Name	Palm6aLeaves	ModelName	Palm6aLeaves"																	
+Obj451: "Parent	Palm1a	Name	Palm6b	ModelName	Palm6b"																	
+Obj452: "Parent	DTreeParts	Name	Palm6bLeaves	ModelName	Palm6bLeaves"																	
+Obj453: "Parent	DTreeParts	Name	Palm6Trunk	ModelName	Palm6Trunk"																	
+Obj454: "Parent	PottedPlants	Name	DPotPalmSingle	ModelName	DPotPalm"																	
+Obj455: "Parent	Decorative	Name	DPillars	EdComment	Need to manually add M-MatStone	PhysType:Type	#0	PhysControl:Controls Active	#24"													
+Obj456: "Parent	DPillars	Name	PillarBlock	ModelName	DPillarBlock"																	
+Obj457: "Parent	DPillars	Name	DPillarConc	ModelName	DPillarConc"																	
+Obj458: "Parent	DPillars	Name	DPillarEgyp	ModelName	DPillarEgyp"																	
+Obj459: "Parent	DPillars	Name	DPillarGreek	ModelName	DPillarGreek"																	
+Obj460: "Parent	DPillars	Name	DPillarPot	ModelName	DPillarX"																	
+Obj461: "Parent	DPillars	Name	DPillarPotA	ModelName	DPillarMultiA"																	
+Obj462: "Parent	DPillars	Name	DPillarPotB	ModelName	DPillarMultiB"																	
+Obj463: "Parent	DPillars	Name	DPillarPotC	ModelName	DPillarMultiC"																	
+Obj464: "Parent	DPillars	Name	DPillarPotD	ModelName	DPillarMultiD"																	
+Obj465: "Parent	DPillars	Name	DPillarPotE	ModelName	DPillarMultiE"																	
+Obj466: "Parent	DPillars	Name	DPillarRnd2	ModelName	DPillarRondR"																	
+Obj467: "Parent	DPillars	Name	DPillarRound	ModelName	DPillarRound"																	
+Obj468: "Parent	DPillars	Name	DPillarSimp	ModelName	DPillarSimp"																	
+Obj469: "Parent	DPillars	Name	DPillarSpiral	ModelName	DPillarSpiral"																	
+Obj470: "Parent	DPillars	Name	DPillarSteel	ModelName	DPillarSteel"																	
+Obj471: "Parent	PottedPlants	Name	DPotPineSingle	ModelName	DPotPine"																	
+Obj472: "Parent	Plant01	Name	V_Plant01	ModelName	plant01"																	
+Obj473: "Parent	Plant01	Name	V_Plant01b	ModelName	V_plant01b	Scale	<8,1,10"															
+Obj474: "Parent	Plant02	Name	V_Plant02	ModelName	V_plant02"																	
+Obj475: "Parent	Plant02	Name	V_Plant02b	ModelName	V_plant02b"																	
+Obj476: "Parent	DBushes	Name	DAutoRBush	ModelName	DBushR	Scripts:Script 0	DAutoTxtRepl"															
+Obj477: "Parent	DAutoRBush	Name	DAutoRBush2	ModelName	DBushR2"																	
+Obj478: "Parent	DAutoRBush	Name	DAutoRBush3	ModelName	DBushR3"																	
+Obj479: "Parent	DAutoRBush	Name	DAutoRBush4	ModelName	DBushR4"																	
+Obj480: "Parent	DAutoRBush	Name	DAutoRBush5	ModelName	DBushR5"																	
+Obj481: "Parent	PottedPlants	Name	DPotBambooB	ModelName	DPotBambooB"																	
+Obj482: "Parent	PottedPlants	Name	DPotBambooD	ModelName	DPotBambooD"																	
+Obj483: "Parent	PottedPlants	Name	DPotBushD	ModelName	DPotBushD"																	
+Obj484: "Parent	PottedPlants	Name	DPotEmptyA	ModelName	DPotEmptyA"																	
+Obj485: "Parent	PottedPlants	Name	DPotEmptyB	ModelName	DPotEmptyB"																	
+Obj486: "Parent	PottedPlants	Name	DPotEmptyC	ModelName	DPotEmptyC"																	
+Obj487: "Parent	PottedPlants	Name	DPotEmptyD	ModelName	DPotEmptyD"																	
+Obj488: "Parent	PottedPlants	Name	DPotEmptyE	ModelName	DPotEmptyE"																	
+Obj489: "Parent	PottedPlants	Name	DPotPalmD	ModelName	DPotPalmD"																	
+Obj490: "Parent	PottedPlants	Name	DPotPineD	ModelName	DPotPineD"																	
+Obj491: "Parent	PottedPlants	Name	DPotSpikyD	ModelName	DPotSpikyD"																	
+Obj492: "Parent	Pedestal	Name	DFountain2	ModelName	DFountainB"																	
+Obj493: "Parent	Rings	Name	DRing2	ModelName	DRing2	Scale	<0.1,0.1,0.1"															
+Obj494: "Parent	Bottle	Name	Roundflask	ModelName	DRoundflask	EdComment	Maybe change associated texture"															
+Obj495: "Parent	Weapon	Name	RoundShieldD01	ModelName	DRoundShield01"																	
+Obj496: "Parent	RoundShieldD01	Name	RoundShieldD02	ModelName	DRoundShield02"																	
+Obj497: "Parent	RoundShieldD01	Name	RoundShieldD03	ModelName	DRoundShield03"																	
+Obj498: "Parent	RoundShieldD01	Name	RoundShieldD04	ModelName	DRoundShield04"																	
+Obj499: "Parent	RoundShieldD01	Name	RoundShieldD05	ModelName	DRoundShield05"																	
+Obj500: "Parent	Rowboat	Name	DRowboat	ModelName	DRowboat"																	
+Obj501: "Parent	ClockFace	Name	ClockFaceR	ModelName	watchfacR"																	
+Obj502: "Parent	Fireplace	Name	CoalFireGrate	ModelName	RSGrateSolo	EdComment	By RSoul"															
+Obj503: "Parent	Papyrus	Name	LC_RPapyrus	ModelName	Scroll03	EdComment	readleaf"															
+Obj504: "Parent	LC_RPapyrus	Name	LC_RPapyrusOpen	ModelName	Scroll03a"																	
+Obj505: "Parent	vase	Name	LC_ScrollJar01	ModelName	ScrollJar01"																	
+Obj506: "Parent	LC_ScrollJar01	Name	ScrollJar01lidB	ModelName	ScrollJar01lidB	EdComment	by readleaf - fits jar at same location"															
+Obj507: "Parent	Sequoia1	Name	V_Sequoia1	ModelName	v_seq"																	
+Obj508: "Parent	Sequoia1	Name	V_Sequoia2	ModelName	v_seq2"																	
+Obj509: "Parent	Sequoia1	Name	V_Sequoia3	ModelName	v_seq3"																	
+Obj510: "Parent	Cabinet	Name	DWoodShelf	ModelName	DWoodShelf"																	
+Obj511: "Parent	TrVase	CoSas	cs-Krug-TR1	ModelName	cs-Krug-TR1"																	
+Obj512: "Parent	TrVase	Name	cs-Krug-TR2	ModelName	cs-Krug-TR2"																	
+Obj513: "Parent	TrVase	Name	cs-Krug-TR3	ModelName	cs-Krug-TR3"																	
+Obj514: "Parent	TrVase	Name	cs-Vase-TR1	ModelName	cs-Vase-TR1"																	
+Obj515: "Parent	TrVase	Name	cs-Vase-TR2	ModelName	cs-Vase-TR2"																	
+Obj516: "Parent	TrVase	Name	cs-Vase-TR3	ModelName	cs-Vase-TR3"																	
+Obj517: "Parent	TrVase	Name	cs-Vase-TR4	ModelName	cs-Vase-TR4"																	
+Obj518: "Parent	TrVase	Name	sil-Krug-TR1	ModelName	sil-Krug-TR1"																	
+Obj519: "Parent	TrVase	Name	sil-Krug-TR2	ModelName	sil-Krug-TR2"																	
+Obj520: "Parent	TrVase	Name	sil-Krug-TR3	ModelName	sil-Krug-TR3"																	
+Obj521: "Parent	TrVase	Name	sil-Vase-TR1	ModelName	sil-Vase-TR1"																	
+Obj522: "Parent	TrVase	Name	sil-Vase-TR2	ModelName	sil-Vase-TR2"																	
+Obj523: "Parent	TrVase	Name	sil-Vase-TR3	ModelName	sil-Vase-TR3"																	
+Obj524: "Parent	TrVase	Name	sil-Vase-TR4	ModelName	sil-Vase-TR4"																	
+Obj525: "Parent	Dish	Name	Silverware	ModelName	silverware"																	
+Obj526: "Parent	Silverware	Name	SilverwareI	ModelName	silverwareI"																	
+Obj527: "Parent	Painting	Personal	DLPaintR	ModelName	QuaintMain	Scripts:Script 0	DAutoTxtRepl	OTxtRepr1	obj\\txt16\\metal"													
+Obj528: "Parent	DLPaintR	Personal	DLPaintFrame	ModelName	QuaintSnake1	OTxtRepr0	obj\\txt16\\metal"															
+Obj529: "Parent	MoneyBox	Name	SmallFootlocker	ModelName	DFootlocker"																	
+Obj530: "Parent	Cabinet	Name	DCarvedCabinet2	ModelName	DCarvedCab2"																	
+Obj531: "Parent	SpeedPotion	Name	SpeedPot2	ModelName	SpeedPot2"																	
+Obj532: "Parent	PottedPlants	Name	SpikySingle	ModelName	DSpikySingle"																	
+Obj533: "Parent	Cabinet	Name	Steelcabinet	ModelName	DSteelcabinet"																	
+Obj534: "Parent	FootLocker	Name	DLockedWoodBox	ModelName	DLockedWoodBox"																	
+Obj535: "Parent	Vegetation	Name	S_MoonFlower	ModelName	S_MoonFlwr"																	
+Obj536: "Parent	Small Plants	Name	DWeed11	ModelName	DWeed11"																	
+Obj537: "Parent	Small Plants	Name	DWeed11x8	ModelName	DWeed11x8"																	
+Obj538: "Parent	Small Plants	Name	DWeed12	ModelName	DWeed12"																	
+Obj539: "Parent	Small Plants	Name	DWeed13	ModelName	DWeed13"																	
+Obj540: "Parent	HealingPotion	Personal	HealingPotion2	ModelName	Vile1c"																	
+Obj541: "Parent	VineDecal1	Name	V_VineDecal1	ModelName	v_vindec1"																	
+Obj542: "Parent	VineDecal2	Name	V_VineDecal2	ModelName	v_vindec2"																	
+Obj543: "Parent	VineDecal3	Name	V_VineDecal3	ModelName	v_vindec3"																	
+Obj544: "Parent	Towers	Name	JoTower01	ModelName	tower01"																	
+Obj545: "Parent	JoTower01	Name	JoTower02	ModelName	tower02"																	
+Obj546: "Parent	JoTower01	Name	JoTower03	ModelName	tower03"																	
+Obj547: "Parent	JoTower01	Name	JoTower1R	ModelName	DTower1R"																	
+Obj548: "Parent	JoTower01	Name	JoTower2R	ModelName	DTower2R"																	
+Obj549: "Parent	GoldCStick	Name	V_GoldCandle	ModelName	v_trcandle"																	
+Obj550: "Parent	Tree01	Name	V_Tree1	ModelName	v_tree"																	
+Obj551: "Parent	Tree03	Name	V_Tree3	ModelName	v_tree03"																	
+Obj552: "Parent	DetTree1Summer	Name	v_Tree1Summer	ModelName	v_treej"																	
+Obj553: "Parent	DetTree2Summer	Name	v_Tree2Summer	ModelName	v_treej2"																	
+Obj554: "Parent	DetTree3Summer	Name	v_Tree3Summer	ModelName	v_treej3"																	
+Obj555: "Parent	DetTree1Snow	Name	v_Tree1Snow	ModelName	v_treesno1"																	
+Obj556: "Parent	DetTree2Snow	Name	v_Tree2Snow	ModelName	v_treesno2"																	
+Obj557: "Parent	DetTree3Snow	Name	v_Tree3Snow	ModelName	v_treesno3"																	
+Obj558: "Parent	LargeLeafPlant	Name	TropicalPlant	ModelName	DTropicalPlant"																	
+Obj559: "Parent	LargeLeafPlant	Name	TropicalPlant2	ModelName	DTropicalPlant2"																	
+Obj560: "Parent	Small Plants	Name	SmallTropicalPlant	ModelName	DTropicalPlant3"																	
+Obj561: "Parent	DetBush1Summer	Name	v_Bush1Summer	ModelName	v_bushj1"																	
+Obj562: "Parent	DetBush2Summer	Name	v_Bush2Summer	ModelName	v_bushj2"																	
+Obj563: "SKIP	Bushes	Name	1aBushR	ModelName	D1aBushR"																	
+Obj564: "Parent	DFlowerbedBig	Name	DFlowerbedBigR	ModelName	DFlowerbed1R"																	
+Obj565: "Parent	lantern	Personal	VaultLantern	ModelName	VaultLantern"																	
+Obj566: "Parent	Key	CoSaS	CoSKeys"																			
+Obj567: "Parent	CoSKeys	CoSaS	CoSKey01	ModelName	coskey01"																	
+Obj568: "Parent	CoSKeys	CoSaS	CoSKey02	ModelName	coskey02"																	
+Obj569: "Parent	CoSKeys	CoSaS	CoSKey03	ModelName	coskey03"																	
+Obj570: "Parent	CoSKeys	CoSaS	CoSKey04	ModelName	coskey04"																	
+Obj571: "Parent	CoSKeys	CoSaS	CoSKey05	ModelName	coskey05"																	
+Obj572: "Parent	CoSKeys	CoSaS	CoSKey06	ModelName	coskey06"																	
+Obj573: "Parent	CoSKeys	CoSaS	CoSKey07	ModelName	coskey07"																	
+Obj574: "Parent	CoSKeys	CoSaS	CoSKey08	ModelName	coskey08"																	
+Obj575: "Parent	CoSKeys	CoSaS	CoSKey09	ModelName	coskey09"																	
+Obj576: "Parent	CoSKeys	CoSaS	CoSKey10	ModelName	coskey10"																	
+Obj577: "Parent	CoSKeys	CoSaS	CoSKey11	ModelName	coskey11"																	
+Obj578: "Parent	CoSKeys	CoSaS	CoSKey12	ModelName	coskey12"																	
+Obj579: "Parent	CoSKeys	CoSaS	CoSKey13	ModelName	coskey13"																	
+Obj580: "Parent	CoSKeys	CoSaS	CoSKey14	ModelName	coskey14"																	
+Obj581: "Parent	CoSKeys	CoSaS	CoSKey15	ModelName	coskey15"																	
+Obj582: "Parent	CoSKeys	CoSaS	CoSKey16	ModelName	coskey16"																	
+Obj583: "Parent	CoSKeys	CoSaS	CoSKey17	ModelName	coskey17"																	
+Obj584: "Parent	CoSKeys	CoSaS	CoSKey18	ModelName	coskey18"																	
+Obj585: "Parent	Food	Name	DSausage	ModelName	DSausage	Class Tags:1: Tags	DeviceType SoftFood"															
+Obj585: "Parent	DSausage	Name	DSausageHalf	ModelName	DSausageHalf"																	
+Obj585: "Parent	DSausage	Name	DSausageSlice	ModelName	DSausageSlice"																	
+Obj585: "Parent	BreadLoaf	Name	DBread	ModelName	DBread"																	
+Obj585: "Parent	DBread	Name	DBreadHalf	ModelName	DBreadHalf"																	
+Obj585: "Parent	DBread	Name	DBreadSlice	ModelName	DBreadSlice"																	
+																						
+																						
+Obj1: "Parent	Mechanist	HAMMERITES	Hammerites																			
+Obj2: "Parent	Hammerites	FORCE	ham guard 	Link:Weapon:#-1311		MotActorTagList:tags	WithSword 0, Hammer 0	Creature														
+Obj3: "Parent	ham guard 	FORCE	hamguard2 																			
+Obj4: "SKIP	Hammerites	Lets not move this one	ham novice	PROPS																		
+Obj5: "SKIP	hamguard2 	Included in New	Ham Soldier 8	MeshTex:texture in model	HamSol02.gif	MeshTex:replace with	hamsol08.png			91												
+Obj6: "SKIP	hamguard2 	Included in New	Ham Soldier 9	MeshTex:texture in model	HamSol02.gif	MeshTex:replace with	hamsol09.png			92												
+Obj7: "SKIP	hamguard2 	Included in New	Ham Soldier 6	MeshTex:texture in model	HamSol02.gif	MeshTex:replace with	hamsol06.png			96												
+Obj8: "SKIP	ham guard 	Included in New	Ham Soldier 7	MeshTex:texture in model	HamSol01.gif	MeshTex:replace with	hamsol07.png			99												
+Obj9: "Parent	Hammerites	FORCE	ham priest	AI:Behavior set	Human spellcaster	Scripts:Script 0	AttackActivate	Link:~ParticleAttachement:-3075	Type:#2:joint:#10	Link:~ParticleAttachement:-3076	Type:#2:joint:#10	Link:AIProjectile:#-2607	Selection Desire:4:Firing Delay:.2.5:Accuracy:#3:Leads Target:#1:Launch Joint:#12	Class Tags:1: Tags	CreatureType Servant	AIRCProp	{Minimum Distance:#10:Ideal Distance:#25:Firing Delay:#3:Cover Desire:#4:Decay Speed:.0.01:Fire While Moving:#5}					
+Obj10: "Parent	ham priest	Where is the long robe	Noble Ham Priest	ModelName	noblem02_1					100												
+Obj11: "Parent	ham priest		Murus	ModelName	Murus																	
+Obj12: "Parent	ham priest		HamInquisitor	ModelName	HamINQ01																	
+Obj13: "Parent	ham priest		HamInquisitor2	ModelName	HamINQ02																	
+Obj14: "Parent	ham priest		HamPriest1	ModelName	Hamprs01																	
+Obj15: "Parent	ham priest		HamPriest2	ModelName	Hamprs02																	
+Obj16: "Parent	ham priest		HamPriest3	ModelName	Hamprs03																	
+Obj17: "Parent	ham priest		HamPriest4	ModelName	Hamprs04																	
+Obj18: "Parent	ham priest		HamPriest5	ModelName	Hamprs05																	
+Obj19: "Parent	ham priest	TIP: Get HMDK for new voices	HamPriestess	ModelName	HamPrW01	SpchVoice	vmechfems	EdComment	Alternative Voices vhamf vhamfem1 vhamfem2													
+Obj20: "Parent	HamPriestess	TIP: Get HMDK for new voices	HamPriestess2	ModelName	HamPrW02																	
+Obj21: "Parent	HamPriestess	TIP: Get HMDK for new voices	HamPriestess3	ModelName	HamPrW03																	
+Obj22: "SKIP	ham guard 	Standard Replacement SKIPED	ham guard 	ModelName	hamsol01																	
+Obj23: "SKIP	ham guard 	Standard Replacement SKIPED	hamguard2 	ModelName	hamsol02																	
+Obj24: "Parent	ham guard 		Hamguard3	ModelName	hamsol03																	
+Obj25: "Parent	ham guard 		Hamguard4	ModelName	hamsol04																	
+Obj26: "Parent	ham guard 		Hamguard5	ModelName	hamsol05																	
+Obj27: "Parent	ham guard 		Hamguard6	ModelName	hamsol06					566												
+Obj28: "Parent	ham guard 		Hamguard7	ModelName	hamsol07					569												
+Obj29: "Parent	ham guard 		Hamguard8	ModelName	hamsol08					572												
+Obj30: "Parent	ham guard 	TIP: Get HMDK for new voices	HamGuardFem	ModelName	HamW01	SpchVoice	vmechfems	EdComment	Alternative Voices vhamf vhamfem1 vhamfem2	575												
+Obj31: "Parent	HamGuardFem		HamGuardFem2	ModelName	HamW02					578												
+Obj32: "Parent	HamGuardFem		HamGuardFem3	ModelName	HamW03					581												
+Obj33: "Parent	HamGuardFem		HamGuardFem4	ModelName	HamW04																	
+Obj34: "Parent	HamGuardFem		HamGuardFem5	ModelName	HamW05																	
+Obj35: "Parent	HamGuardFem		HamGuardFem6	ModelName	HamW06																	
+Obj36: "Parent	bow man 		HamArcher	ModelName	harchm01																	
+Obj37: "Parent	HamArcher		HamArcher2	ModelName	harchm02																	
+Obj38: "Parent	HamArcher		HamArcher3	ModelName	harchm03																	
+Obj39: "Parent	HamArcher		HamArcher4	ModelName	harchm04																	
+Obj40: "Parent	HamArcher		HamArcher5	ModelName	harchm05																	
+Obj41: "Parent	HamArcher		HamArcher6	ModelName	harchm06																	
+Obj42: "Parent	ham guard 		HamSword	ModelName	nham1	MotActorTagList:tags	WithSword 0															
+Obj43: "Parent	HamSword		HamSword2	ModelName	nham2																	
+Obj44: "Parent	HamSword		HamSword3	ModelName	nham3																	
+Obj45: "Parent	HamSword		HamSword4	ModelName	nham4																	
+Obj46: "Parent	HamSword		HamSword5	ModelName	nham5																	
+Obj47: "Parent	HamSword		HamSword6	ModelName	nham6																	
+Obj48: "Parent	HamSword		HamSword7	ModelName	nham7																	
+Obj49: "Parent	HamSword		HamSword8	ModelName	nham8																	
+Obj50: "Parent	Haunt		HauntSword	ModelName	HauntSw1																	
+Obj51: "Parent	HauntSword		HauntSword2	ModelName	HauntSw2																	
+Obj52: "Parent	HauntSword		HauntSword3	ModelName	HauntSw3																	
+Obj53: "Parent	HauntSword		HauntSword4	ModelName	HauntSw4																	
+Obj54: "Parent	HauntSword	HAMMERITES END	HauntSword5	ModelName	HauntSw5																	
+Obj55: "SKIP	Haunt 	Standard Replacement SKIPED	Haunt 1b	MeshTex:texture in model	Haunt01.gif	MeshTex:replace with	haunt01.png	93														
+Obj56: "Parent	Haunt 		Haunt 7	MeshTex:texture in model	Haunt01.gif	MeshTex:replace with	haunt07.png	94														
+Obj57: "Parent	Haunt 	HAMMER HAUNTS END	Haunt 8	MeshTex:texture in model	Haunt01.gif	MeshTex:replace with	haunt08.png	95														
+																						
+Obj58: "Parent	KeeperAgent 	KEEPER SET	Keeper White	MeshTex:texture in model	Keep01.gif	MeshTex:replace with	keep01a.png	97														
+Obj59: "Parent	KeeperAgent 		Keeper 1	MeshTex:texture in model	Keep01.gif	MeshTex:replace with	keep01b.png	98														
+Obj60: "Parent	KeeperAgent 		Keeper 2	MeshTex:texture in model	Keep01.gif	MeshTex:replace with	keep01c.png	101														
+Obj61: "Parent	KeeperAgent 		Keeper 3	MeshTex:texture in model	Keep01.gif	MeshTex:replace with	keep01d.png	102														
+Obj62: "Parent	KeeperAgent 		Keeper 4	MeshTex:texture in model	Keep01.gif	MeshTex:replace with	keep01e.png	103														
+Obj63: "Parent	KeeperAgent 		Keeper 5	MeshTex:texture in model	Keep01.gif	MeshTex:replace with	keep01f.png	104														
+Obj64: "Parent	KeeperAgent 	KEEPER END	Keeper Grey	MeshTex:texture in model	Keep01.gif	MeshTex:replace with	keep01g.png	105														
+																						
+Obj65: "Parent	Cops	COPS	City Watch	ModelName	cw01																	
+Obj66: "Parent	City Watch		City Watch 2	MeshTex:texture in model	police01.gif	MeshTex:replace with	cw02.png	ModelName	cop01													
+Obj67: "Parent	City Watch		City Watch 3	MeshTex:texture in model	police02.gif	MeshTex:replace with	cw03.png	ModelName	cop02													
+Obj68: "Parent	City Watch		City Watch 4	ModelName	cw04																	
+Obj69: "Parent	SheriffsBowman		City Watch Archer	MeshTex:texture in model	policA01.gif	MeshTex:replace with	cwarc01.png															
+Obj70: "Parent	City Watch Archer		City Watch Archer2	MeshTex:texture in model	policA01.gif	MeshTex:replace with	cwarc02.png															
+Obj71: "Parent	City Watch	NewCityWatchPack	City Watch 5	ModelName	NuWat1	 	 	662														
+Obj72: "Parent	City Watch		City Watch 6	ModelName	NuWat2	 	 	663														
+Obj73: "Parent	City Watch		City Watch 7	ModelName	NuWat3	 	 	664														
+Obj74: "Parent	City Watch		City Watch 8	ModelName	NuWat4	 	 	665														
+Obj75: "Parent	City Watch Archer		CityWatchArchFem	ModelName	NuWarcW1	 	 	666														
+Obj76: "Parent	CityWatchArchFem		CityWatchArchFem2	ModelName	NuWarcW2	 	 	667														
+Obj77: "Parent	City Watch		CityWatchFem	ModelName	NuWatW1	SpchVoice	vcop6	668														
+Obj78: "Parent	CityWatchFem		CityWatchFem2	ModelName	NuWatW2	 	 	669														
+Obj79: "Parent	City Watch Archer		City Watch Archer 3	ModelName	NuWarcM1	 	 	670														
+Obj80: "Parent	City Watch Archer	NewCityEnd	City Watch Archer 4	ModelName	NuWarcM2	 	 	671														
+Obj81: "Parent	SheriffsGuard		SheriffsGuardBlack	MeshTex:texture in model	police01.gif	MeshTex:replace with	police06.png															
+Obj82: "Parent	SheriffsGuardBlack		SheriffsGuardBlack 2	MeshTex:texture in model	Spolic01.gif	MeshTex:replace with	police09.png															
+Obj83: "Parent	SheriffsGuard2		SheriffsGuardBlack 3	MeshTex:texture in model	police02.gif	MeshTex:replace with	police07.png															
+Obj84: "Parent	SheriffsGuardBlack 3		SheriffsGuardBlack 4	MeshTex:texture in model	police02.gif	MeshTex:replace with	police08.png															
+Obj85: "Parent	SheriffsBowman 		SheriffsBowman 2	MeshTex:texture in model	policA01.gif	MeshTex:replace with	polica02.png	127	 													
+Obj86: "Parent	SheriffsGuard2 		SheriffsGuard 4	MeshTex:texture in model	police02.gif	MeshTex:replace with	police04.png	130														
+Obj87: "Parent	SheriffsGuard 		SheriffsGuard 5	MeshTex:texture in model	police01.gif	MeshTex:replace with	police05.png	131														
+Obj88: "Parent	SheriffsGuard2 		SheriffsGuard 7	MeshTex:texture in model	police02.gif	MeshTex:replace with	npolice07.png	132														
+Obj89: "Parent	SheriffsGuard 		SheriffsGuard 8	MeshTex:texture in model	police01.gif	MeshTex:replace with	npolice08.png	133														
+Obj90: "Parent	SheriffsGuard 		SheriffsGuard 9	MeshTex:texture in model	police01.gif	MeshTex:replace with	npolice09.png	134														
+Obj91: "Parent	SheriffsGuard 		SheriffsGuard 10	MeshTex:texture in model	police01.gif	MeshTex:replace with	police10.png	135														
+Obj92: "Parent	SheriffsGuard2 		SheriffsGuard 11	MeshTex:texture in model	police02.gif	MeshTex:replace with	police11.png	136														
+Obj93: "Parent	SheriffsArchFem 		SheriffsArchFem 2	MeshTex:texture in model	policW02.gif	MeshTex:replace with	npolice06.png	137														
+Obj94: "Parent	SheriffGuardFem 		SheriffGuardFem 3	MeshTex:texture in model	policw01.gif	MeshTex:replace with	policw03.png	141														
+Obj95: "Parent	SheriffGuardFem 	COPS END	SheriffGuardFem 5	MeshTex:texture in model	policw01.gif	MeshTex:replace with	policw05.png	142														
+																						
+Obj100: "Parent	MechArcherFem 	MECHANISTS	MechArcherFem 2	MeshTex:texture in model	soldGW02.gif	MeshTex:replace with	crosbwm2.png	148														
+Obj101: "Parent	MechArchSub 		MechArchSub 2	MeshTex:texture in model	DivSol02.gif	MeshTex:replace with	crosbwm1.png	150														
+Obj102: "Parent	MechArchSub 		MechArchSub 3	MeshTex:texture in model	DivSol02.gif	MeshTex:replace with	crosbwm3.png	152														
+Obj103: "Parent	MechArchSub 		MechArchSub 4	MeshTex:texture in model	DivSol02.gif	MeshTex:replace with	crosbwm4.png	154														
+Obj104: "Parent	MechArchSub 		MechArchSub 5	MeshTex:texture in model	DivSol02.gif	MeshTex:replace with	crosbwm5.png	156														
+Obj105: "Parent	MechArcherFem 		MechArcherFemB 1	MeshTex:texture in model	soldGW02.gif	MeshTex:replace with	crossbf1.png	160														
+Obj106: "Parent	MechArcherFem 		MechArcherFemB 2	MeshTex:texture in model	soldGW02.gif	MeshTex:replace with	crossbf2.png	162														
+Obj107: "Parent	MechArcherFem 		MechArcherFemB 3	MeshTex:texture in model	soldGW02.gif	MeshTex:replace with	crossbf3.png	164														
+Obj108: "Parent	MechArcherFem 		MechArcherFemB 4	MeshTex:texture in model	soldGW02.gif	MeshTex:replace with	crossbf4.png	190														
+Obj109: "Parent	MechArcherFem 		MechArcherFemB 5	MeshTex:texture in model	soldGW02.gif	MeshTex:replace with	crossbf5.png	193														
+Obj110: "Parent	MechArcherFem 		MechArcherFemB 6	MeshTex:texture in model	soldGW02.gif	MeshTex:replace with	crossbf6.png	195														
+Obj111: "Parent	MechArcherFem 		MechArcherFemC 1 	MeshTex:texture in model	soldGW02.gif	MeshTex:replace with	mcwgun4.png	216														
+Obj112: "Parent	MechArcherFem 	SKipp??	MechArcherFemC 2	MeshTex:texture in model	soldGW02.gif	MeshTex:replace with	mcwgun5.png	218														
+Obj113: "Parent	MechArcherFem 		MechArcherFemC 3 	MeshTex:texture in model	soldGW02.gif	MeshTex:replace with	mcwgun6.png	220														
+Obj114: "Parent	MechMaceFem 		MechMaceFem 2	MeshTex:texture in model	soldGW01.gif	MeshTex:replace with	ftroop02.png	166														
+Obj115: "Parent	MechMaceFem 		MechMaceFem 3	MeshTex:texture in model	soldGW01.gif	MeshTex:replace with	ftroop03.png	167														
+Obj116: "Parent	MechMaceFem 		MechMaceFem 4	MeshTex:texture in model	soldGW01.gif	MeshTex:replace with	ftroop04.png	210														
+Obj117: "Parent	MechMaceFem 		MechMaceFem 6	MeshTex:texture in model	soldGW01.gif	MeshTex:replace with	ftroop06.png	168														
+Obj118: "Parent	MechMaceFem 		MechMaceFem 8	MeshTex:texture in model	soldGW01.gif	MeshTex:replace with	ftroop08.png	211														
+Obj119: "Parent	MechMaceFem 		MechMaceFem 10	MeshTex:texture in model	soldGW01.gif	MeshTex:replace with	ftroop10.png	169														
+Obj120: "Parent	MechMaceFem 		MechSubMaceFem	MeshTex:texture in model	soldGW01.gif	MeshTex:replace with	divw01.png	InvRendType:Type	2	InvRendType:Resource	cmecsub											
+Obj121: "Parent	MechSubMaceFem		MechSubMaceFem 2	MeshTex:texture in model	soldGW01.gif	MeshTex:replace with	divw1a.png	208														
+Obj122: "Parent	MechSubMaceFem		MechSubMaceFem 3	MeshTex:texture in model	soldGW01.gif	MeshTex:replace with	divw3a.png	209														
+Obj123: "Parent	MechSword 		MechSword 3	ModelName	SwordM3			170														
+Obj124: "Parent	bow man 		MechBow	ModelName	mecbow			172														
+Obj125: "Parent	MechBow		MechBow 2	ModelName	mecbw2			285														
+Obj126: "Parent	MechSword 		MechSword 2	ModelName	SwordM1			175														
+Obj127: "SKIP	MechSword 		MechSword 3	ModelName	SwordM2			176														
+Obj128: "Parent	MechMaskGuard 	Standard Replacement SKIPED	MechMaskGuard 2	MeshTex:texture in model	soldC01.gif	MeshTex:replace with	soldc01.png	177														
+Obj129: "Parent	Mech_guard 		Mech Guard 12	MeshTex:texture in model	soldG01.gif	MeshTex:replace with	troop01.png	178														
+Obj130: "Parent	Mech_guard 		Mech Guard 2	MeshTex:texture in model	soldG01.gif	MeshTex:replace with	troop02.png	179														
+Obj131: "Parent	Mech_guard 		Mech Guard 3	MeshTex:texture in model	soldG01.gif	MeshTex:replace with	troop03.png	180														
+Obj132: "Parent	Mech_guard 		Mech Guard 4	MeshTex:texture in model	soldG01.gif	MeshTex:replace with	troop04.png	181														
+Obj133: "Parent	Mech_guard 		Mech Guard 5	MeshTex:texture in model	soldG01.gif	MeshTex:replace with	troop05.png	182														
+Obj134: "Parent	Mech_guard 		Mech Guard 6	MeshTex:texture in model	soldG01.gif	MeshTex:replace with	troop06.png	183														
+Obj135: "Parent	Mech_guard 		Mech Guard 7	MeshTex:texture in model	soldG01.gif	MeshTex:replace with	troop07.png	184														
+Obj136: "Parent	Mech_guard 		Mech Guard 8	MeshTex:texture in model	soldG01.gif	MeshTex:replace with	troop08.png	185														
+Obj137: "Parent	Mech_guard 		Mech Guard 9	MeshTex:texture in model	soldG01.gif	MeshTex:replace with	troop09.png	186														
+Obj138: "Parent	Mech_guard 		Mech Guard 10	MeshTex:texture in model	soldG01.gif	MeshTex:replace with	troop10.png	187														
+Obj139: "Parent	Mech_guard 		Mech Guard 11	MeshTex:texture in model	soldG01.gif	MeshTex:replace with	troop11.png	188														
+Obj140: "Parent	MechArchFrogman 		MechArchFrogwoman 	ModelName	blkwoman	SpchVoice	vmechfems	197														
+Obj141: "Parent	MechArchFrogman 		MechArchFrogwoman 2	ModelName	SubWoman	SpchVoice	vmechfems	199														
+Obj142: "Parent	MechArcherFem 		MechArchSubFem	MeshTex:texture in model	soldGW02.gif	MeshTex:replace with	mcwgun1.png	201														
+Obj143: "Parent	MechArchSubFem		MechArchSubFem 2	MeshTex:texture in model	soldGW02.gif	MeshTex:replace with	mcwgun2.png	212														
+Obj144: "Parent	MechArchSubFem		MechArchSubFem 3	MeshTex:texture in model	soldGW02.gif	MeshTex:replace with	mcwgun3.png	214														
+Obj145: "Parent	MechSubMace 		MechSubMace 2	MeshTex:texture in model	divsol01.gif	MeshTex:replace with	divsol02.png	203														
+Obj146: "Parent	MechSubMace 		MechSubMace 4	MeshTex:texture in model	divsol01.gif	MeshTex:replace with	divsol04.png	205														
+Obj147: "Parent	MechSubMace 		MechSubMace 7	MeshTex:texture in model	divsol01.gif	MeshTex:replace with	divsol07.png	206														
+Obj148: "Parent	MechSubMace 		MechSubMace 3	MeshTex:texture in model	soldG02.gif	MeshTex:replace with	mech_m2.png	ModelName	MecSlM02													
+Obj149: "Parent	MechSubMace 3		MechSubMace 5	MeshTex:texture in model	soldG02.gif	MeshTex:replace with	mech_m1.png	224														
+Obj150: "Parent	MechMaceFem 		MechSubMaceFem 	MeshTex:texture in model	soldGW01.gif	MeshTex:replace with	mech_w1.png	InvRendType:Type	2	InvRendType:Resource	cmecsub											
+Obj151: "Parent	MechSubMaceFem 		MechSubMaceFem 3	MeshTex:texture in model	soldGW01.gif	MeshTex:replace with	mech_w3.png	225														
+Obj152: "Parent	Mech_worker 		Mech Worker 2	MeshTex:texture in model	worker.gif	MeshTex:replace with	workm1.png	173														
+Obj153: "Parent	Mech_worker_2 		Mech Worker 3	MeshTex:texture in model	worker02.gif	MeshTex:replace with	worker03.png	227														
+Obj154: "Parent	Mech_worker 		Mech Worker 7	MeshTex:texture in model	worker.gif	MeshTex:replace with	workm2.png	228														
+Obj155: "Parent	Mech_worker 		Mech Worker 8	MeshTex:texture in model	worker.gif	MeshTex:replace with	workm3.png	229														
+Obj156: "Parent	Mech_worker_2 		Mech Worker 9	MeshTex:texture in model	worker02.gif	MeshTex:replace with	worker01.png	230														
+Obj157: "Parent	Mech_worker_2 		Mech Worker 4	MeshTex:texture in model	worker02.gif	MeshTex:replace with	worker04.png	231														
+Obj158: "Parent	Mech_worker_2 		Mech Worker 5	MeshTex:texture in model	worker02.gif	MeshTex:replace with	worker05.png	232														
+Obj159: "Parent	Mech_worker_2 		Mech Worker 6	MeshTex:texture in model	worker02.gif	MeshTex:replace with	worker06.png	233														
+Obj160: "Parent	Mech_worker_2 		Mech Worker 6b	MeshTex:texture in model	worker02.gif	MeshTex:replace with	worker060.png	234														
+Obj161: "Parent	CombatBotCorpse 		BronzCombatBotCorpse	ModelName	Bronzbotd			235														
+Obj162: "Parent	CombatBot 		BronzCombatBot	ModelName	Bronzbot	Link:Corpse:BronzCombatBotCorpse		236														
+Obj163: "Parent	CombatBotCorpse 		GoldCombatBotCorpse	ModelName	ComBotD			240														
+Obj164: "Parent	CombatBot 		GoldCombatBot	ModelName	Combot	Link:Corpse:GoldCombatBotCorpse		241														
+Obj165: "Parent	CombatBotCorpse 		HumanCombatBotCorpse	ModelName	dirtbotd			252														
+Obj166: "Parent	CombatBot 		HumanCombatBot	ModelName	dirtbot	Link:Corpse:HumanCombatBotCorpse		253														
+Obj167: "Parent	MechCherub 		MechCherub 2	ModelName	mechchild2			257														
+Obj168: "Parent	Mech_Novice 		Mech_Novice7	ModelName	malenv01			258														
+Obj169: "Parent	Mech_Novice 		Mech_Novice2	ModelName	malenv02			259														
+Obj170: "Parent	Mech_Novice 		Mech_Novice3	ModelName	malenv03			260														
+Obj171: "Parent	Mech_Novice 		Mech_Novice4	ModelName	malenv04			261														
+Obj172: "Parent	Mech_Novice 		Mech_Novice5	ModelName	malenv05			262														
+Obj173: "Parent	Mech_Novice 		Mech_Novice6	ModelName	malenv06			263														
+Obj174: "Parent	Mech_Priestess 		Mech_Priestess 4	MeshTex:texture in model	MecPrW02.gif	MeshTex:replace with	mechfm01.png	264														
+Obj175: "Parent	Mech_Priestess 		Mech_Priestess 2	MeshTex:texture in model	MecPrW02.gif	MeshTex:replace with	mechfm02.png	271														
+Obj176: "Parent	Mech_Priestess 		Mech_Priestess 3	MeshTex:texture in model	MecPrW02.gif	MeshTex:replace with	mechfm03.png	278														
+Obj177: "Parent	Mech_Priest 		Mech_Priest 3	MeshTex:texture in model	MecPrs01.gif	MeshTex:replace with	mechmp01.png	286														
+Obj178: "Parent	Mech_Priest 		Mech_Priest 2	MeshTex:texture in model	MecPrs01.gif	MeshTex:replace with	mechmp02.png	294														
+Obj179: "Parent	Mech_Novice 		Mech_NoviceFem	MeshTex:texture in model	FemSEV02.gif	MeshTex:replace with	novfem01.png	ModelName	womsev02	SpchVoice	vserv2											
+Obj180: "Parent	Mech_NoviceFem	MECHANISTS END	Mech_NoviceFem 2	MeshTex:texture in model	FemSEV02.gif	MeshTex:replace with	novfem02.png	317														
+													 									
+Obj181: "Parent	Mech_guard	DarkMechanists	DarkMechGuard	ModelName	Drksol01		 	 	 	 	 	 	 									
+Obj182: "Parent	DarkMechGuard		DarkMechGuard2	ModelName	Drksol02	 	 	639	 	 	 	 	 									
+Obj183: "Parent	DarkMechGuard		DarkMechGuard3	ModelName	Drksol03	 	 	640	 	 	 	 	 									
+Obj184: "Parent	DarkMechGuard		DarkMechGuard4	ModelName	Drksol04	 	 	641	 	 	 	 	 									
+Obj185: "Parent	DarkMechGuard		DarkMechGuard5	ModelName	Drksol05	 	 	642	 	 	 	 	 									
+Obj186: "Parent	DarkC01 		DarkMechMaskGuard	ModelName	DarkC01	SpchVoice	vslave	643	 	 	 	 	 									
+Obj187: "Parent	Mech_Priest		DarkMechPriest	ModelName	Drkprs01	 	 	644	 	 	 	 	 									
+Obj188: "Parent	DarkMechPriest		DarkMechPriest2	ModelName	Drkprs02	 	 	645	 	 	 	 	 									
+Obj189: "Parent	Mech_Priestess		DarkMechPriestess	ModelName	DrmecPrW01	 	 	646	 	 	 	 	 									
+Obj190: "Parent	DarkMechPriestess		DarkMechPriestess2	ModelName	DrmecPrW02	 	 	647	 	 	 	 	 									
+Obj191: "Parent	MechSword		DarkMechSword	ModelName	DrkSw01	 	 	648	 	 	 	 	 									
+Obj192: "Parent	DarkMechSword		DarkMechSword2	ModelName	DrkSw02	 	 	649	 	 	 	 	 									
+Obj193: "Parent	MechMaceFem		DarkMechMaceFem	ModelName	DarkMW01	 	 	650	 	 	 	 	 									
+Obj194: "Parent	DarkMechMaceFem		DarkMechMaceFem2	ModelName	DarkMW02	 	 	651	 	 	 	 	 									
+Obj195: "Parent	DarkMechMaceFem		DarkMechMaceFem3	ModelName	DarkMW03	 	 	653	 	 	 	 	 									
+Obj196: "Parent	MechArcherFem		DarkMechArcherFem	ModelName	DrmecBW02	 	 	652	 	 	 	 	 									
+Obj197: "Parent	DarkMechArcherFem		DarkMechArcherFem2	ModelName	DrmecBW03	 	 	654	 	 	 	 	 									
+Obj198: "Parent	MechSword	Might need finetune	DarkMechSwordFem	ModelName	DrkSf01	SpchVoice	vmechfems	InvRendType:Resource	cmecsol	 	 	 	 									
+Obj199: "Parent	DarkMechSwordFem	Might need finetune	DarkMechSwordFem2	ModelName	DrkSf02	 	 	656	 	 	 	 	 									
+Obj200: "Parent	Mech_Novice		DarkMechNovice	ModelName	DarkNV01	 	 	657	 	 	 	 	 									
+Obj201: "Parent	DarkMechNovice		DarkMechNovice2	ModelName	DarkNV02	 	 	658	 	 	 	 	 									
+Obj202: "Parent	DarkMechNovice		DarkMechNovice3	ModelName	DarkNV03	 	 	659	 	 	 	 	 									
+Obj203: "Parent	DarkMechNovice	DarkMechEnd	DarkMechNovice4	ModelName	DarkNV04	 	 	660	 	 	 	 										
+																						
+Obj205: "Parent	ThiefUnarmed 	THIEFS	ThiefBlack	MeshTex:texture in model	ThifM01.gif	MeshTex:replace with	chiefthief.png			327												
+Obj206: "Parent	ThiefUnarmed 		ThiefUnarmedHood	MeshTex:texture in model	gar01.gif	MeshTex:replace with	ndgar01.png	ModelName	garrett													
+Obj207: "Parent	ThiefUnarmed 		ThiefOld	MeshTex:texture in model	ThifM01.gif	MeshTex:replace with	oldthief.png			329												
+Obj208: "Parent	ThiefUnarmed 		ThiefBlack2	MeshTex:texture in model	ThifM01.gif	MeshTex:replace with	prison10.png			330												
+Obj209: "Parent	ThiefMale 		ThiefMale6	MeshTex:texture in model	ThiefS01.gif	MeshTex:replace with	thief01.png			331												
+Obj210: "Parent	ThiefMale 		ThiefMale2	MeshTex:texture in model	ThiefS01.gif	MeshTex:replace with	thief02.png			332												
+Obj211: "Parent	ThiefMale 		ThiefMale3	MeshTex:texture in model	ThiefS01.gif	MeshTex:replace with	thief03.png			333												
+Obj212: "Parent	ThiefMale 		ThiefMale4	MeshTex:texture in model	ThiefS01.gif	MeshTex:replace with	thief04.png			334												
+Obj213: "Parent	ThiefMale 		ThiefMale5	MeshTex:texture in model	ThiefS01.gif	MeshTex:replace with	thief05.png			335												
+Obj214: "Parent	ThiefFemale 		ThiefFemale2	MeshTex:texture in model	ThiefW01.gif	MeshTex:replace with	thiefw04.png			336												
+Obj215: "Parent	ThiefFemale 		ThiefFemale3	MeshTex:texture in model	ThiefW01.gif	MeshTex:replace with	thiefw05.png			337												
+Obj216: "Parent	ThiefMale 		ThiefFemale4b	MeshTex:texture in model	polmosd.gif	MeshTex:replace with	thiefw04.png			338												
+Obj217: "Parent	ThiefMale 		ThiefFemale5b	MeshTex:texture in model	polmosd.gif	MeshTex:replace with	thiefw05.png			339												
+Obj218: "Parent	ThiefMale 		ThiefFemaleB1	MeshTex:texture in model	polmosd.gif	MeshTex:replace with	thiefw11.png			340												
+Obj219: "Parent	ThiefMale 		ThiefFemaleB2	MeshTex:texture in model	polmosd.gif	MeshTex:replace with	thiefw12.png			341												
+Obj220: "Parent	ThiefMale 		ThiefFemaleB3	MeshTex:texture in model	polmosd.gif	MeshTex:replace with	thiefw13.png			342												
+Obj221: "Parent	ThiefMale 		ThiefFemaleB4	MeshTex:texture in model	polmosd.gif	MeshTex:replace with	thiefw14.png			343												
+Obj222: "Parent	ThiefMale 		ThiefFemaleB5	MeshTex:texture in model	polmosd.gif	MeshTex:replace with	thiefw15.png			344												
+Obj223: "Parent	ThiefFemale 		ThiefFemaleKO	MeshTex:texture in model	ThiefW01.gif	MeshTex:replace with	kowoman.png			346												
+Obj224: "Parent	ThiefUnarmed 		ThiefGreen	MeshTex:texture in model	ThifM01.gif	MeshTex:replace with	thifm04.png			347												
+Obj225: "Parent	ThiefUnarmedHood		ThiefUnarmedHood2	MeshTex:texture in model	gar01.gif	MeshTex:replace with	unthief01.png			348												
+Obj226: "Parent	ThiefUnarmedHood		ThiefUnarmedHood3	MeshTex:texture in model	gar01.gif	MeshTex:replace with	unthief02.png			349												
+Obj227: "Parent	ThiefUnarmedHood	Thiefs End	ThiefUnarmedHood4	MeshTex:texture in model	gar01.gif	MeshTex:replace with	unthief03.png			350												
+																						
+Obj230: "Parent	sword guard 	PAGAN ARMY	PaganGuard	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	nwspag01.png	 	 	356	 	 										
+Obj231: "Parent	PaganGuard		PaganGuard2	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	nwspag02.png	 	 	357	 	 										
+Obj232: "Parent	PaganGuard		PaganGuard3	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	nwspag03.png	 	 	358	 	 										
+Obj233: "Parent	PaganGuard		PaganGuard4	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	nwspag04.png	 	 	359	 	 										
+Obj234: "Parent	PaganGuard	DedX	SwordGuardRedFemX 	ModelName	arhswd02	SpchVoice	vguard6	InvRendType:Resource	carcher1		 	 										
+Obj235: "Parent	SwordGuardRedFemX 	Not working for me	PaganGuardFem	MeshTex:texture in model	ArcSWd02.gif	MeshTex:replace with	wspag01.png	 	 	361												
+Obj236: "Parent	PaganGuardFem	Not working for me	PaganGuardFem2	MeshTex:texture in model	ArcSWd02.gif	MeshTex:replace with	wspag02.png	 	 	362	 	 										
+Obj237: "Parent	PaganGuardFem	Not working for me	PaganGuardFem3	MeshTex:texture in model	ArcSWd02.gif	MeshTex:replace with	wspag03.png	 	 	363	 	 										
+Obj238: "Parent	PaganGuardFem	Not working for me	PaganGuardFem4	MeshTex:texture in model	ArcSWd02.gif	MeshTex:replace with	wspag04.png	 	 	364	 	 										
+Obj239: "Parent	PaganGuardFem	Not working for me	PaganGuardFem5	MeshTex:texture in model	ArcSWd02.gif	MeshTex:replace with	wspag05.png	 	 	365	 	 										
+Obj240: "Parent	PaganGuardFem	Not working for me	PaganGuardFem6	MeshTex:texture in model	ArcSWd02.gif	MeshTex:replace with	wspag06.png	 	 	366	 	 										
+Obj241: "Parent	bow man 		PaganArcher	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	nwapag01.png	 	 	379	 	 										
+Obj242: "Parent	PaganArcher		PaganArcher2	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	nwapag02.png	 	 	381	 	 										
+Obj243: "Parent	PaganArcher		PaganArcher3	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	nwapag03.png	 	 	383	 	 										
+Obj244: "Parent	PaganArcher		PaganArcher4	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	nwapag04.png	 	 	385	 	 										
+Obj245: "Parent	PaganArcher		ForestArcher1	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	forarc01.png	 	 	367	 	 										
+Obj246: "Parent	PaganArcher		ForestArcher2	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	forarc02.png	 	 	368	 	 										
+Obj247: "Parent	PaganArcher		ForestArcher3	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	forarc03.png	 	 	370	 	 										
+Obj248: "Parent	PaganArcher		ForestArcher4	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	forarc04.png	 	 	371	 	 										
+Obj249: "Parent	PaganArcher		ForestArcher5	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	forarc05.png	 	 	377	 	 										
+Obj250: "Parent	PaganGuard		ForestGuard1	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	forswd01.png	 	 	355	 	 										
+Obj251: "Parent	PaganGuard		ForestGuard2	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	forswd02.png	 	 	372	 	 										
+Obj252: "Parent	PaganGuard		ForestGuard3	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	forswd03.png	 	 	373	 	 										
+Obj253: "Parent	PaganGuard		ForestGuard4	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	forswd04.png	 	 	374	 	 										
+Obj254: "Parent	PaganGuard	PAGAN ARMY END	ForestGuard5	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	forswd05.png	 	 	375	 	 										
+																						
+Obj255: "Parent	human	MAGES	MageTypesX	AI:Behavior set	Human spellcaster	Scripts:Script 0	AttackActivate	Link:~ParticleAttachement:-3075	Type:#2:joint:#10	Link:~ParticleAttachement:-3076	Type:#2:joint:#10	SpchVoice	vmage	AIRCProp	{Minimum Distance:#10:Ideal Distance:#25:Firing Delay:#3:Cover Desire:#4:Decay Speed:.0.01:Fire While Moving:#5}	MAX_HP	#15	HitPoints	#15"			
+Obj256: "Parent	MageTypesX	Add KOGas abort if you want	AirMage	ModelName	amage	EdComment	No AIProjectile - maybe you want to add KOGasStim Abort															
+Obj257: "Parent	AirMage		AirMage2	ModelName	amage2		 	 	 	390	 	 	 	 	 	 	 	 	 	 	 	 
+Obj258: "Parent	AirMage		AirMage3	ModelName	amage3		 	 	 	391	 	 	 	 	 	 	 	 	 	 	 	 
+Obj259: "Parent	AirMage		AirMage4	ModelName	amage4		 	 	 	392	 	 	 	 	 	 	 	 	 	 	 	 
+Obj260: "Parent	AirMage		AirMage5	ModelName	spemage		 	 	 	435	 	 	 	 	 	 	 	 	 	 	 	 
+Obj261: "Parent	AirMage		AirMageNovice	ModelName	nadept		 	 	 	393	 	 	 	 	 	 	 	 	 	 	 	 
+Obj262: "Parent	MageTypesX		EarthMage	ModelName	emage		 	 	 	394	 	 	 	 	 	 	 	 	 	 	 	 
+Obj263: "Parent	EarthMage		EarthMage2	ModelName	emage2		 	 	 	396	 	 	 	 	 	 	 	 	 	 	 	 
+Obj264: "Parent	EarthMage		EarthMage3	ModelName	emage3		 	 	 	397	 	 	 	 	 	 	 	 	 	 	 	 
+Obj265: "Parent	EarthMage		EarthMage4	ModelName	emage4		 	 	 	398	 	 	 	 	 	 	 	 	 	 	 	 
+Obj266: "Parent	EarthMage		EarthMage5	ModelName	spemage3		 	 	 	432	 	 	 	 	 	 	 	 	 	 	 	 
+Obj267: "Parent	EarthMage		EarthMageNovice	ModelName	neadept		 	 	 	399	 	 	 	 	 	 	 	 	 	 	 	 
+Obj268: "Parent	MageTypesX		FireMage	ModelName	fmage		 	 	 	400	 	 	 	 	 	 	 	 	 	 	 	 
+Obj269: "Parent	FireMage		FireMage2	ModelName	fmage2		 	 	 	402	 	 	 	 	 	 	 	 	 	 	 	 
+Obj270: "Parent	FireMage		FireMage3	ModelName	fmage3		 	 	 	403	 	 	 	 	 	 	 	 	 	 	 	 
+Obj271: "Parent	FireMage		FireMage4	ModelName	fmage4		 	 	 	404	 	 	 	 	 	 	 	 	 	 	 	 
+Obj272: "Parent	FireMage		FireMage5	ModelName	spemage2		 	 	 	436	 	 	 	 	 	 	 	 	 	 	 	 
+Obj273: "Parent	FireMage		FireMageNovice	ModelName	nfadept		 	 	 	407	 	 	 	 	 	 	 	 	 	 	 	 
+Obj274: "Parent	MageTypesX		WaterMage	ModelName	wmage		 	 	 	412	 	 	 	 	 	 	 	 	 	 	 	 
+Obj275: "Parent	WaterMage		WaterMage2	ModelName	wmage2		 	 	 	413	 	 	 	 	 	 	 	 	 	 	 	 
+Obj276: "Parent	WaterMage		WaterMage3	ModelName	wmage3		 	 	 	414	 	 	 	 	 	 	 	 	 	 	 	 
+Obj277: "Parent	WaterMage		WaterMage4	ModelName	wmage4		 	 	 	415	 	 	 	 	 	 	 	 	 	 	 	 
+Obj278: "Parent	WaterMage		WaterMage5	ModelName	spemage4		 	 	 	437	 	 	 	 	 	 	 	 	 	 	 	 
+Obj279: "Parent	WaterMage		WaterMageNovice	ModelName	nwadept		 	 	 	417	 	 	 	 	 	 	 	 	 	 	 	 
+Obj280: "Parent	EarthMage		EarthArchemage	ModelName	archmage1		 	 	 	421	 	 	 	 	 	 	 	 	 	 	 	 
+Obj281: "Parent	AirMage		AirArchemage	ModelName	archmage2		 	 	 	422	 	 	 	 	 	 	 	 	 	 	 	 
+Obj282: "Parent	FireMage		FireArchemage	ModelName	archmage3		 	 	 	423	 	 	 	 	 	 	 	 	 	 	 	 
+Obj283: "Parent	WaterMage		WaterArchemage	ModelName	archmage4		 	 	 	424	 	 	 	 	 	 	 	 	 	 	 	 
+Obj284: "Parent	FireMage		FireMageHaunt	ModelName	hauntmage		 	 	 	425	 	 	 	 	 	 	 	 	 	 	 	 
+Obj285: "Parent	MageTypesX		OtherMage	ModelName	oramage		 	 	 	434	 	 	 	 	 	 	 	 	 	 	 	 
+Obj286: "Parent	OtherMage		WhiteMage1	ModelName	libmage		 	 	 	428	 	 	 	 	 	 	 	 	 	 	 	 
+Obj287: "Parent	OtherMage		WhiteMage2	ModelName	libmage2		 	 	 	429	 	 	 	 	 	 	 	 	 	 	 	 
+Obj288: "Parent	WaterMage		WaterMageZombie	ModelName	zommag3		 	 	 	427	 	 	 	 	 	 	 	 	 	 	 	 
+Obj289: "Parent	FireMage		FireMageZombie	ModelName	zommag2		 	 	 	430	 	 	 	 	 	 	 	 	 	 	 	 
+Obj290: "Parent	AirMage		AirMageZombie	ModelName	zommage		 	 	 	446	 	 	 	 	 	 	 	 	 	 	 	 
+Obj291: "Parent	EarthMage		EarthMageZombie	ModelName	zommag4		 	 	 	440	 	 	 	 	 	 	 	 	 	 	 	 
+Obj292: "Parent	bow man 		MageArcher	ModelName	Magearc1		 	 	 	431	 	 	 	 	 	 	 	 	 	 	 	 
+Obj293: "Parent	MageArcher		MageArcher2	ModelName	Magearc2		 	 	 	439	 	 	 	 	 	 	 	 	 	 	 	 
+Obj294: "Parent	sword guard 		MageGuard	ModelName	MageGar2		 	 	 	442	 	 	 	 	 	 	 	 	 	 	 	 
+Obj295: "Parent	MageGuard		MageGuard3	ModelName	MageGar3		 	 	 	444	 	 	 	 	 	 	 	 	 	 	 	 
+Obj296: "Parent	MageGuard	MAGES END	MageGuard4	ModelName	MageGar4		 	 	 	445	 	 	 	 	 	 	 	 	 	 	 	 
+																						
+Obj300: "Parent	bystander	Monk Set	Monk	ModelName	oldmon01																	
+Obj301: "Parent	Monk		Monk2	ModelName	oldmon02																	
+Obj302: "Parent	Monk		Monk3	ModelName	oldmon03																	
+Obj303: "Parent	Monk		Monk5	ModelName	oldmon05																	
+Obj304: "Parent	Monk		Monk6	ModelName	oldmon06																	
+Obj305: "Parent	Monk		Monk7	ModelName	oldmon07																	
+Obj306: "Parent	Monk		DarkMonk	ModelName	darkmonk01																	
+Obj307: "Parent	DarkMonk		DarkMonk2	ModelName	darkmonk02																	
+Obj308: "Parent	DarkMonk		DarkMonk3	ModelName	darkmonk03																	
+Obj309: "Parent	DarkMonk		DarkMonk4	ModelName	darkmonk04																	
+Obj310: "Parent	DarkMonk		DarkMonk5	ModelName	darkmonk05																	
+Obj311: "Parent	DarkMonk	Monk Set End	DarkMonk6	ModelName	darkmonk06																	
+																						
+Obj315: "Parent	MaleServ2 	NOBLE SETS	Master Servant	MeshTex:texture in model	MalSev02.gif	MeshTex:replace with	malsev09.png				15											
+Obj316: "Parent	FemaleNoble 		FemaleNoble 5	MeshTex:texture in model	NobleW01.gif	MeshTex:replace with	noblew05.png				16											
+Obj317: "Parent	FemServ1 		FemServ 6	MeshTex:texture in model	FemSev03.gif	MeshTex:replace with	femsev06.png				17											
+Obj318: "Parent	MaleNoble 		Noble Lord	ModelName	sherlk						19											
+Obj319: "Parent	FemaleNoble3 		FemaleNoble 8	MeshTex:texture in model	NobleW03.gif	MeshTex:replace with	noblew08.png				20											
+Obj320: "Parent	bystander		Prostitute	ModelName	Prison09						24											
+Obj321: "Parent	MaleNoble 		Fat Lord	ModelName	fatbafford						25											
+Obj322: "Parent	FemaleNoble 		Busty Noble 1	ModelName	bnoblw01						26											
+Obj323: "Parent	FemaleNoble 		Busty Noble 2	ModelName	bnoblw02						27											
+Obj324: "Parent	FemaleNoble 		Busty Noble 3	ModelName	bnoblw03						28											
+Obj325: "Parent	MaleNoble 		Noble Lord 2	ModelName	drossi						29											
+Obj326: "Parent	FemZombie		Fem 	ModelName	ladygrey						33											
+Obj327: "Parent	MaleNoble 		Medici 1	ModelName	medici01						34											
+Obj328: "Parent	MaleNoble 		Medici 2	ModelName	medici02						35											
+Obj329: "Parent	MaleNoble 		Medici 3	ModelName	medici03						36											
+Obj330: "Parent	MaleNoble 		Tudor Noble	ModelName	tudornoble						38											
+Obj331: "Parent	FemaleNoble 		Tudor Noble F1	ModelName	tudorw01						39											
+Obj332: "Parent	FemaleNoble 		Tudor Noble F2	ModelName	tudorw02						40											
+Obj333: "Parent	FemaleNoble 		Tudor Noble F3	ModelName	tudorw03						41											
+Obj334: "Parent	MaleNoble 	Fishy guy	Noble Humble	ModelName	throne						316											
+Obj335: "Parent	FemaleNoble 		FemaleNoble 18	ModelName	NobleW18						318											
+Obj336: "Parent	FemaleNoble 		FemaleNoble 12	ModelName	NobleW12						319											
+Obj337: "Parent	MaleNoble 		Green Noble	ModelName	fop						320											
+Obj338: "Parent	Servant	Fishy too	InnKeeper	ModelName	InnKeep						321											
+Obj339: "Parent	MaleNoble 		MaleNoble8	MeshTex:texture in model	NobleM01.gif	MeshTex:replace with	noble08.png				322											
+Obj340: "SKIP	MaleServ1 	Red Skins from screenshot missing in pack. SKIPPED	ServInUniform																			
+Obj341: "Parent	aristo		NobleBoy	MeshTex:texture in model	NobleM04.gif	MeshTex:replace with	boy01.png	CretScale	.0.85	ModelName	noblem04											
+Obj342: "Parent	NobleBoy		NobleBoy2	MeshTex:texture in model	NobleM04.gif	MeshTex:replace with	boy02.png			352												
+Obj343: "Parent	NobleBoy		NobleBoy3	MeshTex:texture in model	NobleM04.gif	MeshTex:replace with	boy03.png			353												
+Obj344: "Parent	NobleBoy		NobleBoy4	MeshTex:texture in model	NobleM04.gif	MeshTex:replace with	boy04.png			354												
+Obj345: "Parent	MaleNoble 	Bowie	Bowie	ModelName	bowie																	
+Obj346: "Parent	MaleServ2 	BYSTANDER PACK	PlainServant	ModelName	Mmserf01																	
+Obj347: "Parent	PlainServant		PlainServant2	ModelName	Mmserf02																	
+Obj348: "Parent	PlainServant		PlainServant3	ModelName	Mmserf03																	
+Obj349: "Parent	FemServ1 		PlainServantFem	ModelName	femSerf01																	
+Obj350: "Parent	PlainServantFem		PlainServantFem2	ModelName	femSerf02																	
+Obj351: "Parent	Master Servant	Archetype from NobleSet	Master Servant2	ModelName	UniForm1																	
+Obj352: "Parent	Master Servant		Master Servant3	ModelName	UniForm2																	
+Obj353: "Parent	bystander 		SinisterGuy	ModelName	UniForm3																	
+Obj354: "Parent	SinisterGuy	Bystander Pack END	SinisterGuy2	ModelName	UniForm4																	
+									0													
+Obj355: "Parent	MaleNoble 	CHRISTMAS PACK	Santa	ModelName	santa																	
+Obj356: "Parent	Santa	Needs new Voice	Elf	ModelName	elf01																	
+Obj357: "Parent	Elf		Elf 2	ModelName	elf02																	
+Obj358: "Parent	Elf	Christmas End	Elf 3	ModelName	elf03																	
+																						
+Obj360: "Parent	sword guard	RoyalGuards	Royal Guard	MeshTex:texture in model	Spolic01.gif	MeshTex:replace with	swgad35.png	ModelName	cop01		18											
+Obj361: "Parent	Royal Guard		Royal Guard A2	MeshTex:texture in model	police02.gif	MeshTex:replace with	swgad50.png	ModelName	cop02		23											
+Obj362: "Parent	Royal Guard		Royal Guard A3	MeshTex:texture in model	police02.gif	MeshTex:replace with	swgad52.png	ModelName	cop02		43											
+Obj363: "Parent	Royal Guard		Royal Guard A4	MeshTex:texture in model	police02.gif	MeshTex:replace with	swgad59.png	ModelName	cop02		65											
+Obj364: "Parent	bow man 		Royal Archer	MeshTex:texture in model	policA01.gif	MeshTex:replace with	arc1y.png	ModelName	coparc01													
+Obj365: "Parent	Royal Archer		Royal Archer A2	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	arc2.png	ModelName	Archer01													
+Obj366: "Parent	Royal Archer		Royal Archer A3	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	arc3.png	ModelName	Archer01													
+Obj367: "Parent	Royal Archer		Royal Archer A4	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	arc4.png	ModelName	Archer01													
+Obj368: "Parent	Royal Archer	Neutral	Royal Archer A5	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	nolion1.png	ModelName	Archer01													
+Obj369: "Parent	Royal Archer	Neutral	Royal Archer A6	MeshTex:texture in model	policA01.gif	MeshTex:replace with	nolion2.png	ModelName	coparc01													
+Obj370: "Parent	Royal Archer		Royal Archer B1	MeshTex:texture in model	policA01.gif	MeshTex:replace with	grfarc01.png	ModelName	coparc01													
+Obj371: "Parent	Royal Archer		Royal Archer B2	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	grfarc02.png	ModelName	Archer01													
+Obj372: "Parent	Royal Guard		Royal Guard B	MeshTex:texture in model	SwGard02.gif	MeshTex:replace with	grfgar03.png	ModelName	SWGard02													
+Obj373: "Parent	Royal Guard B		Royal Guard B2	MeshTex:texture in model	Spolic01.gif	MeshTex:replace with	grfgar02.png	ModelName	cop01		122											
+Obj374: "Parent	Royal Guard B		Royal Guard B4	MeshTex:texture in model	SwGard02.gif	MeshTex:replace with	grfgar04.png				123											
+Obj375: "Parent	Royal Guard B		Royal Guard B5	MeshTex:texture in model	SwGard02.gif	MeshTex:replace with	grfgar05.png				124											
+Obj376: "Parent	Royal Guard B		Royal Guard B6	MeshTex:texture in model	SwGard02.gif	MeshTex:replace with	grfgar06.png				125											
+Obj377: "Parent	Royal Guard B		Royal Guard B7	MeshTex:texture in model	SwGard02.gif	MeshTex:replace with	grfgar07.png				126				 	 	 	 	 	 	 	 
+Obj378: "Parent	Royal Guard B	RoyalEnd	Royal Guard B8	MeshTex:texture in model	SwGard02.gif	MeshTex:replace with	grfgar08.png				66				 	 	 	 	 	 	 	 
+Obj379: "Parent	sword guard 		SwordGuard 2	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	swgard56.png				67				 	 	 	 	 	 	 	 
+Obj380: "Parent	sword guard 		SwordGuard 3	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	swgard68.png				68				 	 	 	 	 	 	 	 
+Obj381: "Parent	sword guard 		SwordGuard 4	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	swgard70.png				69				 	 	 	 	 	 	 	 
+Obj382: "Parent	sword guard 		SwordGuard 5	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	swgard56w.png				70											
+Obj383: "Parent	sword guard 		SwordGuard 6	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	swgard68w.png				71				 	 	 	 	 	 	 	 
+Obj384: "Parent	sword guard 		SwordGuard 7	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	swgard70w.png				72				 	 	 	 	 	 	 	 
+Obj385: "Parent	sword guard 		SwordGuard 8	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	swgard72w.png								 	 	 	 	 	 	 	 
+Obj386: "Parent	bow man 		Archer 7	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	archer07.png								 	 	 	 	 	 	 	 
+Obj387: "Parent	bowman2 		Archer 8	MeshTex:texture in model	Archer02.gif	MeshTex:replace with	archer08.png	106							 	 	 	 	 	 	 	 
+Obj388: "Parent	sword guard 		Red Guard	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	rdgard01.png	143							 	 	 	 	 	 	 	 
+Obj389: "Parent	Red Guard		Red Guard2	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	rdgard02.png	144							 	 	 	 	 	 	 	 
+Obj390: "Parent	Red Guard		Red Guard3	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	rdgard03.png	145							 	 	 	 	 	 	 	 
+Obj391: "Parent	Red Guard		Red Guard4	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	rdgard04.png	146							 	 	 	 	 	 	 	 
+Obj392: "Parent	Red Guard		Red Guard5	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	rdgard05.png	147							 	 	 	 	 	 	 	 
+Obj393: "Parent	Red Guard		Red Guard8	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	arcswd08.png	112							 	 	 	 	 	 	 	 
+Obj394: "Parent	Red Guard		Red Guard9	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	arcswd09.png	113							 	 	 	 	 	 	 	 
+Obj395: "Parent	bow man 	EmblemFreeGuards	GreenPurpArcher	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	noarc01.png			536					 	 	 	 	 	 	 	 
+Obj396: "Parent	GreenPurpArcher		GreenPurpArcher2	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	noarc02.png	 	 	540					 	 	 	 	 	 	 	 
+Obj397: "Parent	GreenPurpArcher		GreenPurpArcher3	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	noarc03.png	 	 	543					 	 	 	 	 	 	 	 
+Obj398: "Parent	sword guard 		GreenPurpGuard	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	nogad01.png	 	 	544					 	 	 	 	 	 	 	 
+Obj399: "Parent	GreenPurpGuard		GreenPurpGuard2	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	nogad02.png	 	 	545					 	 	 	 	 	 	 	 
+Obj400: "Parent	GreenPurpGuard		GreenPurpGuard3	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	nogad03.png	 	 	546					 	 	 	 	 	 	 	 
+Obj401: "Parent	GreenPurpGuard		GreenPurpGuard4	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	nogad05.png	 	 	548					 	 	 	 	 	 	 	 
+Obj402: "Parent	bow man 		GreenGreyArcher	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	frearc01.png	 	 													
+Obj403: "Parent	GreenGreyArcher		GreenGreyArcher2	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	frearc02.png	 	 	564												
+Obj404: "Parent	GreenGreyArcher		GreenGreyArcher3	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	frearc03.png															
+Obj405: "Parent	sword guard 		GreenGreyGuard	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	fregad01.png	 	 	582												
+Obj406: "Parent	GreenGreyGuard		GreenGreyGuard2	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	fregad02.png	 	 	583												
+Obj407: "Parent	GreenGreyGuard		GreenGreyGuard3	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	fregad03.png	 	 	584												
+Obj408: "Parent	GreenGreyGuard		GreenGreyGuard4	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	fregad04.png	 	 	585												
+Obj409: "Parent	GreenGreyGuard	EmblemFreeGuards END	GreenGreyGuard5	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	fregad05.png	 	 	586												
+																						
+	ZombieTypes		ZombieChild	MeshTex:texture in model	pagChi01.gif	MeshTex:replace with	celest01.png	ModelName	PaganC01													
+	FemZombie 		FemZombie 2	ModelName	FemSevZ2	74																
+	FemZombie 		FemZombie 3	ModelName	FemSevZ3	75																
+	FreshZombie 		FreshZombie 2	ModelName	MalSev02z	76																
+	Zombie 		Zombie 3a	MeshTex:texture in model	Zomb03a.gif	MeshTex:replace with	zomb03a.png			77												
+	Zombie 		Zombie 3b	MeshTex:texture in model	Zomb03a.gif	MeshTex:replace with	zomb03b.png			78												
+	Zombie 		Zombie 4	MeshTex:texture in model	Zomb03a.gif	MeshTex:replace with	zomb034.png			79												
+	Zombie 		Zombie 5	MeshTex:texture in model	Zomb03a.gif	MeshTex:replace with	zomb035.png			80												
+	Zombie 		Zombie 6	MeshTex:texture in model	Zomb03a.gif	MeshTex:replace with	zomb036.png			81				 								
+	ZombieTypes		ZombieMonk	ModelName	zomon01					82				 								
+	ZombieMonk		ZombieMonk2	ModelName	zomon03					83				 								
+	ZombieMonk		ZombieMonk3	ModelName	zomon02					84				 								
+	ZombieMonk		ZombieMonk4	ModelName	zomon04					85				 								
+	ZombieMonk		ZombieMonk5	ModelName	zomon05					86												
+	FreshZombie 		ServZomb	ModelName	malsev07z					87				 								
+	ZombieTypes		KeeperZombie	ModelName	keepzom					89				 								
+	FemZombie 		TorturedZombieF	ModelName	zomsar					90				 								
+	bow man 	PROPS,STIMS	Zombie Archer	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	arczomd01.png	Creature:Type	11					 								
+	Zombie Archer	PROPS	Zombie Archer 2	MeshTex:texture in model	Archer01.gif	MeshTex:replace with	arczom02.png			324				 								
+	swordsman	PROPS,STIMS	Zombie Guard	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	arczom03.png	Creature:Type	11					 								
+	Zombie Guard	PROPS	Zombie Guard 2	MeshTex:texture in model	SwGard01.gif	MeshTex:replace with	arczom04.png			326				 								
+														 								
+														 								
+														 								
+														 								
+														 								
+														 								
+														 								
+														 								
+														 								
+														 								
+														 								
+														 								
+	Haunt 	NecroBobStart	HauntB1	MeshTex:texture in model	Haunt01.gif	MeshTex:replace with	bhaunt1.png	 	 	447	 	 	 	 	 	 	 	 	 	 	 	 
+	TreeBeast 	Whats with that guy?	ZombieBeastNoble	MeshTex:texture in model	NobleM04.gif	MeshTex:replace with	bwiseau.png	ModelName	noblem04	449	 	 	 	 	 	 	 	 	 	 	 	 
+	Haunt 		HauntB2	MeshTex:texture in model	Haunt01.gif	MeshTex:replace with	bhaunt2.png	 	 	451	 	 	 	 	 	 	 	 	 	 	 	 
+	Haunt 		HauntB3	MeshTex:texture in model	Haunt01.gif	MeshTex:replace with	bhaunt3.png	 	 	454	 	 	 	 	 	 	 	 	 	 	 	 
+	Haunt 		HauntB4	MeshTex:texture in model	Haunt01.gif	MeshTex:replace with	bhaunt4.png	 	 	456	 	 	 	 	 	 	 	 	 	 	 	 
+	Haunt 		HauntB5	MeshTex:texture in model	Haunt01.gif	MeshTex:replace with	bhaunt5.png	 	 	458	 	 	 	 	 	 	 	 	 	 	 	 
+	Haunt 		HauntB6	MeshTex:texture in model	Haunt01.gif	MeshTex:replace with	bhaunt6.png	 	 	460	 	 	 	 	 	 	 	 	 	 	 	 
+	Haunt 		HauntB7	MeshTex:texture in model	Haunt01.gif	MeshTex:replace with	bhaunt7.png	 	 	462	 	 	 	 	 	 	 	 	 	 	 	 
+	Haunt 		HauntB8	MeshTex:texture in model	Haunt01.gif	MeshTex:replace with	bhaunt8.png	 	 	467	 	 	 	 	 	 	 	 	 	 	 	 
+	Haunt 		HauntB9	MeshTex:texture in model	Haunt01.gif	MeshTex:replace with	bhaunt9.png	 	 	471	 	 	 	 	 	 	 	 	 	 	 	 
+	Haunt 		HauntC	MeshTex:texture in model	Haunt01.gif	MeshTex:replace with	bhauntr.png	 	 	474	 	 	 	 	 	 	 	 	 	 	 	 
+	Zombie 		MechPriestZombie	MeshTex:texture in model	MecPrs01.gif	MeshTex:replace with	bzom1.png	ModelName	mecprs01	 	 	 	 	 	 	 	 	 	 	 	 	 
+	MechPriestZombie		MechPriestZombie2	MeshTex:texture in model	MecPrs01.gif	MeshTex:replace with	bzom2.png		 	479	 	 	 	 	 	 	 	 	 	 	 	 
+	MechPriestZombie		MechPriestZombie3	MeshTex:texture in model	MecPrs01.gif	MeshTex:replace with	bzom3.png		 	480	 	 	 	 	 	 	 	 	 	 	 	 
+	MechPriestZombie		MechPriestZombie4	MeshTex:texture in model	MecPrs01.gif	MeshTex:replace with	bzom4.png			501				 	 	 	 	 	 	 	 	 
+	FemaleNoble 		FemaleGhost	MeshTex:texture in model	NobleW01.gif	MeshTex:replace with	bghost1b.png	SpchVoice	vappar	RenderAlpha	 .0.75	ExtraLight:Amount (-1..1)	.0.5"									
+	FemaleGhost		FemaleGhost2	MeshTex:texture in model	NobleW01.gif	MeshTex:replace with	bghost1.png	 	 	469	 	 	 	 	 	 	 	 	 	 	 	 
+	FemZombie 		FemZombieB1	MeshTex:texture in model	Zomb02.gif	MeshTex:replace with	bzomf1.png	 	 	481	 	 	 	 	 	 	 	 	 	 	 	 
+	FemZombie 		FemZombieB1b	MeshTex:texture in model	Zomb02.gif	MeshTex:replace with	bzomf1b.png	 	 	482	 	 	 	 	 	 	 	 	 	 	 	 
+	FemZombie 		FemZombieB3	MeshTex:texture in model	Zomb02.gif	MeshTex:replace with	bzomf2.png	 	 	483	 	 	 	 	 	 	 	 	 	 	 	 
+	FemZombie 		FemZombieB3b	MeshTex:texture in model	Zomb02.gif	MeshTex:replace with	bzomf2b.png	 	 	486	 	 	 	 	 	 	 	 	 	 	 	 
+	FemZombie 		FemZombieB2	MeshTex:texture in model	Zomb02.gif	MeshTex:replace with	bzomf3.png	 	 	487	 	 	 	 	 	 	 	 	 	 	 	 
+	FemZombie 		FemZombieB2b	MeshTex:texture in model	Zomb02.gif	MeshTex:replace with	bzomf3b.png	 	 	488	 	 	 	 	 	 	 	 	 	 	 	 
+	FreshZombie 		FreshZombieB1	MeshTex:texture in model	Zomb01.gif	MeshTex:replace with	bzomm1.png	 	 	489	 	 	 	 	 	 	 	 	 	 	 	 
+	FreshZombie 		FreshZombieB1b	MeshTex:texture in model	Zomb01.gif	MeshTex:replace with	bzomm1b.png	 	 	492	 	 	 	 	 	 	 	 	 	 	 	 
+	FreshZombie 		FreshZombieB3	MeshTex:texture in model	Zomb01.gif	MeshTex:replace with	bzomm2.png	 	 	493	 	 	 	 	 	 	 	 	 	 	 	 
+	FreshZombie 		FreshZombieB3b	MeshTex:texture in model	Zomb01.gif	MeshTex:replace with	bzomm2b.png	 	 	494	 	 	 	 	 	 	 	 	 	 	 	 
+	FreshZombie 		FreshZombieB2	MeshTex:texture in model	Zomb01.gif	MeshTex:replace with	bzomm3.png	 	 	495	 	 	 	 	 	 	 	 	 	 	 	 
+	FreshZombie 	NecroBobZombieEnd	FreshZombieB2b	MeshTex:texture in model	Zomb01.gif	MeshTex:replace with	bzomm3b.png	 	 	498	 	 	 	 	 	 	 	 	 	 	 	 
+	MaleNoble 	SensutDraculaStart	Dracula	ModelName	sndracula		 	 	 	499	 	 	 	 	 	 	 	 	 	 	 	 
+	Dracula		Nosferatu	ModelName	snnosferatu		 	 	 	500	 	 	 	 	 	 	 	 	 	 	 	 
+	FemaleNoble		VampireLady	ModelName	snvamp1			 	 	505	 	 	 	 	 	 	 	 	 	 	 	 
+	VampireLady		VampireLady2	ModelName	snvamp2			 	 	508	 	 	 	 	 	 	 	 	 	 	 	 
+	VampireLady		VampireLady3	ModelName	snvamp3			 	 	509	 	 	 	 	 	 	 	 	 	 	 	 
+	Dracula		Vampire4	ModelName	snvamp4					512												
+	FemaleNoble 		Lady Elisabeta	ModelName	snelisabeta			 	 	513	 	 	 	 	 	 	 	 	 	 	 	 
+	FemaleNoble 		Lady Mina 	ModelName	snmina			 	 	514	 	 	 	 	 	 	 	 	 	 	 	 
+	sword guard		VampireGuard	ModelName	snguard			 	 	515	 	 	 	 	 	 	 	 	 	 	 	 
+	sword guard		MaskedGuard	ModelName	snthronegrd			 	 	519	 	 	 	 	 	 	 	 	 	 	 	 
+	MechArcherFem		MaskedGuardFem	ModelName	snthronegrdf			 	 	522	 	 	 	 	 	 	 	 	 	 	 	 
+	VampireGuard		VampireGuard2	ModelName	snvampguard	EdComment	Sensut used this under Haunt	 	 	527	 	 	 	 	 	 	 	 	 	 	 	 
+	VampireGuard		VampireGuard3	ModelName	snvampguard2	EdComment	Sensut used this under Haunt	 	 	533	 	 	 	 	 	 	 	 	 	 	 	 
+	sword guard		VladTepesArmed	ModelName	snvladtepessw	EdComment	Sensut used this guy under Mech Guard	 	 	534	 	 	 	 	 	 	 	 	 	 	 	 
+	MaleNoble 	SensutEnd	VladTepes	ModelName	snvladtepesua	EdComment	See also sword guard VladTepesArmed	 	 	530	 	 	 	 	 	 	 	 	 	 	 	 
+																						
+											 	 	 	 	 	 	 	 	 	 	 	 
+											 	 	 	 	 	 	 	 	 	 	 	 
+											 	 	 	 	 	 	 	 	 	 	 	 
+											 	 	 	 	 	 	 	 	 	 	 	 
+											 	 	 	 	 	 	 	 	 	 	 	 
+											 	 	 	 	 	 	 	 	 	 	 	 
+												 	 	 	 	 	 	 	 	 	 	 
+												 	 	 	 	 	 	 	 	 	 	 
+												 	 	 	 	 	 	 	 	 	 	 
+											 	 	 	 	 	 	 	 	 	 	 	 
+											 	 	 	 	 	 	 	 	 	 	 	 
+											 	 	 	 	 	 	 	 	 	 	 	 
+											 	 	 	 	 	 	 	 	 	 	 	 
+											 	 	 	 	 	 	 	 	 	 	 	 
+							 	 		549	 	 	 	 	 	 	 	 	 	 	 	 
+						 	 		 	550	 	 	 	 	 	 	 	 	 	 	 	 
+						 	 		 	551	 	 	 	 	 	 	 	 	 	 	 	 
+						 	 		 	554	 	 	 	 	 	 	 	 	 	 	 	 
+						 	 		 	555		 	 	 	 	 	 	 	 	 	 	 
+						 	 		 	556		 	 	 	 	 	 	 	 	 	 	 
+						 	 		 	557		 	 	 	 	 	 	 	 	 	 	 
+						 	 		 	558		 	 	 	 	 	 	 	 	 	 	 
+							 	 	 	565		 	 	 	 	 	 	 	 	 	 	 
+														 	 	 	 	 	 	 	 	 
+						 	 	661	 	 	 	 	 	 	 	 	 	 	 	 	 	 
+										 	 	 	 	 	 	 	 	 	 	 	 	 
+										 	 	 	 	 	 	 	 	 	 	 	 	 
+										 	 	 	 	 	 	 	 	 	 	 	 	 
+										 	 	 	 	 	 	 	 	 	 	 	 	 
+										 	 	 	 	 	 	 	 	 	 	 	 	 
+										 	 	 	 	 	 	 	 	 	 	 	 	 
+										 	 	 	 	 	 	 	 	 	 	 	 	 
+										 	 	 	 	 	 	 	 	 	 	 	 	 
+	bystander	GoT Pack	GoTGuys			 	 	672														
+	GoTGuys		GoTSam	ModelName	sam																	
+	GoTGuys		GoTJonSnow	ModelName	JonSnow	 	 	675														
+	GoTGuys		GoTEdd	ModelName	Edd	 	 	676														
+	GoTGuys		GoTSlynt	ModelName	slynt	 	 	677														
+	GoTGuys		GoTJeor1	ModelName	Jeor1	 	 	682														
+	bow man 		GoTArcher	ModelName	GOTarch01	 	 	673														
+	GoTArcher		GoTArcher2	ModelName	GOTarch02	 	 	674														
+	Grunts		GoTGuard	ModelName	GOTSWrd01	 	 	678														
+	GoTGuard		GoTGuard2	ModelName	GOTSWrd02	 	 	679														
+	GoTGuard		GoTGuard3	ModelName	GOTSWrd03	 	 	681														
+	GoTGuard	GoT END	GoTNightKing	ModelName	NightKing	 	 	680														
