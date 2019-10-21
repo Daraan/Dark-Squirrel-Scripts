@@ -7,4 +7,6 @@ ________________________________________________________________________________
 
 By design the DScript can be used as a framework for your own scripts. It provides various helpfull functions for example grabbing parameters and especially the DBaseTrap script which generally manages all the messages and universal parameters like repeats or delays for nearly all scipts included.
 
+________________
+
 Besides one or two  script ideas I'm about to say that the DScript is nearly 'finished'. So I'm open for new ideas and requests.
