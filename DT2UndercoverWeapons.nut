@@ -1,7 +1,7 @@
 #############Undercover scripts##########
-//T2 ONLY! For DScript Version v0.24+
+//T2 ONLY! For DScript Version v0.24+ and the DImUndercoverScript
 
-//IF you're not using DImUndercover I would suggest you comment everything out or delete this file.
+//IF you're NOT using DImUndercover I would suggest you comment everything out or delete this file.
 //As I'm REPLACING THE STANDARD WEAPON SCRIPTS scrips to make them suspicious
 ##Real propblem is actually the bow, while sword and blackjack can be made suspicious just by addin the property (that's all the melee scripts do here) the bow needs special handling.
 
