@@ -1,8 +1,8 @@
 /*#########################################
-DScript Version 0.30a
+DScript Version 0.30b
 Use at your liking. All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
 
-DarkUI.TextMessage("Here for fast test");
+DarkUI.TextMessage("Here for fast copy paste test");
 ##########################################*/
 
 
@@ -10,20 +10,22 @@ DarkUI.TextMessage("Here for fast test");
 
 const DtR = 0.01745			// DegToRad PI/180
 
-############Getting Parameter functions###########
-function DGetAllDescendants(at,objset)							//Emulation of the "@"-parameter. BruteForce crawl. Don't know if there is a better way.
+#######Getting Parameter functions####
+
+function DGetAllDescendants(at,objset)			//Emulation of the "@"-parameter. BruteForce crawl. Don't know if there is a better way.
 {
-foreach ( l in Link.GetAll("~MetaProp",at))
-{
-local id=LinkDest(l);
-	if (id>0){objset.append(id)}
-	else {DGetAllDescendants(id,objset)}
-}
-return objset
+	foreach ( l in Link.GetAll("~MetaProp",at))
+	{
+	local id=LinkDest(l);
+		if (id>0){objset.append(id)}
+		else {DGetAllDescendants(id,objset)}
+	}
+	return objset
 }
 
-function DCheckString(r,adv=false)
+function DCheckString(r,adv=false)				//Analysis of all given Parameters given as strings 
 {
+	// adv(anced) returns the result in an array instead of a single 
 	//handling non strings
 	switch (typeof(r))
 		{
@@ -37,6 +39,7 @@ function DCheckString(r,adv=false)
 			return r
 		}
 		
+	//Convenient sugar coding
 	switch (r)
 		{
 		case "[me]":
@@ -51,19 +54,19 @@ function DCheckString(r,adv=false)
 	local objset=[]
 	switch (r[0])
 		{
-			case '&': 
+			case '&': 		//Linked Objects of Type. Returns Array
 				foreach ( l in Link.GetAll(r.slice(1),self)){objset.append(LinkDest(l))}
 				break
 				
-			case '*': 
+			case '*': 		//Object of Type, without descendants
 				local id=0
 				r=r.slice(1)
 				
-				if (r[0]=='-')			//@-441
+				if (r[0]=='-')			//Single Archetype
 				{
 					r=r.tointeger()
 				}
-				else					//@switches
+				else					//If obj is a concrete one.
 				{
 					r=ObjID(r)
 				}
@@ -75,7 +78,7 @@ function DCheckString(r,adv=false)
 					}
 				break
 				
-			case '@':
+			case '@': //Object of Type, with descendants
 				r=r.slice(1)
 				if (r[0]=='-')			//@-441
 					{
@@ -88,12 +91,14 @@ function DCheckString(r,adv=false)
 				DGetAllDescendants(r,objset)
 				break
 				
-			case '$':
+			case '$':		//Looks for QVar variable
 				objset.append(Quest.Get(r.slice(1)))
 				break
-			case '^':
-				objset.append(Object.FindClosestObjectNamed(self, r.slice(1)))					//Not sure if this works for T1/G
-				break				
+			case '^':		//Read line below ;) Not sure if this works for T1/G
+				objset.append(Object.FindClosestObjectNamed(self, r.slice(1)))
+				break	
+			
+			//Add/Remove subset
 			case '+':
 				local ar= split(r,"+")
 				ar.remove(0)
@@ -113,19 +118,20 @@ function DCheckString(r,adv=false)
 							}
 					}
 				break
+			//  integer, float, vector check if they come as string.
 			case '#':
 				objset.append(r.slice(1).tointeger())
 				break
-			case '.':										//Not sure if this is the best operator choice.
+			case '.':				//Not sure if this is the best operator choice.
 				objset.append(r.slice(1).tofloat())
 				break
 			case '<':	//vector
 				local ar= split(r,"<,")
 				return vector(ar[1].tofloat(),ar[2].tofloat(),ar[3].tofloat())		
 			default : 
-				objset.append(r)																//problem for example +42 gives back a "42"-string which is not an object... and TurnOn can't be converted into an integer.
+				objset.append(r)	//problem for example +42 gives back a "42"-string which is not an object... and TurnOn can't be converted into an integer.
 		}
-	if (adv){return objset}else{return objset.pop()}
+	if (adv){return objset}else{return objset.pop()}	//Return an array or single 
 }
 
 
@@ -156,8 +162,10 @@ function DGetStringParam(param,def,str,adv=false,cuts=";=")				//Like the above 
 		{return DCheckString(def,adv)}
 }
 
-#######TimerData
-function DArrayToString(ar,o="+")
+/*#########TimerData###################
+Allows sending of multiple values via a timer which is save game persistent
+*/
+function DArrayToString(ar,o="+")				//Creates a long string out of your array data separated by +
 {
 	local data=""
 	local l = ar.len()-1
@@ -170,19 +178,19 @@ function DArrayToString(ar,o="+")
 	return data +=ar[l]
 }
 
-function DSetTimerDataTo(To,name,delay,...)
+function DSetTimerDataTo(To,name,delay,...)		//Target to another object
 {
 	local data = DArrayToString(vargv)
 	return SetOneShotTimer(To,name,delay,data)
 }
 
-function DSetTimerData(name,delay,...)
+function DSetTimerData(name,delay,...)			//Target is self
 {
 	local data = DArrayToString(vargv)
 	return SetOneShotTimer(name,delay,data)
 }
 
-function DGetTimerData(m,KeyValue=false)
+function DGetTimerData(m,KeyValue=false)		//Get back your data after timeout
 {	
 	local o="+"
 	if (KeyValue){o="+="}
@@ -190,7 +198,12 @@ function DGetTimerData(m,KeyValue=false)
 }
 
 
+##########################################
+
 ###########Count and Capacitor Checks#######
+/* Script activation and Capacitors are handled via Object Data, here they are set and controlled 
+ */
+
 function DCapacitorCheck(script,DN,OnOff="")
 {
 		local Capa = GetData(script+OnOff+"Capacitor")+1
@@ -220,7 +233,7 @@ function DCountCapCheck(script,DN,func)
 {
 	local abort = null
 	if (IsDataSet(script+"Capacitor")){if(DCapacitorCheck(script,DN)){abort = true}else{abort=false}}
-	if (IsDataSet(script+"OnCapacitor")&&func==1){if(DCapacitorCheck(script,DN,"On")){if (abort==null){abort = true}}else{abort=false}}						//Well this looks a bit strange but so the parameters won't interfere with each other.
+	if (IsDataSet(script+"OnCapacitor")&&func==1){if(DCapacitorCheck(script,DN,"On")){if (abort==null){abort = true}}else{abort=false}}	//Well this looks a bit strange but so the parameters won't interfere with each other.
 	if (IsDataSet(script+"OffCapacitor")&&func==0){if(DCapacitorCheck(script,DN,"Off")){if (abort==null){abort = true}}else{abort=false}}
 	if (abort){return}
 
@@ -290,7 +303,7 @@ function DBaseFunction(DN,script) //this got turned into a function so DHub can 
 	if (mssg == "ResetCount")
 		{if (IsDataSet(script+"Counter")){SetData(script+"Counter",0)}}	
 	
-if (mssg=="Timer")
+if (mssg=="Timer")		//Check if they are special timers like Capacitor Falloff or DataTimers
 	{
 		local msg = bmsg.name
 
@@ -350,7 +363,7 @@ if (mssg=="Timer")
 		}
 	
 }
-
+#################################################
 
 
 ####################################
@@ -487,9 +500,14 @@ class DRelayTrap extends DBaseTrap
 }
 
 
+#########################################################
 class DHub extends SqRootScript   //NOT A BASE SCRIPT
 {
 	/*
+	A powerful multi message script. Each incoming message can be completely handled differently. See it as multiple DRelayTraps in one object.
+	
+	
+	
 	Valuable Parameters.
 	Relay=Message you want to send
 	Target= where 			
@@ -511,7 +529,7 @@ class DHub extends SqRootScript   //NOT A BASE SCRIPT
 
 
 	/* THIS IS NOT IMPLEMENTED:
-	If DHubCount is a negative number a trap wide counter will be used. Non negative Message_Count parameters will behave normaly.
+	If DHubCount is a negative number a trap wide counter will be used. Non negative Message_Count parameters will behave normally.
 
 	NOTE: Using Message_Count with a negative values is not advised. It will not cause an error but could set a wrong starting count if that Message is the first valid one.
 	Examples:
@@ -770,79 +788,79 @@ function DoOn(DN)
 
 #########################################
 class DStdButton extends DRelayTrap
-/*Has all the StdButton features- even TrapControlFlags work. Once will lock the Object - as well as the DRelayTrap features, so basically this can save some script markers which only wait for a Button TurnOn
+/*Has all the StdButton features - even TrapControlFlags work. Once will lock the Object - as well as the DRelayTrap features, so basically this can save some script markers which only wait for a Button TurnOn
 
 Additional:
 If the button is locked the joint will not activate and the Schema specified by DStdButtonLockSound will be played, by default "noluck" the wrong lockpick sound. 
 */
 #########################################
-{
+	{
 
-###StdController
-DefOn="DIOn"
-DefOff="DIOff"
+	###StdController
+	DefOn="DIOn"
+	DefOff="DIOff"
 
-function OnBeginScript()
-   {
-      if(Property.Possessed(self,"CfgTweqJoints"))
-		Property.Add(self,"JointPos");
-	Physics.SubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);
-   }
+	function OnBeginScript()
+	   {
+		  if(Property.Possessed(self,"CfgTweqJoints"))
+			Property.Add(self,"JointPos");
+		Physics.SubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);
+	   }
 
-function OnEndScript()
-   {
-      Physics.UnsubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);
-   }
-   
-   
-   
-function ButtonPush(DN)
-   {
-         if (Property.Get(self,"Locked"))
+	function OnEndScript()
+	   {
+		  Physics.UnsubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);
+	   }
+	   
+	   
+	   
+	function ButtonPush(DN)
+	   {
+			 if (Property.Get(self,"Locked"))
+				{
+				//Sound.PlayEnvSchema(-1709,"Event Activate",self,null,eEnvSoundLoc.kEnvSoundAtObjLoc)
+				Sound.PlaySchemaAtObject(self,DGetParam("DStdButtonLockSound","noluck",DN),self)
+				return
+				}
+			Sound.PlayEnvSchema(self,"Event Activate",self,null,eEnvSoundLoc.kEnvSoundAtObjLoc)
+			ActReact.React("tweq_control",1.0,self,0,eTweqType.kTweqTypeJoints,eTweqDo.kTweqDoActivate)
+			DarkGame.FoundObject(self);
+			
+			local trapflags=0
+			local on = true
+			 if(Property.Possessed(self,"TrapFlags"))
+				trapflags=Property.Get(self,"TrapFlags");
+
+			 if((on && !(trapflags & TRAPF_NOON)) ||
+				(!on && !(trapflags & TRAPF_NOOFF)))
+			 {
+				if(trapflags & TRAPF_INVERT)
+				   on=!on;
+				//Link.BroadcastOnAllLinks(self,on?"TurnOn":"TurnOff","ControlDevice");
+				SendMessage(self,on?"DIOn":"DIOff")
+			 }
+			 if(trapflags & TRAPF_ONCE)
+				Property.SetSimple(self,"Locked",true);
+	   }
+		  
+
+
+
+	function  OnPhysCollision()
+	   {
+		  if(message().collSubmod==4)
+		  {
+			if(! (Object.InheritsFrom(message().collObj,"Avatar")
+				  || Object.InheritsFrom(message().collObj,"Creature")))
 			{
-			//Sound.PlayEnvSchema(-1709,"Event Activate",self,null,eEnvSoundLoc.kEnvSoundAtObjLoc)
-			Sound.PlaySchemaAtObject(self,DGetParam("DStdButtonLockSound","noluck",DN),self)
-			return
+			   ButtonPush(userparams());
 			}
-		Sound.PlayEnvSchema(self,"Event Activate",self,null,eEnvSoundLoc.kEnvSoundAtObjLoc)
-		ActReact.React("tweq_control",1.0,self,0,eTweqType.kTweqTypeJoints,eTweqDo.kTweqDoActivate)
-		DarkGame.FoundObject(self);
-		
-		local trapflags=0
-		local on = true
-         if(Property.Possessed(self,"TrapFlags"))
-            trapflags=Property.Get(self,"TrapFlags");
-
-         if((on && !(trapflags & TRAPF_NOON)) ||
-            (!on && !(trapflags & TRAPF_NOOFF)))
-         {
-            if(trapflags & TRAPF_INVERT)
-               on=!on;
-            //Link.BroadcastOnAllLinks(self,on?"TurnOn":"TurnOff","ControlDevice");
-            SendMessage(self,on?"DIOn":"DIOff")
-         }
-         if(trapflags & TRAPF_ONCE)
-            Property.SetSimple(self,"Locked",true);
-   }
-      
-
-
-
-function  OnPhysCollision()
-   {
-      if(message().collSubmod==4)
-      {
-        if(! (Object.InheritsFrom(message().collObj,"Avatar")
-              || Object.InheritsFrom(message().collObj,"Creature")))
-        {
-           ButtonPush(userparams());
-        }
-      }
-   }
-function OnFrobWorldEnd()
-   {
-      ButtonPush(userparams());
-   }
+		  }
+	   }
+	function OnFrobWorldEnd()
+	   {
+		  ButtonPush(userparams());
+	   }
 
 
 }
@@ -916,7 +934,7 @@ class DHitScanTrap extends DRelayTrap
 If the from object is the player the camera position is used if the To object is also the player the beam will be centered at the players view - for example to check if hes exactly facing something.
 
 The Object that was hit will receive the message specified by DHitScanTrapHitMsg. By default when any object is hit a TurnOn will be sent to CD Linked objects. Of course these can be changed via DHitScanTrapTOn and DHitScanTrapTDest.
-Alternativly if just a special set of objects should trigger a TurnOn then these can be specified via DHitScanTrapTriggers.
+Alternatively if just a special set of objects should trigger a TurnOn then these can be specified via DHitScanTrapTriggers.
 */
 
 ####################################################################
@@ -980,7 +998,7 @@ int ObjRaycast(vector from, vector to, vector & hit_location, object & hit_objec
 class DRay extends DBaseTrap
 ####################################################################
 /* This script will create one or multiple SFX effects between two objects and scale it up accordingly. The effect is something you have to design before hand ParticleBeam(-3445) is a good template. Two notes before, on the archetype the Particle Group is not active and uses a T1 only bitmap.
-NOTE: This script uses only the SFX->'Particle Launch Info'rmation therefore the X value in gravity vector in 'Particle' should be 0.
+NOTE: This script uses only the SFX->'Particle Launch Information therefore the X value in gravity vector in 'Particle' should be 0.
 
 Following parameters are used:
 DRayFrom, DRayTo	These define the start/end objects of the SFX. If the parameter is not used the script object is used)
@@ -1132,7 +1150,7 @@ class DCopyPropertyTrap extends DBaseTrap
 function DoOn(DN)
 {
 	local prop = DGetParam("DCopyPropertyTrapProperty",null,DN,1)
-	local source = DGetParam("DCopyPropertyTrapSource",self,DN,0);						//Source supports ^,&
+	local source = DGetParam("DCopyPropertyTrapSource",self,DN,0);				//Source supports ^,&
 	local target = DGetParam("DCopyPropertyTrapTarget","&ScriptParams",DN,1);
 
 	
@@ -1153,7 +1171,7 @@ class DWatchMe extends DBaseTrap
 #########################################
 {
 /*Creates AIWatchObj links from all humans when the object is created or at game start. 
-Alternativly a custom OnMessage can be defined with a DWatchMeOn="" in the Design Note.
+Alternatively a custom OnMessage can be defined with a DWatchMeOn="" in the Design Note.
 Also the targets can be changed with: DWatchMeTarget=""
  
 If the Archetype(or other ancestor) has an AI->Utility->Watch links default option it gets copied and  
@@ -1185,6 +1203,7 @@ function DoOff(DN)
 
 #########################################
 class DCompileTrap extends DBaseTrap
+/* compiles the EdComment! (Yes not design note) and runs it if you need short squirrel code */
 #########################################
 {
 function DoOn(DN)
@@ -1195,9 +1214,11 @@ function DoOn(DN)
 }
 
 
-
-#############Undercover scripts##########
+################################################
+###############Undercover scripts###############
+################################################
 //weapons scripts are in DUndercover.nut
+
 
 #########################################
 class DNotSuspAI extends DBaseTrap
@@ -1261,14 +1282,12 @@ function DoOff(DN=null)
 
 #########################################
 class DNotSuspAI3 extends DNotSuspAI
-#########################################
 {
 max = 3
 }
 
 #########################################
 class DNotSuspAI1 extends DNotSuspAI
-#########################################
 {
 max = 1
 }
@@ -1305,6 +1324,9 @@ if (message().name == "NotAware")
 
 #########################################
 class DImUndercover extends DBaseTrap
+/*
+Targeted AIs will semi ignore you. Depending on your action and mode set. See Forum post for a more detailed explanation.
+ */
 #########################################
 {
 DefOn="FrobInvEnd"
@@ -1518,6 +1540,8 @@ function DoOff(DN)
 
 #########################################
 class DHudCompass extends DBaseTrap
+/* Creates the frobbed item and tries to keep it in front of you camera. 
+*/
 #########################################
 {
 DefOn="FrobInvEnd"
@@ -1584,7 +1608,7 @@ class DDrunkPlayerTrap extends DBaseTrap
 
 function DoOn(DN)
 {
-	if (IsDataSet("DrunkTimer")){KillTimer(GetData("DrunkTimer"))}													//to prevent double activation. IsDataSet returned false so I had to use this....
+	if (IsDataSet("DrunkTimer")){KillTimer(GetData("DrunkTimer"))}		//to prevent double activation. IsDataSet returned false so I had to use this....
 
 	//strenghth 0-2 advised
 
@@ -1634,6 +1658,8 @@ function DoOff(DN=null)
 
 #########################################
 class DAddScript extends DBaseTrap
+/*
+Adds a script and DesignNote to an object. */
 #########################################
 {
 // This script can be used as a RootScript to use the DAddScriptFunc
@@ -1719,7 +1745,7 @@ DefOn="+Contained+Create+Combine"
 
 #########################################
 class DModelByCount extends DStackToQVar
-#########################################
+
 {
 
 	function DoOn(DN)
@@ -1746,6 +1772,7 @@ class DModelByCount extends DStackToQVar
 
 #########################################
 class SafeDevice extends SqRootScript
+/* The player can not interact twice with an object until its animation is finished. Basically it's to prevent midway triggering of levers which then not have sent the opposite message and will trigger again. */
 #########################################
 {
 
@@ -1756,7 +1783,7 @@ function OnFrobWorldEnd()
 
 function OnTweqComplete()
 	{
-	Object.RemoveMetaProperty(self,"FrobInert")
+		Object.RemoveMetaProperty(self,"FrobInert")
 	}
 	
 }
@@ -1768,52 +1795,52 @@ class DTPBase extends DBaseTrap
 {
 /*Base script. Has by itself no ingame use. */
 
-function DTeleportation(who,where)
-{	
-	if (Property.Possessed(who,"AI_Patrol"))							//If we are teleporting an AI that is patrolling, we start a new patrol path. Sadly a short delay is neccessary here
-	{
-		Property.SetSimple(who,"AI_Patrol",0);
-		Link.Destroy(Link.GetOne("AICurrentPatrol",who));
-		SetOneShotTimer("AddPatrol",0.2,who);
-	}
-	Object.Teleport(who,where,Object.Facing(who),0);					//where takes absolute world positions
-}
-
-function OnTimer()
-{
-	local msg = message();
-	local name = msg.name;
-	
-	if ( name == "AddPatrol")
+	function DTeleportation(who,where)
+	{	
+		if (Property.Possessed(who,"AI_Patrol"))							//If we are teleporting an AI that is patrolling, we start a new patrol path. Sadly a short delay is neccessary here
 		{
-		Property.SetSimple(msg.data,"AI_Patrol",1);	
-		//Link.Create("AICurrentPatrol", msg.data, Object.FindClosestObjectNamed(msg.data,"TrolPt"));		//Should not be necessary to force a patrol link.
+			Property.SetSimple(who,"AI_Patrol",0);
+			Link.Destroy(Link.GetOne("AICurrentPatrol",who));
+			SetOneShotTimer("AddPatrol",0.2,who);
 		}
-}	
-	
-	
-function DParameterCheck()
-{
-	local x = 0;
-	local y = 0;
-	local z = 0;
-	local DN = userparams();
+		Object.Teleport(who,where,Object.Facing(who),0);					//where takes absolute world positions
+	}
 
-        if ("DTpX" in DN)
-        {
-            x = DN.DTpX;
-        }
-        if ("DTpY" in DN)
-        {
-            y = DN.DTpY;
-        }
-        if ("DTpZ" in DN)
-        {
-            z = DN.DTpZ;
-        }
-	
-	if (x != 0 || y != 0 || z != 0){return vector(x,y,z)}else{return false}
-}
+	function OnTimer()
+	{
+		local msg = message();
+		local name = msg.name;
+		
+		if ( name == "AddPatrol")
+			{
+			Property.SetSimple(msg.data,"AI_Patrol",1);	
+			//Link.Create("AICurrentPatrol", msg.data, Object.FindClosestObjectNamed(msg.data,"TrolPt"));		//Should not be necessary to force a patrol link.
+			}
+	}	
+		
+		
+	function DParameterCheck()
+	{
+		local x = 0;
+		local y = 0;
+		local z = 0;
+		local DN = userparams();
+
+			if ("DTpX" in DN)
+			{
+				x = DN.DTpX;
+			}
+			if ("DTpY" in DN)
+			{
+				y = DN.DTpY;
+			}
+			if ("DTpZ" in DN)
+			{
+				z = DN.DTpZ;
+			}
+		
+		if (x != 0 || y != 0 || z != 0){return vector(x,y,z)}else{return false}
+	}
 
 }
 
@@ -1825,21 +1852,21 @@ class DTeleportPlayerTrap extends DTPBase
 Or moved by x,y,z values specified in Editor->Design Note via DTpX=,DTpY=,DTpZ= For example DTpX=-3.5,DTpZ=10)
 If any of the DTp_ parameters is specified and not 0 they will take priority and no ScriptParams link is used.
 */
-function DoOn(DN)
-{
-	local victim = Object.Named("Player")
-	local dest = DParameterCheck()
-	
-	if (dest != false)
+	function DoOn(DN)
 	{
-		dest =(Object.Position(victim)+dest);
-	}
-	else
-	{	
-		dest = Object.Position(self);
-	}
-		DTeleportation(victim,dest);
-	}
+		local victim = Object.Named("Player")
+		local dest = DParameterCheck()
+		
+		if (dest != false)
+		{
+			dest =(Object.Position(victim)+dest);
+		}
+		else
+		{	
+			dest = Object.Position(self);
+		}
+			DTeleportation(victim,dest);
+		}
 }
 
 #########################################
@@ -1874,60 +1901,60 @@ class DTrapTeleporter extends DTPBase
 class DPortal extends DTPBase
 #########################################
 {
-/*Any Object entering the Script Object will get teleported
-Either to another object linked via a ScriptParams link, including slight offset to make the transition seamless.
-Or moved by x,y,z values specified in Editor->Design Note via DTpX=;DTpY=;DTpZ= For example DTpX=-3.5;DTpZ=10)
-If any of the DTp_ parameters is specified and not 0 they will take priority and no ScriptParams link is used.
-*/
+	/*Any Object entering the Script Object will get teleported
+	Either to another object linked via a ScriptParams link, including slight offset to make the transition seamless.
+	Or moved by x,y,z values specified in Editor->Design Note via DTpX=;DTpY=;DTpZ= For example DTpX=-3.5;DTpZ=10)
+	If any of the DTp_ parameters is specified and not 0 they will take priority and no ScriptParams link is used.
+	*/
 
-DefOn="PhysEnter"
-target=[]
+	DefOn="PhysEnter"
+	target=[]
 
-function OnBeginScript()
-{
-	Physics.SubscribeMsg(self,ePhysScriptMsgType.kEnterExitMsg)
-}
-
-function OnEndScript()
-{
-	Physics.UnsubscribeMsg(self,ePhysScriptMsgType.kEnterExitMsg)
-}
-
-function DoOn(DN)
-{
-	target = DGetParam("DPortalTarget",message().transObj,DN,1)
-	//As PhysEnter sometimes fires twice and so a double teleport occures we make a small delay here, the rest is handled in the base script. As OnTimer() is there. :/
-	if(IsDataSet("PortalTimer"))
-     {
-		KillTimer(GetData("PortalTimer"));
-	}
-	SetData("PortalTimer",SetOneShotTimer("GoPortal", 0.1));
-
-}
-
-function OnTimer()																							//NOTE: This function shades the DTpBase equivalent. I copied the first part - base.OnTimer() would have been an alternative.
-{
-local msg = message();
-local name = msg.name;
-	
-if ( name == "AddPatrol")
-{
-	Property.SetSimple(msg.data,"AI_Patrol",1);	
-}
-
-if (name == "GoPortal") 											
-{
-	local dest = DParameterCheck();
-	if (dest == false)
-		{	
-			dest = (Object.Position(LinkDest(Link.GetOne("ScriptParams",self)))-Object.Position(self));
-		}
-	foreach (o in target)
+	function OnBeginScript()
 	{
-		DTeleportation(o, Object.Position(o)+dest);
+		Physics.SubscribeMsg(self,ePhysScriptMsgType.kEnterExitMsg)
 	}
-target.clear()
-}}
+
+	function OnEndScript()
+	{
+		Physics.UnsubscribeMsg(self,ePhysScriptMsgType.kEnterExitMsg)
+	}
+
+	function DoOn(DN)
+	{
+		target = DGetParam("DPortalTarget",message().transObj,DN,1)
+		//As PhysEnter sometimes fires twice and so a double teleport occures we make a small delay here, the rest is handled in the base script. As OnTimer() is there. :/
+		if(IsDataSet("PortalTimer"))
+		 {
+			KillTimer(GetData("PortalTimer"));
+		}
+		SetData("PortalTimer",SetOneShotTimer("GoPortal", 0.1));
+
+	}
+
+	function OnTimer()	//NOTE: This function shades the DTpBase equivalent. I copied the first part - base.OnTimer() would have been an alternative.
+	{
+		local msg = message();
+		local name = msg.name;
+			
+		if ( name == "AddPatrol")
+		{
+			Property.SetSimple(msg.data,"AI_Patrol",1);	
+		}
+
+		if (name == "GoPortal") 											
+		{
+			local dest = DParameterCheck();
+			if (dest == false)
+				{	
+					dest = (Object.Position(LinkDest(Link.GetOne("ScriptParams",self)))-Object.Position(self));
+				}
+			foreach (o in target)
+			{
+				DTeleportation(o, Object.Position(o)+dest);
+			}
+		target.clear()
+		}}
 
 }
 
@@ -1939,11 +1966,11 @@ class DEditorTrap extends SqRootScript
 #########################################
 /*
 USE WITH CAUTION - Sent messages could be permanent!
-When using the command script_reload or leaving the game mode this trap get's activated. As a failsave DEditorTrapOn=1 must be set for this to work.
+When using the command script_reload or leaving the game mode this trap gets activated. As a failsafe DEditorTrapOn=1 must be set for this to work.
 It will then sent a message specified with DEditorTrapRelay to DEditorTrapTarget. This will be IMMEDIATLY IN THE EDITOR and other (non squirrel) scripts will react as they would do ingame.
 Actions by for example NVLinkBuilder, NVMetaTrap will be executed - which is basically the reason why this script exists.
 
-Alternativly if DEditorTrapPending=1 the message will be sent when entering the game mode. BE CAREFUL everytime this script runs (script_reload, exiting game mode) it will create another message!
+Alternatively if DEditorTrapPending=1 the message will be sent when entering the game mode. BE CAREFUL every time this script runs (script_reload, exiting game mode) it will create another message!
 You can check and delete them with the command edit_scriptdata -> Posted Pending Messages.
 
 A new idea that came to my mind is that you can catch reloads with this message, as it will trigger at game start*/
