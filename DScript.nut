@@ -1,5 +1,5 @@
 /*#########################################
-DScript Version 0.30b
+DScript Version 0.30c
 Use at your liking. All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
 
 DarkUI.TextMessage("Here for fast copy paste test");
@@ -14,7 +14,7 @@ const DtR = 0.01745			// DegToRad PI/180
 
 function DGetAllDescendants(at,objset)			//Emulation of the "@"-parameter. BruteForce crawl. Don't know if there is a better way.
 {
-	foreach ( l in Link.GetAll("~MetaProp",at))
+	foreach ( l in Link.GetAll("~MetaProp",at))	//~MetaProp links are invisible in the editor but form the hirarchy of our archetypes. Counterintuitivly going from Ancestor to Descendant.
 	{
 	local id=LinkDest(l);
 		if (id>0){objset.append(id)}
@@ -23,9 +23,11 @@ function DGetAllDescendants(at,objset)			//Emulation of the "@"-parameter. Brute
 	return objset
 }
 
-function DCheckString(r,adv=false)				//Analysis of all given Parameters given as strings 
-{
-	// adv(anced) returns the result in an array instead of a single 
+
+############################################
+function DCheckString(r,adv=false)			//Analysis of all given Parameters given as strings 
+{	// adv(anced)=true returns the result in an array instead of a single entity
+	
 	//handling non strings
 	switch (typeof(r))
 		{
@@ -39,7 +41,7 @@ function DCheckString(r,adv=false)				//Analysis of all given Parameters given a
 			return r
 		}
 		
-	//Convenient sugar coding
+	//Convenient sugar code for you
 	switch (r)
 		{
 		case "[me]":
@@ -47,14 +49,14 @@ function DCheckString(r,adv=false)				//Analysis of all given Parameters given a
 		case "[source]":
 			{if (adv){return [SourceObj]}else{return SourceObj}}
 		case "":
-			{if (adv){print("DScript: Returning empty string array, that's kinda strange.");return [""]}else{return ""}}
+			{if (adv){print("DScript Warning: Returning empty string array, that's kinda strange.");return [""]}else{return ""}}
 		}
 
 	//Operator check.
 	local objset=[]
 	switch (r[0])
 		{
-			case '&': 		//Linked Objects of Type. Returns Array
+			case '&': 		//Linked Objects of &LinkType. Returns Array
 				foreach ( l in Link.GetAll(r.slice(1),self)){objset.append(LinkDest(l))}
 				break
 				
@@ -62,29 +64,29 @@ function DCheckString(r,adv=false)				//Analysis of all given Parameters given a
 				local id=0
 				r=r.slice(1)
 				
-				if (r[0]=='-')			//Single Archetype
+				if (r[0]=='-')	//Single Archetype
 				{
 					r=r.tointeger()
 				}
-				else					//If obj is a concrete one.
+				else		//If obj is a concrete one it will still work
 				{
 					r=ObjID(r)
 				}
 					
-				foreach ( l in Link.GetAll("~MetaProp",ObjID(r.slice(1))))
+				foreach ( l in Link.GetAll("~MetaProp",ObjID(r.slice(1))))	//TODO: Check this
 					{
 					id=LinkDest(l);
 					if (id>0){objset.append(id)}
 					}
 				break
 				
-			case '@': //Object of Type, with descendants
+			case '@': 		//Object of Type, with descendants. See first function above.
 				r=r.slice(1)
-				if (r[0]=='-')			//@-441
+				if (r[0]=='-')			//Example @-441
 					{
 					r=r.tointeger()
 					}
-				else					//@switches
+				else				//@switches
 					{
 					r=ObjID(r)
 					}
@@ -98,22 +100,22 @@ function DCheckString(r,adv=false)				//Analysis of all given Parameters given a
 				objset.append(Object.FindClosestObjectNamed(self, r.slice(1)))
 				break	
 			
-			//Add/Remove subset
+			// Add/Remove subset with + and +- operator
 			case '+':
 				local ar= split(r,"+")
 				ar.remove(0)
-				foreach (t in ar)
+				foreach (t in ar)	//Loops back into this function to get your specific set
 					{
 						if (t[0]!= '-')
 							{objset.extend(DCheckString(t,1))}
-						else // +- operator
+						else // +- operator, remove subset
 							{
 							local removeset = DCheckString(t.slice(1),1)
 							local idx=null
 							foreach (k in removeset)
 								{
 								idx = objset.find(k)
-								if (idx!=null) {objset.remove(idx)}
+								if (idx!=null) {objset.remove(idx)}	//TODO: THow null==null in squirrel?
 								}
 							}
 					}
@@ -122,7 +124,7 @@ function DCheckString(r,adv=false)				//Analysis of all given Parameters given a
 			case '#':
 				objset.append(r.slice(1).tointeger())
 				break
-			case '.':				//Not sure if this is the best operator choice.
+			case '.':	//Float. Not sure if this is the best operator choice.
 				objset.append(r.slice(1).tofloat())
 				break
 			case '<':	//vector
@@ -130,42 +132,45 @@ function DCheckString(r,adv=false)				//Analysis of all given Parameters given a
 				return vector(ar[1].tofloat(),ar[2].tofloat(),ar[3].tofloat())		
 			default : 
 				objset.append(r)	//problem for example +42 gives back a "42"-string which is not an object... and TurnOn can't be converted into an integer.
-		}
-	if (adv){return objset}else{return objset.pop()}	//Return an array or single 
+		}					//TODO: Where did I put the workaround? Possible with Try..catch or???
+	if (adv){return objset}else{return objset.pop()}	//Return an array or single entity
 }
 
 
 
 function DGetParam(par,def=null,DN=null,adv=false)	//Function to return parameters, returns given default value. if adv=1 an array of objects will be returned.
 {
-	if(!DN){DN=userparams()}						//The Design Note has to be passed on to a) save userparams() calls and b) this script works for artificial tables and class objects as well.
+	if(!DN){DN=userparams()}			//The Design Note has to be passed on to a) save userparams() calls and b)for this function to work for artificial tables and class objects as well.
 	if (par in DN)
 		{
-		return DCheckString(DN[par],adv)			//will return arrayed or single objs(adv=1).
+		return DCheckString(DN[par],adv)	//will return arrayed or single objs(adv=1).
 		}
-	else 
+	else 						//Default Value
 		{	
 		return DCheckString(def,adv)
 	}
 }
 
 
-function DGetStringParam(param,def,str,adv=false,cuts=";=")				//Like the above function but works with strings instead of a table. To get an (object) array set adv=1.
+function DGetStringParam(param,def,str,adv=false,cuts=";=")	//Like the above function but works with strings instead of a table. To get an (object) array set adv=1.
 {
 	str=str.tostring()
-	local div = split(str,cuts);
+	local div = split(str,cuts);				//Puts the values into arrays which where before sperated by your characters specified by cuts
 	local key = div.find(param);
 
 	if (key)
-		{return DCheckString(div[key+1],adv)}
+		{return DCheckString(div[key+1],adv)}		//Parameter=Value form [...ParameterIndex,ParameterIndex+1,...] indexed paris.
 	else 
 		{return DCheckString(def,adv)}
 }
 
 /*#########TimerData###################
-Allows sending of multiple values via a timer which is save game persistent
+Q: Problem how to carry over data from one Script to another when there is a delay? A: Save as a global variable. 
+PROBLEM: That data is LOST when the game is gets closed and reloaded.
+
+This functions allow the sending and retrieving of multiple values via a timer which is save game persistent.
 */
-function DArrayToString(ar,o="+")				//Creates a long string out of your array data separated by +
+function DArrayToString(ar,o="+")			//Creates a long string out of your array data separated by +
 {
 	local data=""
 	local l = ar.len()-1
@@ -173,12 +178,12 @@ function DArrayToString(ar,o="+")				//Creates a long string out of your array d
 	
 	for(local i = 0; i< l; i++)
 	{
-		data += ar[i]+o
+		data += ar[i]+o			//appends your next indexed value and your divide operator
 	}
-	return data +=ar[l]
+	return data +=ar[l]			//Returns your string
 }
 
-function DSetTimerDataTo(To,name,delay,...)		//Target to another object
+function DSetTimerDataTo(To,name,delay,...)		//Target to another object. '...' Means it takes an unspecified amount of data -> vargv
 {
 	local data = DArrayToString(vargv)
 	return SetOneShotTimer(To,name,delay,data)
@@ -192,28 +197,27 @@ function DSetTimerData(name,delay,...)			//Target is self
 
 function DGetTimerData(m,KeyValue=false)		//Get back your data after timeout
 {	
-	local o="+"
-	if (KeyValue){o="+="}
-	return split(m,o)
+	local o="+"					
+	if (KeyValue){o="+="}				//Is your data only seperated by + or by Key1=Value1+Key2=....
+	return split(m,o)				//low prio todo: While IMO not necessary add general operator option.
 }
 
 
 ##########################################
 
-###########Count and Capacitor Checks#######
-/* Script activation and Capacitors are handled via Object Data, here they are set and controlled 
- */
+###########Section Counter and Capacitor Checks#######
+/* Script activation Count and Capacitors (activations in a limited time frame) are handled via Object Data, in this section they are set and controlled.*/
 
-function DCapacitorCheck(script,DN,OnOff="")
+function DCapacitorCheck(script,DN,OnOff="")	//Capacitors only, general "" or "On/Off" specific
 {
-		local Capa = GetData(script+OnOff+"Capacitor")+1
-			//print(script+"Capa= "+Capa+"/"+DGetParam(script+OnOff+"Capacitor",null,DN)+"  Timer:"+DGetParam(script+OnOff+"CapacitorFalloff",null,DN))
-		if (Capa == DGetParam(script+OnOff+"Capacitor",0,DN).tointeger())									//DHub compability
+		local Capa = GetData(script+OnOff+"Capacitor")+1	//NewValue
+		//DEBUG print(script+"Capa= "+Capa+"/"+DGetParam(script+OnOff+"Capacitor",null,DN)+"  Timer:"+DGetParam(script+OnOff+"CapacitorFalloff",null,DN))
+		if (Capa == DGetParam(script+OnOff+"Capacitor",0,DN).tointeger())	//Reached Threshold?										//DHub compability
 		{
-			SetData(script+OnOff+"Capacitor",0)
+			SetData(script+OnOff+"Capacitor",0)				//Reset Capacitor and terminate now unnecessary FalloffTimer
 			if (DGetParam(script+OnOff+"CapacitorFalloff",false,DN))
 				{KillTimer(ClearData(script+OnOff+"FalloffTimer"))}
-			return null
+			return null	//Don't abort
 		}
 		else
 		{
@@ -223,152 +227,158 @@ function DCapacitorCheck(script,DN,OnOff="")
 					SetData(script+OnOff+"FalloffTimer",SetOneShotTimer(script+"Falloff",DGetParam(script+OnOff+"CapacitorFalloff",false,DN).tofloat(),OnOff))
 				}
 			SetData(script+OnOff+"Capacitor",Capa)
-			return true
+			return true	//Abort
 		}
 		
 }
 
 
-function DCountCapCheck(script,DN,func)
+function DCountCapCheck(script,DN,func)		//Does all the checks and delays before the execution of a Script
 {
+	//Checks if a Capacitor is set and if it is reached with the function above. func=1 means a TurnOn
+	//Strange to look at it with the null statements I know. But this setup enables that the three different Setups can't interfere with each other.
+	//Abuses (null==null)==true, Once abort is false it can't be true anymore, while beeing null(undecided) it can.
+	//TODO Check if this is still true, and 
 	local abort = null
 	if (IsDataSet(script+"Capacitor")){if(DCapacitorCheck(script,DN)){abort = true}else{abort=false}}
-	if (IsDataSet(script+"OnCapacitor")&&func==1){if(DCapacitorCheck(script,DN,"On")){if (abort==null){abort = true}}else{abort=false}}	//Well this looks a bit strange but so the parameters won't interfere with each other.
+	if (IsDataSet(script+"OnCapacitor")&&func==1){if(DCapacitorCheck(script,DN,"On")){if (abort==null){abort = true}}else{abort=false}}
 	if (IsDataSet(script+"OffCapacitor")&&func==0){if(DCapacitorCheck(script,DN,"Off")){if (abort==null){abort = true}}else{abort=false}}
-	if (abort){return}
+	if (abort){return}	//If abort changed to true.
 
-
-
-	if (IsDataSet(script+"Counter"))
+	
+	//Is a Counter Set?
+	if (IsDataSet(script+"Counter")) //low prio todo: add DHub compability	
 		{
-			local CountOnly = DGetParam(script+"CountOnly",0,DN)
-			if (CountOnly == 0 || CountOnly+1 == func +2)
-				{
-				local Count = SetData(script+"Counter",GetData(script+"Counter")+1)
-				if (Count > DGetParam(script+"Count",0,DN).tointeger()){return}}											//DHub compability
+		local CountOnly = DGetParam(script+"CountOnly",0,DN)	//Count only ONs or OFFs
+//TODO!!!: Did I do this wrong? func+1=Count. 1n1 and 2n0; Count+func==2, or do just thing wrongly currently
+		if (CountOnly == 0 || CountOnly+1 == func +2)		//Disabled or On(param1+1)==On(func1+2), Off(param2+1)==Off(func0+2); 
+			{
+			local Count = SetData(script+"Counter",GetData(script+"Counter")+1)
+			if (Count > DGetParam(script+"Count",0,DN).tointeger()){return} //Over the Max abort. 
+			}	
 		}
 
 		
-	//Negative Fail chance for after Count/Capa check
+	//Use a Negative Fail chance to increase Counter and Capacitor even if it could fail later.
 	local FailChance = DGetParam(script+"FailChance",0,DN).tointeger()
 	if (FailChance < 0) {if (FailChance <= Data.RandInt(-100,0)){return}}
 
 
-	// All Checks green? Then Go or delay it?
-
+	// All Checks green! Then Go or Delay it?
 	local d = DGetParam(script+"Delay",false,DN).tofloat()
 	if (d)
 		{
-		//Stop old timers if wanted.
+		//Stop old timers if ExlusiveDelay is set.
 		if (IsDataSet(script+"DelayTimer")&& DGetParam(script+"ExclusiveDelay",false,DN))
 			{
 				KillTimer(GetData(script+"DelayTimer"))
 			}
 		
-		if (IsDataSet(script+"InfRepeat"))					//Stop Inf Repeat
+		//Stop Infinite Repeat
+		if (IsDataSet(script+"InfRepeat"))	
 		{
-				if (GetData(script+"InfRepeat") != func)
-					{
-						KillTimer(GetData(script+"DelayTimer"))
-						ClearData(script+"DelayTimer")
-						ClearData(script+"InfRepeat")
-					}
+			if (GetData(script+"InfRepeat") != func) //Inverse Command received => end repeat and clean up. Same func gets ignored -> Activation is solely handled via the reapeating DelayTimer.
+			{
+				KillTimer(GetData(script+"DelayTimer"))
+				ClearData(script+"DelayTimer")
+				ClearData(script+"InfRepeat")
+			}
 		}
 		else
+		//Start DelayTimer -> Above timer message handle activation when received.
 		{
-
 			local r=DGetParam(script+"Repeat",0,DN).tointeger()
-
-			if (r==-1){SetData(script+"InfRepeat",func)}
-			
+			if (r==-1){SetData(script+"InfRepeat",func)}	//If infinite repats store if they are ON or OFF.
+			//Store the Timer inside the ObjectsData and start it with all necessary information inside the timers name.
 			SetData(script+"DelayTimer",DSetTimerData(script+"Delayed",d,func,SourceObj,r,d))
 		}
 		}
-	else
+	else	//No Delay. Excute the scripts ON or OFF functions.
 		{if (func){this.DoOn(DN)}else{this.DoOff(DN)}}
 
 }
-
-
 ##########
 
-##########
-
-function DBaseFunction(DN,script) //this got turned into a function so DHub can use it.
+#################################
+function DBaseFunction(DN,script) //this got turned into a global function so DHub can use it.
+#################################
 {
-##Special Messages
+##Handle Special Messages
 	local bmsg=message()
 	local mssg =bmsg.message
 
-	if (mssg == "ResetCount")
+	if (mssg == "ResetCount")	//ResetCount is not script specific! low prio todo: do
 		{if (IsDataSet(script+"Counter")){SetData(script+"Counter",0)}}	
 	
-if (mssg=="Timer")		//Check if they are special timers like Capacitor Falloff or DataTimers
-	{
-		local msg = bmsg.name
+	if (mssg=="Timer")		//Check if they are special timers like Capacitor Falloff or DataTimers
+		{
+		local msg = bmsg.name	//Name of the Timer
 
-		if (msg==script+"Falloff")
+		if (msg==script+"Falloff") //Ending FalloffCapacitor Timer. This is script specific.
 			{
-				local cfo = bmsg.data																//Check between On/Off/""Falloff
+				local cfo = bmsg.data	//ON or OFF or ""															//Check between On/Off/""Falloff
 				local dat=GetData(script+cfo+"Capacitor")-1
-				if (dat>-1)
-					{SetData(script+cfo+"Capacitor",dat)
+				if (dat>-1)					//low prio TODO: One 'wasted' timer?
+					{
+					SetData(script+cfo+"Capacitor",dat)	//Reduce Capacitor by 1 and start a new Timer. The Timer(ID) is stored to catch it.
 					SetData(script+cfo+"FalloffTimer",SetOneShotTimer(script+"Falloff",DGetParam(script+cfo+"CapacitorFalloff",0,DN).tofloat(),cfo))}
 				else 
 					{
-					ClearData(script+cfo+"FalloffTimer")
+					ClearData(script+cfo+"FalloffTimer")	//No more Timer, clear pointer.
 					}
 			}
 		//DELAY AND REPEAT
-		if (msg==script+"Delayed")
+		if (msg==script+"Delayed") //Delayed Activation now initiate script.
 			{
-				local ar =DGetTimerData(bmsg.data)
-				ar[0]= ar[0].tointeger()	//func
+				local ar =DGetTimerData(bmsg.data) 	//Get Stored Data, [ON/OFF,Source,More Repeats to do?,timerdelay]
+				ar[0]= ar[0].tointeger()		//func Off(0), ON(1)
 				SourceObj=ar[1].tointeger()
 				if (ar[0]){this.DoOn(DN)}else{this.DoOff(DN)}
-				ar[2] = ar[2].tointeger()			//Repeats left?
-				if (ar[2]!=0)
-					{
-					if (ar[2]!=-1){ar[2]-=1}
-					ar[3]=ar[3].tofloat()
+				ar[2] = ar[2].tointeger()
+				if (ar[2]!=0)				//Are there Repeats left? If yes start new Timer
+				{
+					if (ar[2]!=-1){ar[2]-=1}	//-1 infinite repeats.
+					ar[3]=ar[3].tofloat()		//Now start a new timer with savegame persistent data.
 					SetData(script+"DelayTimer",DSetTimerData(script+"Delayed",ar[3],ar[0],SourceObj,ar[2],ar[3]))
-					}
+				}
 				else
-					{
-					ClearData(script+"DelayTimer")
-					}
+				{
+					ClearData(script+"DelayTimer")	//Clean up behind yourself!
+				}
 			}
 		
-	}
-##
+		}
+	
 //Getting correct source in case of frob:
 	if (typeof bmsg == "sFrobMsg")
 		{SourceObj=bmsg.Frobber}
 	else{SourceObj = bmsg.from}	
-
-#Let it fail?
+###
+	
+//Let it fail?
 	local FailChance = DGetParam(script+"FailChance",0,DN)
 	if (FailChance > 0) 
 		{if (FailChance >= Data.RandInt(0,100)){return}}
 
+###
+//React to the received message? Checks if the script actually has a ON/OFF function and if the message is in the set of specified commands. And Yes a DScript can perform it's ON and OFF action if both accepct the same message.
+	if ("DoOn" in this)
+	{
+		if (DGetParam(script+"On",DGetParam("DefOn","TurnOn",this,1),DN,1).find(mssg)!=null){DCountCapCheck(script,DN,1)}
+	}
 
-		if ("DoOn" in this)		//Checks if the script actually has an On function.
-		{
-			if (DGetParam(script+"On",DGetParam("DefOn","TurnOn",this,1),DN,1).find(mssg)!=null){DCountCapCheck(script,DN,1)}
-		}
-		
-		if ("DoOff" in this)
-		{
-			if (DGetParam(script+"Off",DGetParam("DefOff","TurnOff",this,1),DN,1).find(mssg)!=null){DCountCapCheck(script,DN,0)}
-		}
+	if ("DoOff" in this)
+	{
+		if (DGetParam(script+"Off",DGetParam("DefOff","TurnOff",this,1),DN,1).find(mssg)!=null){DCountCapCheck(script,DN,0)}
+	}
 	
 }
-#################################################
+##################END OF GLOBAL FUNCTIONS###############################
 
 
-####################################
+############################################
 ####		Real Scripts		####
-####################################
+############################################
 
 
 class DBaseTrap extends SqRootScript
