@@ -1,8 +1,8 @@
 #############Undercover scripts##########
 //T2 ONLY! For DScript Version v0.24+ and the DImUndercoverScript
 
-//IF you're NOT using DImUndercover I would suggest you comment everything out or delete this file.
-//As I'm REPLACING THE STANDARD WEAPON SCRIPTS scrips to make them suspicious
+//IF you're NOT using DImUndercover I would suggest you comment everything out or DELETE this file.
+//As it REPLACES THE STANDARD WEAPON SCRIPTS scrips to make them suspicious
 ##Real propblem is actually the bow, while sword and blackjack can be made suspicious just by addin the property (that's all the melee scripts do here) the bow needs special handling.
 
 if (GetDarkGame() == 2)
@@ -71,8 +71,7 @@ class Arrow extends SqRootScript
 	}
 }
 
-//These can be deleted if the suspicious stuff is set ingame.
-
+//These melee scripts can be deleted if the suspicious stuff is set ingame.
 class BlackJack extends SqRootScript
 {
 // MESSAGES:
@@ -100,7 +99,7 @@ class BlackJack extends SqRootScript
 		Weapon.FinishAttack(message().Frobber, message().SrcObjId);
 	}
 
-	function OnInvSelect()	//Added; this could also be put in a constructor but then would work on decorative swords as well
+	function OnInvSelect()	//Added; this could also be put in a constructor but then would work on decorative swords as well. TODO Only works if contained.
 	{
 		Property.Add(self,"SuspObj")					
 		Property.Set(self,"SuspObj","Is Suspicious",true)
