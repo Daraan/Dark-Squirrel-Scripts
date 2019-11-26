@@ -1,6 +1,7 @@
 /*#########################################
-			CreatorScripts v0.1
-#########################################
+			DSEditorScripts v0.1b - Still looking for a better name
+			It is important that the file is alphabetically behind DScript -> must be compiled after.
+###########################################
 
 !!READ BEFORE USE!!
 These are a collection of scripts for Mission Designers which might make some work progress easier.
