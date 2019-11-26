@@ -3,6 +3,8 @@ DScript Version 0.30c
 Use at your liking. All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
 
 DarkUI.TextMessage("Here for fast copy paste test");
+
+The real scripts currently start at arround line 460
 ##########################################*/
 
 
@@ -164,11 +166,12 @@ function DGetStringParam(param,def,str,adv=false,cuts=";=")	//Like the above fun
 		{return DCheckString(def,adv)}
 }
 
-/*#########TimerData###################
-Q: Problem how to carry over data from one Script to another when there is a delay? A: Save as a global variable. 
-PROBLEM: That data is LOST when the game is gets closed and reloaded.
+/*#########Carry over Data via TimerData Functions###################
+Q: How to carry over data from one Script to another when there is a delay? 
+PROBLEM 1: The SourceObject is not carried over when the message get's delayed via a StandardTimer. => A: Save as a global variable. 
+PROBLEM 2: That data is LOST when the game is gets closed and reloaded.
 
-This functions allow the sending and retrieving of multiple values via a timer which is save game persistent.
+This functions allows the sending and retrieving of multiple values via a timer which is save game persistent.
 */
 function DArrayToString(ar,o="+")			//Creates a long string out of your array data separated by +
 {
@@ -377,111 +380,129 @@ function DBaseFunction(DN,script) //this got turned into a global function so DH
 
 
 ############################################
-####		Real Scripts		####
-############################################
-
-
 class DBaseTrap extends SqRootScript
+############################################
 {
-/*A Base script.
-Handles custom [ScriptName]On Off parameters specified in the Design Note and calls the DoOn/Off actions of the specific script.
+/*A Base script. Has no function on it's own but is the framework for nearly all others.
+Handles custom [ScriptName]ON/OFF parameters specified in the Design Note and calls the DoON/OFF actions of the specific script via the functions above.
 If no parameter is set the scripts normaly respond to TurnOn and TurnOff, if you instead want another default activation message you can specify this with DefOn="CustomMessage" or DefOff="TurnOn" anywhere in your script class but outside of functions. Messages specified in the Design Note have priority.
-*/
 
-SourceObj=0				//if a message is delayed the source object is lost, it will be stored inside the timer and then when the timer triggers it will be made availiable again.
-					//Why is this here???
-	constructor()			//Setting up save game persistent data.
+In the constructor() function it handles the necessary ObjectData needed for Counters and Capacitors.
+*/
+	SourceObj=0	//if a message is delayed the source object is lost, it will be stored inside the timer and then when the timer triggers it will be made availiable again.
+	constructor()	//Setting up save game persistent data.
 	{
-		if (!IsEditor()){return}	//Initial data is set in the Editor.
+		if (!IsEditor()){return}	//Initial data is set in the Editor. NOTE! possible TODO: Counter, Capacitor objects will not work when created in game!
 		local DN = userparams();
 		local script = GetClassName()
-		if (DGetParam(script+"Count",0,DN)){SetData(script+"Counter",0)}else{ClearData(script+"Counter")}
+		if (DGetParam(script+"Count",0,DN)){SetData(script+"Counter",0)}else{ClearData(script+"Counter")} //Automatic clean up.
 		if (DGetParam(script+"Capacitor",1,DN) != 1){SetData(script+"Capacitor",0)}else{ClearData(script+"Capacitor")}
 		if (DGetParam(script+"OnCapacitor",1,DN) != 1){SetData(script+"OnCapacitor",0)}else{ClearData(script+"OnCapacitor")}
 		if (DGetParam(script+"OffCapacitor",1,DN) != 1){SetData(script+"OffCapacitor",0)}else{ClearData(script+"OffCapacitor")}
 	}
 
 
-	function OnMessage()
+	function OnMessage()	//Message receiving.
 	{
 		DBaseFunction(userparams(),GetClassName())
 	}
 }
 ##################
 
-		
-class DLowerTrap extends DBaseTrap								//This is just a test script
+//This is just a script for testing purposes, please ignore
+class DLowerTrap extends DBaseTrap								
 {
 
-DefOn = "TurnOn"												//Default On message that this script is waiting for but differing from the standard TurnOn
-constructor()
-{
-
-
-
-}
-
-function OnMessage()
-{
-	local DN=userparams()
-	base.OnMessage()
-	local script="DLowerTrap"
-	//DarkUI.TextMessage("Capacitor:= "+GetData(script+"Capacitor")+"/"+DGetParam(script+"Capacitor",1,DN)+"  OnCap= "+GetData(script+"OnCapacitor")+"/"+DGetParam(script+"OnCapacitor",1,DN)+"  OffCap= "+GetData(script+"OffCapacitor")+"/"+DGetParam(script+"OffCapacitor",1,DN)+"  Counter= "+GetData(script+"Counter")+"/"+DGetParam(script+"Count",0,DN))		
-
-	local from = Camera.GetFacing()
-
-	from = vector(sin(from.y)*cos(from.z),sin(from.y)*sin(from.z),cos(from.y))
-
-	DarkUI.TextMessage(from)
-}
-function OnTimer()
-{
-
-}
-
-function DoOn(DN)
-{
-	SetOneShotTimer("fd",1)
-	Link.BroadcastOnAllLinks(self,"TurnOn","ControlDevice")
-}
-
-function DoOff(DN)
-{
-
-	Link.BroadcastOnAllLinks(self,"TurnOff","ControlDevice")
-
-}
-
-}
-
-
-
-
-####################################################################
-class DRelayTrap extends DBaseTrap
-####################################################################
-{
-	function DSendMessage(t,msg)
+	DefOn = "TurnOn"	//Default On message that this script is waiting for but differing from the standard TurnOn
+	constructor()
 	{
-		if (msg[0]!='[')
+
+
+
+	}
+
+	function OnMessage()	//General catching for testing.
+	{
+		local DN=userparams()
+		base.OnMessage()
+		local script="DLowerTrap"
+		//DarkUI.TextMessage("Capacitor:= "+GetData(script+"Capacitor")+"/"+DGetParam(script+"Capacitor",1,DN)+"  OnCap= "+GetData(script+"OnCapacitor")+"/"+DGetParam(script+"OnCapacitor",1,DN)+"  OffCap= "+GetData(script+"OffCapacitor")+"/"+DGetParam(script+"OffCapacitor",1,DN)+"  Counter= "+GetData(script+"Counter")+"/"+DGetParam(script+"Count",0,DN))		
+
+		local from = Camera.GetFacing()
+
+		from = vector(sin(from.y)*cos(from.z),sin(from.y)*sin(from.z),cos(from.y))
+
+		DarkUI.TextMessage(from)
+	}
+	
+	function OnTimer()
+	{
+
+	}
+
+	function DoOn(DN)
+	{
+		SetOneShotTimer("fd",1)
+		Link.BroadcastOnAllLinks(self,"TurnOn","ControlDevice")
+	}
+
+	function DoOff(DN)
+	{
+
+		Link.BroadcastOnAllLinks(self,"TurnOff","ControlDevice")
+
+	}
+
+}
+
+############################################
+	####		Real Scripts		####
+############################################
+
+##############################################
+class DRelayTrap extends DBaseTrap
+##############################################
+/* 
+A relay with all the DBaseTrap features. Reacts to the messages specified by DRelayTrapOn/Off and it will relay the message specified with DRelayTrapTOn. Respectively the on TurnOff to be sent messages can be specified with DRelayTrapTOff. By default these are "TurnOn" and "TurnOff".
+NEW: With the + operator you can define multiple On, TOn, Off and TOff messages!
+With DRelayTrap[On/Off]Target (NEW: Also [On/Off]TDest works as an alternative) you can specify where to sent the message(s) to. Default are ControlDevice linked objects. If a DRelayTrapOnTarget is specified then it will take priority over DRelayTrapTarget.
+
+As a TOn, TOff message you can also send a Stim to do this, first enter the intensity surrounded by square brackets, followed by the stim name. For example: [ScriptName]TOn="[5.00]WaterStim".
+
+NEW v.30:  DRelayTrapToQVar="QVarName"; will store the ObjectsID into the specified QVar. It then can for example be targeted via $QVarName. Usefull to always sent a command to a specific but variable object.
+
+Design Note example:
+NVRelayTrapOn="+TurnOn+BashStimStimulus";NVRelayTrapTOn="+TurnOn+[5]FireStim";NVRelayTrapOnTarget="+player+^ZombieTypes"
+
+What will happen:
+On TurnOn or when bashed it will send a TurnOn and a FireStim with intensity 5 to the player and the closest Zombie.(relative to the object with the script)
+As nothing else is specified on TurnOff will send a TurnOff to all ControlDevice linked objects. 
+
+________________
+SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages functions. As an example see DStdButton.
+#################################################### */
+{
+	function DSendMessage(t,msg)	//Send a message or a Stim to the target.
+	{
+		if (msg[0]!='[')			//Test if normal or "[Intensity]Stimulus" format.
 			{SendMessage(t,msg)}
-		else
+		else							
 		{
 			local ar=split(msg,"[]")
 			ar.remove(0)
-			if (!GetDarkGame())																		//T1/G compability
+			if (!GetDarkGame())			//T1/G compability; different versions one which allows to set the source.
 				{ActReact.Stimulate(t,ar[1],ar[0].tofloat(),self)}
 			else
 				{ActReact.Stimulate(t,ar[1],ar[0].tofloat())}
 		}
 	}
 
-	function DRelayMessages(OnOff,DN)
+	function DRelayMessages(OnOff,DN) //Sents each message to each target
 	{
 	local script = GetClassName()
-		foreach (msg in DGetParam(script+"T"+OnOff,"Turn"+OnOff,DN,1))
+		foreach (msg in DGetParam(script+"T"+OnOff,"Turn"+OnOff,DN,1)) //Determins the messages to be sent, TurnOn/Off is default.
 		{
-			foreach (t in DGetParam(script+OnOff+"Target",DGetParam(script+OnOff+"TDest",DGetParam(script+"Target",DGetParam(script+"TDest","&ControlDevice",DN,1),DN,1),DN,1),DN,1))
+			foreach (t in DGetParam(script+OnOff+"Target",DGetParam(script+OnOff+"TDest",DGetParam(script+"Target",DGetParam(script+"TDest","&ControlDevice",DN,1),DN,1),DN,1),DN,1)) //Priority Order: [ScriptName] Tartget > TDest > Default: &ControlDevice
 			{
 				DSendMessage(t,msg)
 			}
@@ -491,7 +512,7 @@ class DRelayTrap extends DBaseTrap
 
 	function DoOn(DN)
 	{
-		if (DGetParam("DRelayTrapToQVar",false,DN))
+		if (DGetParam("DRelayTrapToQVar",false,DN))	//If specified will store the ObejctsID into the specified QVar
 			{
 				Quest.Set(DGetParam("DRelayTrapToQVar",null,DN),SourceObj,eQuestDataType.kQuestDataUnknown)
 			}
@@ -512,6 +533,7 @@ class DRelayTrap extends DBaseTrap
 
 #########################################################
 class DHub extends SqRootScript   //NOT A BASE SCRIPT
+#########################################################
 {
 	/*
 	A powerful multi message script. Each incoming message can be completely handled differently. See it as multiple DRelayTraps in one object.
@@ -538,7 +560,7 @@ class DHub extends SqRootScript   //NOT A BASE SCRIPT
 	*/
 
 
-	/* THIS IS NOT IMPLEMENTED:
+	/* THIS IS NOT IMPLEMENTED fully:
 	If DHubCount is a negative number a trap wide counter will be used. Non negative Message_Count parameters will behave normally.
 
 	NOTE: Using Message_Count with a negative values is not advised. It will not cause an error but could set a wrong starting count if that Message is the first valid one.
@@ -566,7 +588,7 @@ class DHub extends SqRootScript   //NOT A BASE SCRIPT
 	*/
 
 
-//Storing the default stuff in an array.
+//Storing the default values in an array which form an artifical DesignNote.
 //		0			1		2			3			4     5		6		7		8			9		10		11	12	  13	14	  15	16	 17			18		19
 DefDN=["Relay","TurnOn","Target","&ControlDevice","Count",0,"Capacitor",1,"CapacitorFalloff",0,"FailChance",0,"Delay",0,"DelayMax",0,"Repeat",0,"ExclusiveDelay",0]
 SourceObj=null
@@ -584,12 +606,12 @@ constructor() 		//Initializing Skript Data
 		if (DGetParam("DHubCapacitor",1,DN) < 0){SetData("DHubCapacitor",0)}else{ClearData("DHubCapacitor")}*/ 
 
 
-		foreach (k,v in DN)
+		foreach (k,v in DN)		//Checks each Key,Value pais in the DesignNote and if they are a DHub Statement.
 		{
 			if (startswith(k,"DHub"))
 			{//DefDN[		1			2			3				4					5					6			7				8			9				10]
 			def = [null,"DHubRelay","DHubTarget","DHubCount","DHubCapacitor","DHubCapacitorFalloff","DHubFailChance","DHubDelay","DHubDelayMax","DHubRepeat","DHubExclusiveDelay"].find(k)
-			if (!def)
+			if (!def)					//Value found
 			{
 				if (ie){continue} 		//Initial data is set in the Editor. And data changes during game. Continue to recreate the DefDN.
 				if (DGetStringParam("Count",DGetParam("DHubCount",0,DN),v))
@@ -606,7 +628,7 @@ constructor() 		//Initializing Skript Data
 			}
 			else //Make a default array.
 			{
-				DefDN[def*2-1]=v
+				DefDN[def*2-1]=v	//Writes the specified value into the corresponding slot in our artifical DefDesignNote.
 			}
 			}
 		}	
@@ -614,7 +636,7 @@ constructor() 		//Initializing Skript Data
 ##############
 
 
-function OnMessage()
+function OnMessage()	//Similar to the base functions in the first part.
 	{
 	local lhub = userparams();
 	local bmsg = message()
@@ -685,11 +707,11 @@ function OnMessage()
 		local msgn = bmsg.name
 		if (endswith(msgn,"Falloff")||endswith(msgn,"Delayed"))
 		{
-				msgn= msgn.slice(0,-7)
+				msgn= msgn.slice(0,-7)		//Both words have 7 characters. TODO: Is the next line correct, DelayedDelayed??
 			if (endswith(msgn,"Delayed"))
 				{SourceObj=split(bmsg.data,"+")[1].tointeger()}
 
-			command = DGetParam(msgn,false,lhub)
+			command = DGetParam(msgn,false,lhub)	//Check if the found command is specified.
 			if (command)
 			{
 				local SubDN ={}
@@ -726,28 +748,28 @@ function OnMessage()
 		if (i!=1){msg2=msg+i; CArray = split(command,";=")}
 		l = CArray.len()
 		SubDN.clear()
-		for (local v=0;v<20;v+=2)					//Setting default parameter.
+		for (local v=0;v<20;v+=2)					//Setting default parameter. There are 10 Key,Value pairs = 20 arrays slots.
 		{
 			SubDN["DHub"+msg2+DefDN[v]]<-DefDN[v+1]
 		}
+		
 		if (command!="==")
 		{
-		for (local v=0;v<l;v+=2)							//Setting custom parameter. SubDN is now a 20 entry table
+		for (local v=0;v<l;v+=2)					//Setting custom parameter. SubDN is now a 20 entry table
 			{
 			SubDN["DHub"+msg2+CArray[v]]=CArray[v+1]
 			}
 		}
+		//Fail Chance.
 		FailChance=DGetParam("DHub"+msg2+"FailChance",DefDN[11],SubDN).tointeger()	//sucks a bit to have this in the loop.
 		if (FailChance == 0){DCountCapCheck("DHub"+msg2,SubDN,1)}
 			else {if (!(FailChance >= Data.RandInt(0,100))){DCountCapCheck("DHub"+msg2,SubDN,1)}}
 
 		i++
-		command = DGetParam("DHub"+msg+i,false,lhub)
+		command = DGetParam("DHub"+msg+i,false,lhub) //Next command. If not found the loop ends.
 		}	
 	}
 	}
-
-
 
 
 //Here the Message is sent.
@@ -774,13 +796,13 @@ function DoOn(DN)
 		{
 			foreach (t in DGetParam("DHub"+mssg+idx+"Target",0,DN,1))
 			{
-				if (msg[0]!='[')
+				if (msg[0]!='[')			//As in DRelayTrap it checks for a Stimulus
 					{SendMessage(t,msg)}
 				else
 				{
 					local ar=split(msg,"[]")
 					//ar.remove(0)
-					if (!GetDarkGame())																		//T1/G compability = 0
+					if (!GetDarkGame())		//T1/G compability = 0
 						{ActReact.Stimulate(t,ar[2],ar[1].tofloat(),self)}
 					else
 						{ActReact.Stimulate(t,ar[2],ar[1].tofloat())}
@@ -789,115 +811,59 @@ function DoOn(DN)
 		}
 
 	}
-
 }
 ################################
 ## END of HUB
 ################################
 
-class DImportObj extends DBaseTrap
-{
-
-function DoOn()
-{
-local file = DGetParam("DImportObjFile","ImportObj.txt")
-local omax = Data.GetString(file, "OAmount", string def = "", string relpath = "obj");
-local i = 1
-
-for (i=1,i <= omax,i++)
-	{
-	local data = Data.GetString(file, "Obj"+i, string def = "", string relpath = "obj")
-	data=split(data,"=;")
-	local l = Link.GetOne("~MetaProp","MISSING")
-	local a = LinkDest(l)
-	//Check if an empty Archetype is avaliable
-	if (! a<0)
-		{
-		print("DImportObj - ERROR: No more Archetypes in MISSING for Obj"+i)
-		return false
-		}
-	local parent = data[1]
-	if (! ObjID(parent)<0)
-		{
-		print("DImportObj - ERROR: New Parent Archetypes for Obj"+i+" does not exist. Check your Hirarchy or ImportObj.txt")
-		continue
-		}
-	local name = data[3]
-	if (Object.Exists(name))
-		{
-		print("DImportObj - ERROR: Archetype with name "+name+"already exists (Obj"+i+"). Check your Hirarchy or ImportObj.txt")
-		continue
-		}
-	//Checks done go
-	//Changeing location
-	Link.Create("~MetaProp",parent,a)
-	Link.Destroy(l)
-	
-	//Add Properties?
-	local j = data.len()
-	if (j > 5)
-		{
-		for (k=5,k<j, k=k+2)
-			{
-			local prop=split(data[k],":")
-			if (prop.len()==1)
-				Property.SetSimple(a,prop[0],DCheckString(data[k+1],false))
-			else
-				Property.Set(a,prop[0],prop[1],DCheckString(data[k+1],false))
-			}
-		}
-	}
-}
-
-
-}
 
 #########################################
 class DStdButton extends DRelayTrap
+#########################################
 /*Has all the StdButton features - even TrapControlFlags work. Once will lock the Object - as well as the DRelayTrap features, so basically this can save some script markers which only wait for a Button TurnOn
 
 Additional:
-If the button is locked the joint will not activate and the Schema specified by DStdButtonLockSound will be played, by default "noluck" the wrong lockpick sound. 
-*/
-#########################################
+If the button is LOCKED the joint will not activate and the Schema specified by DStdButtonLockSound will be played, by default "noluck" the wrong lockpick sound.
+
+NOTE: As this is a DRelayTrap script as well it can be actiavted via TurnOn; but the Default message is "DIOn" (I=Internal); sending this message will bypass the Lock check and TrapControlFlags.
+######################################### */
 	{
 
 	###StdController
-	DefOn="DIOn"
+	DefOn="DIOn"		//A sucessfull Button Push will sent a DIOn to itself and then trigger underlaying DBase&DRelayTrap features
 	DefOff="DIOff"
 
-	function OnBeginScript()
+	function OnBeginScript()		
 	   {
-		  if(Property.Possessed(self,"CfgTweqJoints"))
+		  if(Property.Possessed(self,"CfgTweqJoints"))					// Standard procedure to have other property as well.
 			Property.Add(self,"JointPos");
-		Physics.SubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);
+		Physics.SubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);	//Remember that Buttons can be activated by walking against them. Actiavting the OnPhysCollision() below. TODO: Make this optional.
 	   }
 
 	function OnEndScript()
 	   {
-		  Physics.UnsubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);
+		  Physics.UnsubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);//I'm not sure why they always clean them up, but I keep it that way.
 	   }
-	   
-	   
 	   
 	function ButtonPush(DN)
 	   {
-			 if (Property.Get(self,"Locked"))
-				{
-				//Sound.PlayEnvSchema(-1709,"Event Activate",self,null,eEnvSoundLoc.kEnvSoundAtObjLoc)
+			//Play Sound when locked and standard Event Activate sound. TODO: Check for sounds but should be fine.
+			if (Property.Get(self,"Locked"))
+			{
 				Sound.PlaySchemaAtObject(self,DGetParam("DStdButtonLockSound","noluck",DN),self)
 				return
-				}
+			}
 			Sound.PlayEnvSchema(self,"Event Activate",self,null,eEnvSoundLoc.kEnvSoundAtObjLoc)
 			ActReact.React("tweq_control",1.0,self,0,eTweqType.kTweqTypeJoints,eTweqDo.kTweqDoActivate)
-			DarkGame.FoundObject(self);
+			DarkGame.FoundObject(self);		//Marks Secret found if there is one associated with the button press. TODO: T1 comability?
 			
 			local trapflags=0
 			local on = true
-			 if(Property.Possessed(self,"TrapFlags"))
+			if(Property.Possessed(self,"TrapFlags"))
 				trapflags=Property.Get(self,"TrapFlags");
 
-			 if((on && !(trapflags & TRAPF_NOON)) ||
+			//NOTE: TrapControlFlags are set as bits.
+			if((on && !(trapflags & TRAPF_NOON)) ||
 				(!on && !(trapflags & TRAPF_NOOFF)))
 			 {
 				if(trapflags & TRAPF_INVERT)
@@ -910,31 +876,47 @@ If the button is locked the joint will not activate and the Schema specified by 
 	   }
 		  
 
-
-
 	function  OnPhysCollision()
 	   {
-		  if(message().collSubmod==4)
+		  if(message().collSubmod==4)	//Collision with the button part.
 		  {
 			if(! (Object.InheritsFrom(message().collObj,"Avatar")
-				  || Object.InheritsFrom(message().collObj,"Creature")))
+				  || Object.InheritsFrom(message().collObj,"Creature"))) //TODO: This is the standard function but I wanna look at it again.
 			{
 			   ButtonPush(userparams());
 			}
 		  }
 	   }
+	
 	function OnFrobWorldEnd()
 	   {
 		  ButtonPush(userparams());
 	   }
-
-
 }
 
 
 ####################################################################
 class DArmAttachment extends DBaseTrap
 ####################################################################
+/*
+Attaches another object to the players arm.
+
+So when using an empty hand model you can create your own custom weapons. It can be given to any weapon-ready object together with Inventory-> Limb Object: emptyhan or BJACHAND (Both Models included, made by Jason Otto and Soul Tear).
+OR you can also add it to normal weapons to attach a Shield or Light or whatever creative stuff you come up with
+
+Parameters:
+DArmAttachmentUseObject:
+= 0 (Default): Will create a dummy object and give it the Shape->Model: DArmAttachmentModel
+= 1 Will create a copy of a real object/archetype specified in DArmAttachmentModel. If you want to attach special effects for example.
+= 2 (experimental and not really working): Same as 1 but the object will be really physical -> Real collision sounds based on the object.
+= 3 (experimental little working): Same as 2 but works even better. Disadvantage: Errors in DromED, Model will pass through walls/objects.
+
+DArmAttachmentModel: model name(0) or object Archtype (1) depending on (DArmAttachmentUseObject)
+DArmAttachmentRot and DArmAttachmentPos: The model will most likely need some adjustments in position and Rotation. Both parameters take 3 arguments separated by , like this: "90,0,0" or "0.1,-0.6,-0.43". They stand for HPB Roation respectively xyz translation. But most like don't behave like you expect it. Best method how to figure out the numbers is to use it in combination with set game_mode_backup 0 (NEVER SAVE AFTER!) and modify the DetailAttachment Link. It's trial and error.
+
+NOTE: You will also need to do some Hierarchy changes to adjust the sound and motions. Also I would say this script is not 100% finished please give feedback.
+TIP: Remember you can use multiple different melee weapons by using the cycle command. Or design them so that you can also use them from the normal inventory.
+####################################################################*/
 {
 DefOn="InvSelect"
 
@@ -997,12 +979,11 @@ class DHitScanTrap extends DRelayTrap
 ####################################################################
 {
 /*When activated will scan if there is one object / solid between two objects. Imagine it as a scanning laser beam between two objects DHitScanTrapFrom and DHitScanTrapTo, the script object is used as default if none is specified. 
-If the from object is the player the camera position is used if the To object is also the player the beam will be centered at the players view - for example to check if hes exactly facing something.
+If the From object is the player the camera position is used if the To object is also the player the beam will be centered at the players view - for example to check if hes exactly facing something.
 
 The Object that was hit will receive the message specified by DHitScanTrapHitMsg. By default when any object is hit a TurnOn will be sent to CD Linked objects. Of course these can be changed via DHitScanTrapTOn and DHitScanTrapTDest.
 Alternatively if just a special set of objects should trigger a TurnOn then these can be specified via DHitScanTrapTriggers.
 */
-
 ####################################################################
 
 function DoOn(DN)
@@ -1025,37 +1006,37 @@ int ObjRaycast(vector from, vector to, vector & hit_location, object & hit_objec
 
 	local from = DGetParam("DHitScanTrapFrom",self,DN)	
 	local to = DGetParam("DHitScanTrapTo",self,DN)
-	local triggers = DGetParam("DHitScanTrapTriggers",null,DN,1)
+	local triggers = DGetParam("DHitScanTrapTriggers",null,DN,1) //important TODO: I wrongly documented Trigger in the thread, instead of triggers. Sorry.
 	local vfrom = Object.Position(from)
 	local vto = Object.Position(to)
-	local v = vto-vfrom
+	local v = vto-vfrom		//Vector between the objects.
 		if (from == "player")
 		{
 			vfrom = Camera.GetPosition()
 			vfrom = vector(sin(from.y)*cos(from.z),sin(from.y)*sin(from.z),cos(from.y))
-			DarkUI.TextMessage(vfrom)
+			//DEBUG: DarkUI.TextMessage(vfrom)
 		}	
 
 	local hobj = object()
 	local hloc = vector()		
 
-	local result = Engine.ObjRaycast(vfrom,vto,hloc,hobj,0,false,from,to)
-		hobj = hobj.tointeger()										//Needs to be 'converted' back.
+	local result = Engine.ObjRaycast(vfrom,vto,hloc,hobj,0,false,from,to)	//Scans and returns the h(it)obj(ect)
+		hobj = hobj.tointeger()												//Needs to be 'converted' back.
 
-	foreach (msg in DGetParam("DHitScanTrapHitMsg","DHitScan",DN,1))	//Message to hitted obj
+	foreach (msg in DGetParam("DHitScanTrapHitMsg","DHitScan",DN,1))		//Sent Hit messages to hit object
 		{
 			DSendMessage(hobj,msg)
 		}
 		
 	local t2 = ""
-	foreach (t in triggers)
+	foreach (t in triggers)													//Hit specified object => Relay TurnOn
 		{
 		if (t == "Player" || t =="player")
 			  t = ObjID("Player")
 		if (t == hobj)
 			DRelayMessages("On",DN)
+			//TODO: End after one successful hit.
 		}
-
 
 }
 }
@@ -1073,17 +1054,11 @@ DRaySFX				Which SFX object should be used. Can be concrete.
 DRayScaling	0 or 1	Default (0) will increase the bounding box where the particles start. 
 					1 will increase their lifetime use this option if you want it to behave more like a "shooter".
 
-DRayAttach	(not working) will attach one end of the ray to the from object via detail attachment. By sending alternating TurnOn/Off Updates you can link two none symetrical moving objects together.
+DRayAttach	(not implemented) will attach one end of the ray to the from object via detail attachment. By sending alternating TurnOn/Off Updates you can link two none symetrical moving objects together.
 					
 Each parameter can target multiple objects also more than one special effect can be used at the same time.
-
-
-*/
-
-
+####################################################################*/
 {
-
-
 
 function DoOn(DN)
 {
@@ -1098,25 +1073,28 @@ local attach = DGetParam("DRayAttach",false,DN)
 		{
 			foreach (to in toset)
 			{
-				if (to == from)
+				if (to == from)			//SKIP if to an from object is the same.
 					continue
 				local vfrom = Object.Position(from)
 				local vto = Object.Position(to)
 				local v = vto-vfrom
-
 				local d = v.Length()
+					
 				//Bounding Box and Area of Effect
 				local vmax = Property.Get(sfx,"PGLaunchInfo","Velocity Max").x
 				local tmax = Property.Get(sfx,"PGLaunchInfo","Max time")
 				local bmin = Property.Get(sfx,"PGLaunchInfo","Box Min")
 				local bmax = Property.Get(sfx,"PGLaunchInfo","Box Max")
 				local o = null
+				//possible TODO: Particles Start launched. Makes the effect more solid but doesn't hit the From object as precise, the box is slightly bigger. How much? extra * 2?
+					
+					
 				//Checking if a SFX is already present or if it should be updated.
 				foreach (l in Link.GetAll("ScriptParams",from))
 					{
 					if (LinkDest(l) == to)
 						{
-						local data = split(LinkTools.LinkGetData(l,""),"+")
+						local data = split(LinkTools.LinkGetData(l,""),"+")		//See below. SFX Type and created SFX ObjID is saved
 						if (data[1].tointeger() == sfx)
 							{
 							o = data[2].tointeger()
@@ -1124,67 +1102,78 @@ local attach = DGetParam("DRayAttach",false,DN)
 							}
 						}
 					else
-						o = null
+						o = null			//TODO: Is this line necessary?
 					}
-				if (!o)	//create new SFX
+				
+				//Else Create a new SFX
+				if (!o)
 					{
 					o = Object.Create(sfx)
-					// Link.Create("Owns",from,o)
-					LinkTools.LinkSetData(Link.Create("ScriptParams",from,to),"","DRay+"+sfx+"+"+o)
+					//Save SFX Type and created SFX ObjID inside the Link.
+					LinkTools.LinkSetData(Link.Create("ScriptParams",from,to),"","DRay+"+sfx+"+"+o)	
 					}
 
-				local h = vector(v.x,v.y,0).GetNormalized()
+				//Here the fancy stuff: Adjust SFX size to distance.
+				local h = vector(v.x,v.y,0).GetNormalized()		//Normalization of the projected connecting vektor
 				local facing = null
-				if (type != 0) //
+				if (type != 0)	//Scaling Type 1: Increases the lifetime of the particles. Looks more like a shooter.
 				{
-					//Don't change if not needed:
+					//Only change if distance changed.
 					if (tmax != d/vmax)
 						{Property.Set(o,"PGLaunchInfo","Min time",d/vmax)
 						Property.Set(o,"PGLaunchInfo","Max time",d/vmax)}
+					//Gets the new facing vector. Trignometry is cool! 
 					if (h.y < 0)
 						facing = vector(0,asin(v.z/d)/DtR+180,acos(-h.x)/DtR)
 					else
 						facing = vector(0,asin(-v.z/d)/DtR,acos(h.x)/DtR)
 				}
-				else
+				else	//Scaling Type 0 (Default): Increases the Bounding box and the amount of particles, instead. 
 				{
-				
 					//new length
-					local extra = vmax*tmax
-					local newb = (d-extra)/2
-					// don't update Particles when there was no box change:
+					local extra = vmax*tmax		//Particles can start at the side and drift outwards of it by this extra distance.
+					local newb = (d-extra)/2	//Distance from the center, therefore half the size of the area the particles can actually appear.
+
+					// Only update box size when, the size changes.
 					if (bmax.x != newb)
 						{
 						bmax.x=newb
 						bmin.x=-newb
-
 						Property.Set(o,"PGLaunchInfo","Box Max",bmax)
 						Property.Set(o,"PGLaunchInfo","Box Min",bmin)
-						vfrom+=(v/2)
-						local n = vmax*tmax+abs(bmin.x)+bmax.x
+							
+						vfrom+=(v/2)				//new Box center coordiantes
+							
+						//Scale up the amount of needed particles
+						local n = vmax*tmax+abs(bmin.x)+bmax.x //Absolute lenghth of the area the particles can appear
+						/*important TODO: Think about it
+						local n = extra+(2*newb)
+						but => extra + d - etra=d , then next line is useless d/d=1. Mistake not checking the old values?
+						FIX: Need to grab the values from sfx into n and compare to the ones from o saved in d.
+						*/
 						Property.Set(o,"ParticleGroup","number of particles",(d/n*Property.Get(sfx,"ParticleGroup","number of particles").tointeger()))
 						}
-					
 					
 					if (h.y < 0)
 						facing = vector(0,asin(v.z/d)/DtR,acos(-h.x)/DtR)
 					else
 						facing = vector(0,asin(v.z/d)/DtR,acos(h.x)/DtR+180)
 				}
-				// if (attach)
+				
+				//low priority TODO if (attach), just another way of doing it.
 					// {
 					// local l = Link.Create("DetailAttachement",o,from)
 					//LinkTools.LinkSetData(l, "rel rot", vector(facing.z-Object.Facing(from).z,facing.y-Object.Facing(from).y,0))
 					//LinkTools.LinkSetData(l, "rel pos", vfrom)
 					// }
 				// else
+				
+				//Move the object to it's new position and rotate it to match the new allignment.
 				Object.Teleport(o,vfrom,facing)
 				
 			}
 		}
-	}
-	
-	
+	}	
 }
 
 
@@ -1197,7 +1186,7 @@ function DoOff(DN)
 				local data = split(LinkTools.LinkGetData(l,""),"+")
 				if (data[0] == "DRay")
 					{
-					print("destroy:  "+data[2]+"   "+Object.Destroy(data[2].tointeger()))
+					//DEBUG print("destroy:  "+data[2]+"   "+Object.Destroy(data[2].tointeger()))
 					Link.Destroy(l)
 					}
 			}
@@ -1211,23 +1200,38 @@ function DoOff(DN)
 
 #########################################
 class DCopyPropertyTrap extends DBaseTrap
-########################################
-{
-function DoOn(DN)
-{
-	local prop = DGetParam("DCopyPropertyTrapProperty",null,DN,1)
-	local source = DGetParam("DCopyPropertyTrapSource",self,DN,0);				//Source supports ^,&
-	local target = DGetParam("DCopyPropertyTrapTarget","&ScriptParams",DN,1);
+#########################################
+/*
+Target default: &ScriptParams
+Source default: [me]
 
+Similar to S&R->SetProperty but can set multiple properties on multiple objects at the same time.
+
+Upon receiving TurnOn copies the properties specified by DCopyPropertyTrapProperty form the object DCopyPropertyTrapSource(default is [me]) to the objects specified through DCopyPropertyTrapTarget if not set ScriptParams linked objects will receive the propertie(s) by default.
+Multiple properties can be copied with the + operator.
+
+You use the script object as a sender or receiver.
+
+Design Note example:
+DCopyPropertyTrapProperty="+PhysControl+RenderAlpha";DCopyPropertyTrapSource="&Owns";DCopyPropertyTrapTarget="[me]"
+This will copy the Physics->Controls and Renderer->Transparency(Alpha) property from the object linked with an Owns linked to the object itself. 
+######################################## */
+{
 	
-foreach (t in target)
+	function DoOn(DN)
 	{
-	foreach (p in prop)
+		local prop = DGetParam("DCopyPropertyTrapProperty",null,DN,1)
+		local source = DGetParam("DCopyPropertyTrapSource",self,DN,0);		//Source supports ^,&
+		local target = DGetParam("DCopyPropertyTrapTarget","&ScriptParams",DN,1);
+
+		foreach (t in target)
 		{
-		Property.CopyFrom(t,p,source)
+			foreach (p in prop)
+			{
+				Property.CopyFrom(t,p,source)
+			}
 		}
 	}
-}
 
 }
 
@@ -1236,30 +1240,46 @@ foreach (t in target)
 class DWatchMe extends DBaseTrap
 #########################################
 {
-/*Creates AIWatchObj links from all humans when the object is created or at game start. 
-Alternatively a custom OnMessage can be defined with a DWatchMeOn="" in the Design Note.
-Also the targets can be changed with: DWatchMeTarget=""
- 
-If the Archetype(or other ancestor) has an AI->Utility->Watch links default option it gets copied and  
-additionally writes the object number of this object into the Response Step Argument 1.
-*/
+/*By default when this object is created or at game start (BeginScript) creates AIWatchObj Links from all Human(-14) to this object.
+Use DWatchMeTarget to specify another object, archetype or metaproperty. (see notes below)
+
+On TurnOff will remove any(!) AIWatchObj links to this object. You maybe want to set DWatchMeOff="Null".
+
+•Further (if set) copies!! the AI->Utility->Watch links default property of the archetype (or the closest ancestors with this property) and sets the Step 1 - Argument 1 to the Object ID of this object.
+•Alternatively if no ancestor has this property the property of the script object will be used and NO arguments will be changed. (So it will behave like the normal T1/PublicScripts WatchMe or NVWatchMeTrap scripts)
+TODO: If the object has a custom one it should take priority.
+
+------------------------------
+Usefullness:
+If you have multiple objects in your map and want that AIs perform simple(?) actions with each of them under certain conditions.
+For example:
+You can use it to let guards relight every extinguished torches on their patrol path -> see Demo.
+Initially it was designed to be used with DPortal do force an alerted AI to follow the player through portals. Still not optimal but the basics are there.
+
+Tip:
+If you use a custom On command, multiple links could be created so you may want to set the Watch->"Kill like links" flag in that situation.
+######################################### */
+
 DefOn ="BeginScript" 		//By default reacts to BeginScript instead of TurnOn
 
 function DoOn(DN)
 {
-	if ( Property.Possessed(Object.Archetype(self),"AI_WtchPnt"))			// If any ancestor has an AI-Utility-Watch links default option set, that one will be used and the Step 1 - Argument 1 will be changed.
-	{																		// else the Watch links default of the normal object will not be changed and used instead.
+	// If any ancestor has an AI-Utility-Watch links default option set, that one will be used and the Step 1 - Argument 1 will be changed.
+	if ( Property.Possessed(Object.Archetype(self),"AI_WtchPnt"))
+	{																		
 		Property.CopyFrom(self,"AI_WtchPnt",Object.Archetype(self));
 		SetProperty("AI_WtchPnt","   Argument 1",self);
-	}
-
+	}	
+	
+	// Else the Watch links default property of the script object will be used automatically on link creation (hard coded). The Archetype has priority. TODO: Change this the other way round.
+	
 	local target = DGetParam("DWatchMeTarget","@human",DN,1)
 	foreach (t in target){Link.Create("AIWatchObj",t,self)}
 }
 
 function DoOff(DN)
 {
-	foreach (l in Link.GetAll("~AIWatchObj",self))
+	foreach (l in Link.GetAll("~AIWatchObj",self)) //Destroys all AIWatchObj links.
 		{Link.Destroy(l)}
 }
 
@@ -1269,7 +1289,7 @@ function DoOff(DN)
 
 #########################################
 class DCompileTrap extends DBaseTrap
-/* compiles the EdComment! (Yes not design note) and runs it if you need short squirrel code */
+/* compiles the EdComment! (Yes NOT the Design Note) and runs it if you need short squirrel code */
 #########################################
 {
 function DoOn(DN)
@@ -1283,25 +1303,29 @@ function DoOn(DN)
 ################################################
 ###############Undercover scripts###############
 ################################################
-//weapons scripts are in DUndercover.nut
+//Weapons scripts are in DUndercover.nut
+//TODO: Link the the detailed forum documentation.
 
 
 #########################################
 class DNotSuspAI extends DBaseTrap
+/* Give this script to an AI which shall ignore the player under certain circumstances.*/
 #########################################
-{ //handles the messages and TurnOff stuff.
-max = 2
+{ //Handles the messages and TurnOff stuff.
+max = 2					//Max Suspecious level 2
 
-constructor()
+constructor()			//Save Old Team Number to restore it later
 {
 	if (!IsDataSet("OldTeam"))
 		{SetData("OldTeam",Property.Get(self,"AI_Team"))}
 }
 
-function OnSignalAI()
+//Messages and events that end the status Quo
+##
+function OnSignalAI()	
 {
 	local s = message().signal
-	if (s =="alarm"|| s=="alert" ||s=="EndIgnore"||s=="gong_ring")
+	if (s =="alarm"|| s=="alert" ||s=="EndIgnore"||s=="gong_ring")	//TODO: Case
 		{
 		DoOff()
 		}
@@ -1319,8 +1343,9 @@ if (message().level >= max)
 	DoOff()
 	}
 }
-
-function OnEndIgnore()
+##
+	
+function OnEndIgnore()	//Weaker TurnOff action, cleanup is done via the Undercover object.
 {
 	Property.SetSimple(self,"AI_Team",GetData("OldTeam"))
 }
@@ -1337,9 +1362,9 @@ function DoOff(DN=null)
 		Property.Remove(self,"AI_VisDesc")
 	}
 		
-	for (local i =1;i<=32;i*=2)
+	for (local i =1;i<=32;i*=2)				//Bitwise increment, for the possible MetaProperties
 	{					
-	if (Object.Exists("M-DUndercover"+i))
+	if (Object.Exists("M-DUndercover"+i))	//Check if the MetaPropertie exists.
 		Object.RemoveMetaProperty(self,"M-DUndercover"+i)
 	}
 }
@@ -1347,11 +1372,11 @@ function DoOff(DN=null)
 }
 
 #########################################
+//Use the below alternative Scripts if the AI shall have a higher/lower Suspicious level. I had to make this via scripts, can't remember why at the moment. Somehow DN or Metaprop were not an alternative?
 class DNotSuspAI3 extends DNotSuspAI
 {
 max = 3
 }
-
 #########################################
 class DNotSuspAI1 extends DNotSuspAI
 {
@@ -1360,10 +1385,9 @@ max = 1
 
 #########################################
 class DGoMissing extends DBaseTrap
-#########################################
-//Nearly identical copy of GoMissing but the marker will have a higher alert type for 2 seconds.
-
+/* Creates a marker from the 'MissingLoot' Archetype which the AI will find suspicious similar to the GoMissing script, but this script will give the object a higher suspicion type 'blood' to simulate a stealing directly in the sight of an AI. After the 2 seconds it will be set to the less obvious 'missingloot' */
 {
+
 function OnFrobWorldEnd()
    {
       if(!IsDataSet("OutOfPlace"))
@@ -1381,10 +1405,10 @@ function OnFrobWorldEnd()
    }
    
 function OnTimer()
-{
-if (message().name == "NotAware")
-	{Property.Set(message().data,"SuspObj","Suspicious Type","missingloot")}
-}
+	{
+	if (message().name == "NotAware")
+		{Property.Set(message().data,"SuspObj","Suspicious Type","missingloot")}
+	}
    
 }
 
@@ -1395,12 +1419,13 @@ Targeted AIs will semi ignore you. Depending on your action and mode set. See Fo
  */
 #########################################
 {
-DefOn="FrobInvEnd"
+DefOn="FrobInvEnd"			//Default using the object with the script in your inventory.
 
 constructor()
 {	
-	if (!IsEditor()){return}
+	if (!IsEditor()){return} //AI Watch values are set in the editor.
 	
+	//TODO: Explain next step. AIs will always create Links to the player. Triggering the script off, even when not in direct sight will aggro them when he was seen before.
 	if(DGetParam("DImUndercoverForgetMe",false,userparams()))
 	{
 		Property.Add(self,"AI_WtchPnt")
@@ -1412,38 +1437,38 @@ constructor()
 		Property.Set(self,"AI_WtchPnt","         Maximum alertness",2)
 		Property.Set(self,"AI_WtchPnt","Response: Step 1",12)
 		Property.Set(self,"AI_WtchPnt","   Argument 1","AISuspiciousLink")
-		Property.Set(self,"AI_WtchPnt","   Argument 2","player")
-		
+		Property.Set(self,"AI_WtchPnt","   Argument 2","player")	
 	}
+	
 }
 
 function DoOn(DN)
 {
-#Toggle if item frob.
+//Toggle off if used via an item and is already active.
 	if (MessageIs("FrobInvEnd"))
 	{
 		if (IsDataSet("Active"))
 			{return this.DoOff(DN)}
 	}
 		
-#if Off turn it ON */
-	SetData("Active",true)
-	Debug.Command("clear_weapon")
-	local targets =  DGetParam("DImUndercoverTarget","@Human",DN,1)
+//Else just turn it On
+	SetData("Active",true)											//For toggling we want to know that it is active
+	Debug.Command("clear_weapon")									//A drawn weapon will aggro the AI so we put it away.
+	local targets = DGetParam("DImUndercoverTarget","@Human",DN,1)
 	local modes = DGetParam("DImUndercoverMode",9,DN)
 	local sight = DGetParam("DImUndercoverSight",6.5,DN)
 	local lit = DGetParam("DImUndercoverSelfLit",5,DN)
-	local script =DGetParam("DImUndercoverEnd","",DN)
+	local script =DGetParam("DImUndercoverEnd","",DN)				//For higher or lower max suspicious settings. See mode 8
 		if (script == 2)
 			script = ""
 	
-	if (lit!=0)
+	if (lit!=0)														//Light up the player, even when ignored he should be more visible.
 		{
 		Property.Add("Player","SelfLit")
 		Property.SetSimple("Player","SelfLit",lit)
 		}
 	
-	if (modes | 8)
+	if (modes | 8)			//In T2 we can make the player a suspicious object as well.
 		{
 			#T2 only
 			if (GetDarkGame()==2)
@@ -1460,11 +1485,12 @@ function DoOn(DN)
 	//Apply modes to AIs
 	foreach (t in targets)
 	{
-		if (!DGetParam("DImUndercoverUseMetas",false,DN))		//Default
+		if (!DGetParam("DImUndercoverUseMetas",false,DN))		//Default without metas
 		{
 			if (Property.Get(t,"AI_Alertness","Level")<2)		//No effect when alerted.
 				{
 				
+				//Different methodes to weaken the perception of the AIs see documentation.
 				
 				if (modes | 1)		//Reduced Hearing
 					{
@@ -1473,19 +1499,19 @@ function DoOn(DN)
 					}
 				if (modes | 2)		//Reduced Vision
 					{
-					if (sight<2)
+					if (sight<2)	//make them completly blind
 						{
 						Property.Add(t,"AI_Vision")
 						Property.SetSimple(t,"AI_Vision",0)
 						}
 					else
-						{
+						{			//Weaken their Visibility Cones, bit experimental and could need improvement. TODO
 						Property.Add(t,"AI_VisDesc")
 						for (local i=4;i<10;i++)
 							{
-							Property.Set(t,"AI_VisDesc","Cone "+i+"2: Flags",0)
-							Property.Set(t,"AI_VisDesc","Cone 3: Range",sight)
-							Property.Set(t,"AI_VisDesc","Cone 2: Range",3)
+							Property.Set(t,"AI_VisDesc","Cone "+i+"2: Flags",0)	//Turns 4-10 these off
+							Property.Set(t,"AI_VisDesc","Cone 3: Range",sight)	//Sets it to your sight value
+							Property.Set(t,"AI_VisDesc","Cone 2: Range",3)		//
 							}
 						}
 					}
@@ -1495,18 +1521,20 @@ function DoOn(DN)
 						Property.SetSimple(t,"AI_InvKnd",1)
 					}
 					
-				if (modes | 8 || DGetParam("DImUndercoverAutoOff",false,DN))
+				if (modes | 8 || DGetParam("DImUndercoverAutoOff",false,DN))	//Suspicious mode or AutoOff On.
 					{
+					//Tries to add the DNotSuspAI script to the targeted AI so it will react accordingly.
 					Property.Add(t,"Scripts")
-					local i = Property.Get(t,"Scripts","Script 3")
-					if (i == 0 || i == "" || i =="SuspiciousReactions" || i=="HighlySuspicious" || i == "DNotSuspAI"+script)
+					local i = Property.Get(t,"Scripts","Script 3") 
+					//check if the slot is blocked, the two other scripts can be replaced as they function similar.
+					if (i == 0 || i == "" || i =="SuspiciousReactions" || i=="HighlySuspicious" || i == "DNotSuspAI"+script) //case
 						{
 							Property.Set(t,"Scripts","Script 3","DNotSuspAI"+script)
 						}
 						else
 						{
 							print("DScript: AI "+t+" has script slot 4 in use "+i+" - can't add DNotSuspAI script. Will try to add Metaproperty M-DUndercover8 instead.")
-							print("I was "+i+"\n")
+							print("I was "+i+"\n")	//TODO: One output.
 							Object.AddMetaProperty(t,"M-DUndercover8")
 						}
 					}
@@ -1522,7 +1550,7 @@ function DoOn(DN)
 				
 					}
 			}
-			else //custom Metas
+			else //Use Custom Metas only.
 			{
 				if (Object.Exists(ObjID("M-DUndercoverPlayer"))){Object.AddMetaProperty("Player","M-DUndercoverPlayer")}
 				if (modes | 1)
@@ -1554,15 +1582,15 @@ function DoOn(DN)
 	}
 }
 
-
-function OnContained()
+###
+function OnContained()	//Turn off if the script object is dropped.
 {
 if ( message().event == 3)
 	{DoOff(userparams())}
 }
 
-function DoOff(DN)
-{ 	
+function DoOff(DN)		//Cleanup
+{
 	Property.Remove("Player","SelfLit")
 	Property.Remove("Player","SuspObj")
 	if (Object.Exists(ObjID("M-DUndercoverPlayer"))){Object.RemoveMetaProperty("Player","M-DUndercoverPlayer")}
@@ -1571,7 +1599,7 @@ function DoOff(DN)
 	foreach (t in DGetParam("DImUndercoverTarget","@Human",DN,1))
 	{
 
-		if (!DGetParam("DNotSuspAIUseMetas",false,userparams()))			//Restoring Vision and stuff
+		if (!DGetParam("DNotSuspAIUseMetas",false,userparams()))	//Restoring Vision and stuff.
 			{
 				Property.Remove(t,"AI_Hearing")
 				Property.Remove(t,"AI_Vision")					
@@ -1585,7 +1613,7 @@ function DoOff(DN)
 					Object.RemoveMetaProperty(t,"M-DUndercover"+i)
 			}
 			
-		local l = Link.GetOne("AIAwareness",t,"Player")		//Removing or keeping AIAwareness
+		local l = Link.GetOne("AIAwareness",t,"Player")					//Remove or keep AIAwarenessLinks if visible.
 		if (l)
 			{
 			if (!((LinkTools.LinkGetData(l,"Flags") & 137)==137))		//Can see player? testing the three flags Seen, 
@@ -1602,11 +1630,11 @@ function DoOff(DN)
 }
 
 }
-
+#########END of UNDERCOVER SCRIPTS############
 
 #########################################
 class DHudCompass extends DBaseTrap
-/* Creates the frobbed item and tries to keep it in front of you camera. 
+/* Creates the frobbed item and tries to keep it in front of you camera. So actually not limited to the compass.
 */
 #########################################
 {
@@ -1615,42 +1643,42 @@ DefOff="null"
 
 constructor()
 {	
-	if (!IsEditor()){return}
+	if (!IsEditor()){return}	//Data is set in the editor, else multiple data is set.
 	SetData("Active",false)
 }
 
-function OnTimer()
+function OnTimer()				//Update the position, sadly not realtime.....
 {
 	if (GetData("Active"))
 	{
 		local v=Camera.GetFacing()
-		// DarkUI.TextMessage(vector(sin(v.y-90)*cos(v.z),sin(v.y-90)*sin(v.z),cos(v.y-90)))
+		//DEBUG DarkUI.TextMessage(vector(sin(v.y-90)*cos(v.z),sin(v.y-90)*sin(v.z),cos(v.y-90)))
 		local pitch=v.y
 		local heading=v.z+180
 		v.z=90-v.z
 		v.y=0
-		local v2=Camera.GetPosition()-Object.Position("Player")
-		v2 = vector(cos(pitch*DtR)-0.4*sin(pitch*DtR), 0 ,v2.z-sin((pitch+32)*DtR))
 
+		local v2=Camera.GetPosition()-Object.Position("Player")
+		v2 = vector(cos(pitch*DtR)-0.4*sin(pitch*DtR), 0 ,v2.z-sin((pitch+32)*DtR)) //Trigonometry is cool. Hard values seem to work nice in the game.
 
 		LinkTools.LinkSetData(GetData("CompassLink"), "rel rot", v)
 		LinkTools.LinkSetData(GetData("CompassLink"), "rel pos", v2)
-		SetOneShotTimer("Compass",0.0125)
+		SetOneShotTimer("Compass",0.0125)	//Sadly it does not work in realtime like the inventory compass :/
 	}
 
 }
 
 function DoOn(DN)
 {
-// Off or ON?
+// Off or ON? Toggling item
 	if (GetData("Active"))
 		{return this.DoOff(DN)}
 	SetData("Active",true)
 	
-	local obj = Object.Create(DarkUI.InvItem())
-	Physics.DeregisterModel(obj)
+	local obj = Object.Create(DarkUI.InvItem())	//Create Selected item
+	Physics.DeregisterModel(obj)				//We wan't no physical interaction with anything.
 	local link=Link.Create("DetailAttachement",obj,"Player")
-	SetData("Compass",obj)
+	SetData("Compass",obj)						//Save the CreatedObj and LinkID to update them in the timer function and destroy it in the DoOff
 	SetData("CompassLink",link)
 	SetData("Timer",SetOneShotTimer("Compass",0.1))
 }
@@ -1658,7 +1686,7 @@ function DoOn(DN)
 
 function DoOff(DN)
 { 
-	SetData("Active",false)
+	SetData("Active",false)						//TODO: Make script specific (maybe it is?) and why not remove it.
 	Object.Destroy(GetData("Compass"))
 }
 
@@ -1670,18 +1698,38 @@ function DoOff(DN)
 #########################################
 class DDrunkPlayerTrap extends DBaseTrap
 #########################################
+/*On TurnOn makes you drunk a TurnOff sober.
+Multiple Ons from the same source will reset the timer and will do a FadeIn again. Multiple sources DO stack.
+
+Optional parameters:
+DDrunkPlayerTrapStrength        regulates the strength basically every number can be used I would suggest something between 0 and 2                default=1
+DDrunkPlayerTrapInterval        a second regulator how often the effect is applied. With a lower interval higher strength becomes more acceptable.         default[seconds]=0.2 
+DDrunkPlayerTrapLength         How long the effect will last in seconds. Use 0 for until TurnOff is received                                    default[seconds]=0    
+DDrunkPlayerTrapFadeIn        Fades in the effect over the given time at the end the full strength is used.                                default[seconds]=0
+DDrunkPlayerTrapFadeOut        Only works if Length is set! Will gradually make the effect weaker over the last given seconds.                    default[seconds]=0
+DDrunkPlayerTrapMode            The effect is made up by 1) shaking the camera and 2) Pushing the player.(left/right/forward).                     default=3
+
+By setting Mode to 1 or 2 you can use one effect only. Especially for Mode=2 higher Strength values can be used.
+
+----
+
+Tried to make a Wave Like movement but have jet so succeed. SO it is more like a pushing arround.
+
+######################################### */	
+	
 {
 
 function DoOn(DN)
 {
-	if (IsDataSet("DrunkTimer")){KillTimer(GetData("DrunkTimer"))}		//to prevent double activation. IsDataSet returned false so I had to use this....
+	if (IsDataSet("DrunkTimer")){KillTimer(GetData("DrunkTimer"))}		//To prevent double activation. IsDataSet returned false so I had to use this....
 
 	//strenghth 0-2 advised
 
 	local l = DGetParam("DDrunkPlayerTrapInterval",0.2,DN)
-	DrkInv.AddSpeedControl("DDrunk", 0.8, 1);
+	DrkInv.AddSpeedControl("DDrunk", 0.8, 1); //Makes the Player slower
+	//Saving all the Parameter Data in the Timer to make it SaveGame compatible.
 	SetData("DrunkTimer",DSetTimerData("DrunkTimer",l,DGetParam("DDrunkPlayerTrapStrength",1,DN),l,DGetParam("DDrunkPlayerTrapLength",0,DN),DGetParam("DDrunkPlayerTrapFadeIn",0,DN),DGetParam("DDrunkPlayerTrapFadeOut",0,DN),DGetParam("DDrunkPlayerTrapMode",3,DN),0))
-	//																		str=0				interval=1				leng=2									fade=3								fadeout=4										mode=5			curfad=6
+	//																		str=0				interval=1				length=2									fade=3								fadeout=4										mode=5			curfad=6
 }
 
 
@@ -1690,25 +1738,27 @@ function OnTimer()
 	local mn=message()
 	if (mn.name=="DrunkTimer")
 	{
+		// And this function looks kinda drunk too, I know. Basivally here the TimerData is retrieved, check the indexes a few lines above.
 		local mnA=DGetTimerData(mn.data)
 		for(local i=0;i<=4;i++)
 			{mnA[i]=mnA[i].tofloat()}
 		mnA[5]=mnA[5].tointeger()
 		mnA[6]=mnA[6].tointeger()
 		mnA[6] += 1
-		if (mnA[2] <= 0 || mnA[6]<mnA[2]/mnA[1])						//continue or end?
+		if (mnA[2] <= 0 || mnA[6]<mnA[2]/mnA[1])						//Continue, FadeOut or end?
 			{SetData("DrunkTimer",DSetTimerData("DrunkTimer",mnA[1],mnA[0],mnA[1],mnA[2],mnA[3],mnA[4],mnA[5],mnA[6]))}
 		else {DoOff()}
 
 		local lstr = mnA[0]
-		if (mnA[6] < mnA[3]/mnA[1]){lstr=mnA[6]/mnA[3]*mnA[1]}		//fade in
+		if (mnA[6] < mnA[3]/mnA[1]){lstr=mnA[6]/mnA[3]*mnA[1]}		//fade in, effects grow stronger
 		if (mnA[2] > 0)
-		{if (mnA[6] > (mnA[2]-mnA[4])/mnA[1])		//fade out
-			{lstr= (mnA[2]/mnA[1]-mnA[6])/(mnA[4]/mnA[1])}
-		}			
-		local seed=Data.RandInt(-1,1)*90									//-1,0,+1
+			{if (mnA[6] > (mnA[2]-mnA[4])/mnA[1])					//fade out, effects get weaker
+				{lstr= (mnA[2]/mnA[1]-mnA[6])/(mnA[4]/mnA[1])}
+			}			
+		local seed=Data.RandInt(-1,1)*90							//-1,0,+1
 		local ofacing = (Camera.GetFacing().z+seed)*DtR
-		local orthv = vector(cos(ofacing),sin(ofacing),0)		//calculates the orthogonal vector left/right(forward)
+		local orthv = vector(cos(ofacing),sin(ofacing),0)		//Calculates the orthogonal vector, so relative left/right(forward) on the screen.
+		//Rotate and push the player.
 		if (1 & mnA[5]){Property.Set("player","PhysState","Rot Velocity",vector(Data.RandFltNeg1to1()*lstr,Data.RandFltNeg1to1()*lstr,4*lstr*Data.RandFltNeg1to1()))}
 		if (2 & mnA[5]){Physics.SetVelocity("player",orthv*(2*lstr))}
 	}
@@ -1724,43 +1774,53 @@ function DoOff(DN=null)
 
 #########################################
 class DAddScript extends DBaseTrap
-/*
-Adds a script and DesignNote to an object. */
-#########################################
+/*SQUIRREL: Can be used as Root -> D[Add/Remove]ScriptFunc
+
+Adds the Script specified by DAddScriptScript to the objects specified by DAddScriptTarget. Default: &ControlDevice.
+Additionally it sets the DesignNote via DAddScriptDN. If the DAddScriptScript parameter is not set only the DesignNote is added/changed.
+
+On TurnOff will clear the Script 4 slot. Warning: This is not script specific BUT DromEd will dump an ERROR if it can not override it, so you should be aware of if there is any collision. And maybe you want to use it exactly because of that.
+TODO: Make this optional, dump warning
+
+NOTE:
+• It will try to add the Script in Slot 4. It will check if it is empty or else if the Archetype has it already, else you will get an error and should use a Metaproperty.
+• It is possible to only change the DesignNote with this script and so change the behavior of other scripts BUT this only works for NON-squirrel scripts, these require a reload(TODO: confirm) or even a restart first!
+• Using Capacitor or Count for will not work for newly added DScripts. As these are created and kept clean in the Editor.
+#########################################*/
 {
-// This script can be used as a RootScript to use the DAddScriptFunc
 
 function DAddScriptFunc(DN)
 {
 	local script= GetClassName()
-	local add = DGetParam(script+"Script",false,DN)
-	local nDN = DGetParam(script+"DN",false,DN)
+	local add = DGetParam(script+"Script",false,DN)	//Which script
+	local nDN = DGetParam(script+"DN",false,DN)		//Your NewDesignNote
 
 	foreach (t in DGetParam(script+"Target","&ControlDevice",DN,1))
 		{
-		if (nDN)
+		if (nDN)									//Add a DesignNote?
 			{Property.Add(t,"DesignNote")
 			Property.SetSimple(t,"DesignNote",nDN)
 			}
 		
-		if (!add)
+		if (!add)									//Only add a DesginNote
 			continue
 		
 		Property.Add(t,"Scripts")
 		local i = Property.Get(t,"Scripts","Script 3")
+		//Check if the slot is already used by another script or the Archetype has the script already.
 		if (i == 0 || i == "" || Property.Get(Object.Archetype(t),"Scripts","Script 3"))
 			{
 				Property.Set(t,"Scripts","Script 3",add)
 			}
 			else
 			{
-				print(script+" Error on ("+self+"): Object ("+t+") has script slot 4 in use with "+i+" - Don't want to change that. Please fall back to adding a Metaproperty.")
+				print(script+" ERROR on ("+self+"): Object ("+t+") has script slot 4 in use with "+i+" - Don't want to change that. Please fall back to adding a Metaproperty.")
 			}
 		}
 }
 
 
-	function DRemoveSciptFunc(DN)
+	function DRemoveSciptFunc(DN) //TODO: Make this specific. Dump a warning if another script get's removed.
 	{
 		foreach (t in DGetParam(script+"Target","&ControlDevice",DN,1))
 			{Property.Set(t,"Scripts","Script 3","")}
@@ -1780,13 +1840,15 @@ function DAddScriptFunc(DN)
 
 #########################################
 class DStackToQVar extends DBaseTrap
+/* See Forum for documentation as well. Will store the stack of an object in a QVar.*/
 #########################################
 {
 DefOn="+Contained+Create+Combine"
-
-	function GetObjOnPlayer(type)					//Will return the (only one) object contained by the player of the given archetype.
+	
+	function GetObjOnPlayer(type)
 	{
-		foreach ( l in Link.GetAll("Contains","player"))
+	//We want to find the object that is already inside the inventory, were the stack is kept - if there is one, else the return will be this object
+		foreach ( l in Link.GetAll("Contains","player"))	//Crawling through the inventory looking for a match.
 		{
 		if (Object.Archetype(LinkDest(l))==type)
 			{
@@ -1797,37 +1859,44 @@ DefOn="+Contained+Create+Combine"
 
 	function StackToQVar(qvar=false)
 	{
-	local o = GetObjOnPlayer(Object.Archetype(self))
+	local o = GetObjOnPlayer(Object.Archetype(self)) 		//Get the object in the inventory
+		
+	//Check if QVarSet and not empty. TODO: Print Warning if not.
 		if (qvar&&qvar!="")
 			Quest.Set(qvar,Property.Get(o,"StackCount"),2)
-		return Property.Get(o,"StackCount")
+		return Property.Get(o,"StackCount")					//Returns the new Stack Count
 	}
 
 	function DoOn(DN)
 	{
-		StackToQVar(DGetParam("DStackToQVarVar",Property.Get(self,"TrapQVar"),DN))
+		StackToQVar(DGetParam("DStackToQVarVar",Property.Get(self,"TrapQVar"),DN)) //Is a QVar specified in the DN or set as property?
 	}
 }
 
 #########################################
 class DModelByCount extends DStackToQVar
-
+/*Will change the model depending on the stacks an object has. The Models are stored in the TweqModels property and thus limited to 5 different models. Model 0,1,2,3,4 will be used for Stack 1,2,3,4,5, and above.
+#########################################*/
 {
 
 	function DoOn(DN)
 	{
 		local stack = StackToQVar()-1
+		
+		//Limited to 5 models
 		if (stack>5)
 			stack=5
 			
+		//When an object get's dropped
 		if (message().message == "Create")
 			Property.SetSimple(self,"ModelName",Property.Get(self,"CfgTweqModels","Model 0"))
 			
+		//Change appearance in the inventory.
 		local o = GetObjOnPlayer(Object.Archetype(self))
 		Property.SetSimple(o,"ModelName",Property.Get(o,"CfgTweqModels","Model "+stack))
 	}
 	
-	constructor()
+	constructor()		//If the object has already more stacks. TODO: Check Create statement and Constructor do the same thing twice.
 	{
 		local stack = GetProperty("StackCount")-1
 		if (stack>5)
@@ -1838,7 +1907,7 @@ class DModelByCount extends DStackToQVar
 
 #########################################
 class SafeDevice extends SqRootScript
-/* The player can not interact twice with an object until its animation is finished. Basically it's to prevent midway triggering of levers which then not have sent the opposite message and will trigger again. */
+/* The player can not interact twice with an object until its animation is finished. Basically it's to prevent midway triggering of levers which allows to skip the opposite message and will trigger the last one again. */
 #########################################
 {
 
@@ -1855,11 +1924,11 @@ function OnTweqComplete()
 }
 
 
-//####################  Portal Scripts ###################################
+####################  Portal Scripts ###################################
 class DTPBase extends DBaseTrap
+/*Base script. Has by itself no ingame use. */
 #########################################
 {
-/*Base script. Has by itself no ingame use. */
 
 	function DTeleportation(who,where)
 	{	
@@ -1891,6 +1960,8 @@ class DTPBase extends DBaseTrap
 		local y = 0;
 		local z = 0;
 		local DN = userparams();
+		
+//Is one of my first scripts and still uses old non Standard Parameter fetching. TODO
 
 			if ("DTpX" in DN)
 			{
@@ -1915,8 +1986,8 @@ class DTeleportPlayerTrap extends DTPBase
 #########################################
 {
 /*
-Or moved by x,y,z values specified in Editor->Design Note via DTpX=,DTpY=,DTpZ= For example DTpX=-3.5,DTpZ=10)
-If any of the DTp_ parameters is specified and not 0 they will take priority and no ScriptParams link is used.
+Player is moved to the triggered object OR moved by x,y,z values specified in Editor->Design Note via DTpX=,DTpY=,DTpZ= For example DTpX=-3.5,DTpZ=10)
+If any of the DTp_ parameters is specified and not 0 these have priority.
 */
 	function DoOn(DN)
 	{
@@ -1931,21 +2002,26 @@ If any of the DTp_ parameters is specified and not 0 they will take priority and
 		{	
 			dest = Object.Position(self);
 		}
-			DTeleportation(victim,dest);
+		DTeleportation(victim,dest);
 		}
 }
 
 #########################################
 class DTrapTeleporter extends DTPBase
 #########################################
+/*Target default: &Control Device
+
+Upon receiving TurnOn teleports a ControlDevice linked object to this object and keeps the original rotation of the object.
+Further by default currently non-moving or non-AI objects will be static at the position of the TrapTeleporter and not affected by gravity until their physics are enabled again - for example by touching them.
+By setting DTeleportStatic=0 in the Editor->Design Note they will be affected by gravity after teleportation. Does nothing if Controls->Location is set.
+
+Design Note Example, which would move the closest Zombie to this object.
+DTeleportStatic=0
+DTrapTeleporterTarget=^Zombie types 
+#########################################*/
 {
-//Unlike the normal TrapTeleporter this does NOT teleport the player. DTeleportPlayerTrap can be used as combination if you need it.
-//By default currently non-moving or AI objects will be static at the position of the Teleportation Trap and not affected by gravity until their physics is enabled again - for example by touching them.
-//By setting DTeleportStatic=0 in the Design Note they will be affected by gravity again. Does nothing if Controls->Location is set.
-//Has no parameter support, if you want it use telliameds TrapMoveRelative
 	function DoOn(DN)
 	{
-
 		local dest = Object.Position(self)
 		local target = DGetParam("DTrapTeleporterTarget","&ControlDevice",DN,1)
 		foreach (t in target)
@@ -1953,7 +2029,7 @@ class DTrapTeleporter extends DTPBase
 		DTeleportation(t,dest);
 		if (!DGetParam("DTeleportStatic",true,DN))
 			{
-				Physics.SetVelocity(t,vector(0,0,1)); 								//There might be a nicer way to reenable physics
+				Physics.SetVelocity(t,vector(0,0,1)); 		//There might be a nicer way to reenable physics
 			}
 		} 
 
@@ -1966,17 +2042,26 @@ class DTrapTeleporter extends DTPBase
 #########################################
 class DPortal extends DTPBase
 #########################################
+/*
+DefOn ="PhysEnter"
+Default Target = Entering Object. (not [source]!)
+
+Teleports any entering object (PhysEnter).
+Either by x,y,z values specified in the Design Note (these have priority) via DTpX=;DTpY=;DTpZ= or to the object linked with ScriptParams.
+Unlike DTeleportPlayerTrap this script takes the little offset between the player and the portal center into account, which enables a 100% seamless transition - necessary if you want to trick the player.
+
+Tipp: If you use the ScriptParams link and want a seamless transition, place the destination object ~3 units above the ground.
+
+Design Note Example:
+DTpX=-3.5;DTpZ=10
+DPortalTarget="+player+#88+@M-MySpecialAIs"
+#########################################*/
 {
-	/*Any Object entering the Script Object will get teleported
-	Either to another object linked via a ScriptParams link, including slight offset to make the transition seamless.
-	Or moved by x,y,z values specified in Editor->Design Note via DTpX=;DTpY=;DTpZ= For example DTpX=-3.5;DTpZ=10)
-	If any of the DTp_ parameters is specified and not 0 they will take priority and no ScriptParams link is used.
-	*/
 
 	DefOn="PhysEnter"
 	target=[]
 
-	function OnBeginScript()
+	function OnBeginScript()	//The Object has to react to Entering it.
 	{
 		Physics.SubscribeMsg(self,ePhysScriptMsgType.kEnterExitMsg)
 	}
@@ -2024,28 +2109,95 @@ class DPortal extends DTPBase
 
 }
 
+####################################################
+/*
+class DImportObj extends DBaseTrap HAS BEEN MOVED
+####################################################
+This script can import Objects into your Object Hirarchy. Yes. Check out the DSCreatorScripts for more information.
+
+Script has been moved to the CreatorScripts in the past and continued there. 
+Very bad I have kept this active here. 
+Keeping the code here until I check again it is not needed.
+{
+
+function DoOn()
+{
+local file = DGetParam("DImportObjFile","ImportObj.txt")
+local omax = Data.GetString(file, "OAmount", string def = "", string relpath = "obj");
+local i = 1
+
+for (i=1,i <= omax,i++)
+	{
+	local data = Data.GetString(file, "Obj"+i, string def = "", string relpath = "obj")
+	data=split(data,"=;")
+	local l = Link.GetOne("~MetaProp","MISSING")
+	local a = LinkDest(l)
+	//Check if an empty Archetype is avaliable
+	if (! a<0)
+		{
+		print("DImportObj - ERROR: No more Archetypes in MISSING for Obj"+i)
+		return false
+		}
+	local parent = data[1]
+	if (! ObjID(parent)<0)
+		{
+		print("DImportObj - ERROR: New Parent Archetypes for Obj"+i+" does not exist. Check your Hirarchy or ImportObj.txt")
+		continue
+		}
+	local name = data[3]
+	if (Object.Exists(name))
+		{
+		print("DImportObj - ERROR: Archetype with name "+name+"already exists (Obj"+i+"). Check your Hirarchy or ImportObj.txt")
+		continue
+		}
+	//Checks done go
+	//Changeing location
+	Link.Create("~MetaProp",parent,a)
+	Link.Destroy(l)
+	
+	//Add Properties?
+	local j = data.len()
+	if (j > 5)
+		{
+		for (k=5,k<j, k=k+2)
+			{
+			local prop=split(data[k],":")
+			if (prop.len()==1)
+				Property.SetSimple(a,prop[0],DCheckString(data[k+1],false))
+			else
+				Property.Set(a,prop[0],prop[1],DCheckString(data[k+1],false))
+			}
+		}
+	}
+}
+
+
+}
+
+*/
 
 
 
-###################In Editor Mode Trap#################################
+##############In Editor Mode Trap########
 class DEditorTrap extends SqRootScript
 #########################################
 /*
 USE WITH CAUTION - Sent messages could be permanent!
 When using the command script_reload or leaving the game mode this trap gets activated. As a failsafe DEditorTrapOn=1 must be set for this to work.
-It will then sent a message specified with DEditorTrapRelay to DEditorTrapTarget. This will be IMMEDIATLY IN THE EDITOR and other (non squirrel) scripts will react as they would do ingame.
+It will then sent a message specified with DEditorTrapRelay to DEditorTrapTarget. This will be IMMEDIATLY IN THE EDITOR and other (non squirrel) scripts will react as they would do ingame!
 Actions by for example NVLinkBuilder, NVMetaTrap will be executed - which is basically the reason why this script exists.
 
-Alternatively if DEditorTrapPending=1 the message will be sent when entering the game mode. BE CAREFUL every time this script runs (script_reload, exiting game mode) it will create another message!
+Alternatively if DEditorTrapPending=1 the message will be sent when entering the game mode. BE CAREFUL every time this script runs (script_reload, exiting game mode) it will create another message, which is NOT cleaned up automatically!!! So the Trap should be deactivated after using it!
 You can check and delete them with the command edit_scriptdata -> Posted Pending Messages.
 
-A new idea that came to my mind is that you can catch reloads with this message, as it will trigger at game start*/
+A new idea that came to my mind is that you can catch reloads with this message, as it will trigger at game start
+#########################################*/
 {
 constructor()
 {
 local dn = userparams();
 
-if (DGetParam("DEditorTrapUseIngame",0,dn)==IsEditor()){return}	//use it as gamestart+reload counter.
+if (DGetParam("DEditorTrapUseIngame",0,dn)==IsEditor()){return}	//SQUIRREL NOTE: This can be used it as gamestart/reload counter.
 
 if ( DGetParam("DEditorTrapOn",0,dn)==1 )
 	{
