@@ -1,6 +1,8 @@
 ::This file creates a AutoImportModels.str file to be auto added into the Hierarchy with the DImportObj or DAutoImport scripts.
 
 ::----------------README----------------
+::With the new DML updates for CreateArch this became rather obsolete but are still a methode if you prefer your data in a spreadsheet.
+
 ::After executing this file you still need to replace the Parent ARCHETYPE and newOBJECTNAME fields, you can also add more properties.
 ::Read the DAutoImport Models documentation or look at my examples for more information.
 
