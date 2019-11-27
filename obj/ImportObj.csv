@@ -1,4 +1,3 @@
-ObjMax: "800"  																					
 Obj0: "Parent	Trees	Name	DTrees	Scripts:Script 0	DAutoTxtRepl	PhysDims:Size	<1,1,16	RenderAlpha	#1"													
 Obj_2: "Parent	Trees	Name	DTreeParts	Scripts:Script 0	DAutoTxtRepl"																	
 Obj_1: "Parent	DTreeParts	Name	DTrunks	PhysDims:Size	<1,1,16"																	
