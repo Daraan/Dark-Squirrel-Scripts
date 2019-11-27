@@ -1,4 +1,6 @@
-# Dark-Squirrel-Scripts short DScript is a Squirrel based code for the 1998 and 2000 released games Thief 1&2 and it's editor DromEd.
+# This branch is the last properly tested 'stable' version. The master branch is better revisioned but without testing yet.
+
+# Dark-Squirrel-Scripts short DScript is a Squirrel based code for the released games Thief 1&2 and it's editor DromEd.
 
 Beside the basic included scripts DScript is the fourth largest collection of scripts made by the comumnity over the past years.
 With the 2017's update of the game to the NewDark Version 1.25 it was possible to now write scripts in squirrel simply in a text editor with the game compiling then compiling them during runtime.
