@@ -1,10 +1,4 @@
-ObjMax: "800"  //The script stops if not specified after 100, so if below you dont have to add this line.																						
-//Actually the Parent is optional - Obj#: "	 would be enough. Replace with SKIP to ignore that line 	New Parent Archetype - Replace Name with FORCE to also execute these changes even if the Archetype already exists.	New Archetype Name	Property1Name	Value - use the prefix # or . for numbers(-7 or DOT .0.2) and < for vectors <1,4,2.7.	DONT FORGET THE "																
-// = and 	  are interchangable so Parent	Arch	Name   is equal to   Parent=Arch	Name																		
-//This allows to create the .str file as a .csv in a spreadsheet programm. For the export: Field seperator is 	  clear the Text seperator to empty. It should definitly NOT be " .'																					
-//Notes For OpenOffice: Tag the Filter option when you use Save As. I don''t know about other programms and languages but for Germans the standard shift+2 and even Alt+32 ? ?  ARE NOT " < - So for example copy this one'	"	Meta	M-NotifyRegion	Link:ScriptParams:#-7	:No Field Name	Link:DetailAttachement:Gizmo	vhot/sub #:#7:rel pos:<1,2,0.3"															
-//If you have problems creating new Obj#: Parent fields you can use this function:    CONCATENATE("Obj"	ROW()	": ""Parent") zu deutsch VERKETTEN("Obj"	ZEILE()	": ""Parent")																		
-																						
+ObjMax: "800"  																					
 Obj0: "Parent	Trees	Name	DTrees	Scripts:Script 0	DAutoTxtRepl	PhysDims:Size	<1,1,16	RenderAlpha	#1"													
 Obj_2: "Parent	Trees	Name	DTreeParts	Scripts:Script 0	DAutoTxtRepl"																	
 Obj_1: "Parent	DTreeParts	Name	DTrunks	PhysDims:Size	<1,1,16"																	
