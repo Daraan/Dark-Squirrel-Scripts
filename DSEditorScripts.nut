@@ -11,7 +11,7 @@ DImportObj is not finally revised - When using it there is a high chance that yo
 
 
 The DImportObj script is a very powerful one which let's you import, create & modify archetypes via script and a text file with the properties you want.
-Further explanation in the .csv file
+Further explanation in the .csv file. With the last DML patch this function became rather obsolete, but still allows a nice overview over your models and properties in a spreedsheet.
 
 #######################
 For DumpModels script:
@@ -19,28 +19,18 @@ For DumpModels script:
 
 Before you can use this script you have to do some additional work as a complete list of all filenames is needed.
 
-*For WINDOWS
-1.) Open the folder with models you want to use in your explorer.
-	From the top line copy the path. For example:
-2.) Open the Comand prompt (CMD) - for example by Win+R -> CMD
-	Enter cd and then paste your obj path (use rightclick)
-3.) Now enter: DIR /B /O:E >models.txt
+*NEW: Use the DumpAllModels.cmd look for it in the obj folder.
+• Open it with a text editor and SET OneLine=YES.
+• Optional choose input and ouput folder and file. 
 
-4.) Go back into your explorer and open the now present models.txt. Best you use notepadd++.
-	•At the top and bottom of the file you will find - if present - non .bin files. Delete these.
-	•With Ctrl+H you open the Search and replace dialog.
-		•Bottom left select: Advanced (\n, \r...)
-		•Now enter: Search for .bin\r\n
-		•Replace with ","  including the "
-		•Replace all
-	You know have one very long line
-	Go to the very end and delete the last ,"
-	Go to the start and enter a " before the first model name.
-	
-5.) Copy everything and paste it below into the [ ] brackets.
-6.) Save this file again and open your editor. Make sure squirrel.osm is loaded.
+1-3.) Obsolete now
+4.) Open your output file. Go the the very end of you line and delete the last ,
+5.) Copy everything and paste it into the [ ] brackets in the DDumpModels script class. TODO: In the next update I will move this up here.
+6.) Save this file and open your DromEd. Make sure squirrel.osm is loaded.
 
-7.) Create a Marker and give it the DDumpModels script. if you don't want to create screenshots you can start the progress in the editor with script_test Obj_ID_Marker. This will be done in less than a minute.
+7.) Create a any object and give it the DDumpModels script, remember it's ObjID for the next steps.
+If you don't want to create screenshots you can start the progress.
+In the editor write 'script_test ObjID'. This progress will be done in less than a minute.
 
 	IN CASE OF CRASH:
 		•In case of wrong models: The script will dump the models it has/tried to create in the last entries of monolog.txt you should find a clue which models make trouble. •Delete/Move the file and also delete the model name from the long "modelname" line.
@@ -50,39 +40,41 @@ Before you can use this script you have to do some additional work as a complete
 
 TAKING SCREENSHOTS:
 
-	!--> WARNING: In cam_ext.cfg use screenshot_format BMP. PNG will TAKE AGES and possibly skip models! <---!
+	!--> WARNING: In cam_ext.cfg use screenshot_format BMP. --- PNG will TAKE AGES and possibly skip models! <---!
 	
 	A) First you should create all models without screenshots and place your airbrushes accordingly.
 	B) Create a button/leaver and CD link it to the marker.
 	C) Create a second Marker name it Camera.
-		•Give it the property Renderer->CameraOverlay. Set it to active.
+		•Give it the property Renderer->CameraOverlay.
 		•Set it to active and set Alpha to 0
 	D) It's better to delete all models again so none obscours the camera. (Textures are preloaded as well so the chance of skipping a model due to high ress size is smaler)
-	E) If you want to create screenshots, create a button/lever and CD link it to the marker. Make sure you set the parameter Screenshots = 1 in the DesignNote.
+	E) Make sure you set the parameter Screenshots = 1 in the DesignNote.
 		•Press the Button in Game Mode.
 	
-	If you machine is not so powerfull it could happen that some models are skipped, in that case you have to search for the line SetOneShotTimer("timer",0.15)	and slightly increase the last number, e.g. to 0.2
+	If you machine is not so powerfull it could happen that some models are skipped, in that case you have to search for the line SetOneShotTimer("timer",0.15) and slightly increase the last number, e.g. to 0.2
 
 -----	
 	
-In the DesignNote the following optional parameters can be used as (exactly) as written here:
+In the DesignNote the following optional parameters can be used (exactly) as written here:
 
-First		Can be a model name or number, will start the process at the given ModelName or at the #th Model in your list.	
+First=Can be a model name or number	Will start the process at the given ModelName or at the #th Model in your list.	
 
-MaxModels		There could be trouble because to many models are created. With MaxModels you can set a limit to create for example just 100 models.
-				To continue the process where you left set First to the next Model after that. First alphabetically then with one character more.
-				Default is 2000. I had no problems with 1300 - expect at first defect models who caused crashes.
+MaxModels=1000		There can be trouble because to many models are created. With MaxModels you can set a limit to create for example just 100 models.
+				To continue the process where you left set First to the next Model after that. Order: First alphabetically shorter words come before: Mod before Model.
+				Default is 2000. I had no problems with 1300 - expect only at first with defect models which caused crashes.
 				
 Screenshots = 1 to create a screenshot for every model during the process. This will make it a LOT slower, especially if you enabled PNG format.
 */
 
 
+####################################
+#  DAutoTxtRepl Preset Collection  #
+####################################
+/*The DAutoTxtRepl script will automatically fill the Texture Replacement fields with a random texture out of a given set of textures on object creation. 
+This set can manually be assigned in the Design Note or out of the preset collection found below.
+###############################################
+SQUIRREL NOTE: We define this stuff globally here so not every script instance uses a copy. Modify to your liking.*/
 
-
-##############DAutoTxtRepl###########################
-/* The DAutoTxtRepl script will automatically fill the Texture Replacement fields with a random texture out of a given set of textures on object creation. This set can manually assigned in the Design Note or out of the preset collection found below*/
-#########################################
-// We define this stuff globally here so not every script instance uses a copy. Modify to your liking.
 ParseDone<-false
 ModTable<-
 {	//Standard is TexRep0, insert a number (1-3) behind a model name to change it to TexRep#
@@ -159,9 +151,9 @@ TexTable<-
 	}
 }
 
-
+####################################
 class DAutoTxtRepl extends DBaseTrap
-#########################################
+####################################
 {
 //	["NVPictureFrame","DBushR","DBushR2","DBushR3","DBushR4","DBushR5"]
 DefOn="+TurnOn+test";
@@ -310,7 +302,6 @@ function DoOn(DN)						//TexTable={k=v[index i=tv] }
 	}	
 ########### Actual Selection
 
-
 	type=DGetParam("DAutoTxtReplType",false,DN)
 	if (!type)
 	{//DetectionMode
@@ -401,6 +392,7 @@ MyModels =
 [
 "sam","GOTarch01","GOTarch02","JonSnow","Edd","slynt","GOTSWrd01","GOTSWrd02","NightKing","GOTSWrd03","Jeor1"
 //COPY YOUR FILE NAMES INTO HERE. -- ONE LINE ONLY!!!!
+//REMEMBER: remove the last , if you used DumpModels.cmd
 //No need to modify for DImportObj!
 ]
 
