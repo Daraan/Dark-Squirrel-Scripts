@@ -3,7 +3,7 @@
 
 
 #####################
-class DCameraScripts{
+class DAdvGeoLib{
 
  function DVectorBetween(from,to,UseCamera=TRUE)
  //Returns the Vector between the two objects.
@@ -28,7 +28,7 @@ function DPolarCoordinates(from,to,UseCamera=TRUE)
 class DCameraFaceObj extends DBaseTrap
 {
 //Calculate Vector and Facing, slowly change Camera to face point
-//To activly change the camera we need to (probably) attach it to an object and change that onces facing.
+//To actively change the camera we need to (probably) attach it to an object and change that onces facing.
 //Not sure if we can directly influence the player cam. 	
 //ObjID GetCameraParent();
   
@@ -58,4 +58,34 @@ class DTimeTravelLoad{
 //Check if CustomNameFile.txt is present and to actions}
 
 }
+##############################
+	
+class DGetExecTime{
 
+
+function OnBeginScript()
+{
+local t = System.Time()
+this.DoTest.DoOn(DN)
+print ("Execution Time: " + System.Time-t + " s")
+}
+	
+
+constructor()
+{//would this work? How to properly
+this.DoTest <- ::TestScript	
+}
+
+
+}
+
+//Or do it via exetend and just run it normally
+DEBUG=true
+if (DEBUG)	
+	class DBaseTrap extends DGetExecTime
+else
+	normal
+	..
+
+or		
+DGetExecTime -> DBaseTrap
