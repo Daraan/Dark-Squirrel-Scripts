@@ -17,8 +17,8 @@ class DCameraScripts{
  }
 
 function DPolarCoordinates(from,to,UseCamera=TRUE)
-{//The geometry in Thief is a little bit rotated to this needs more polish
- //returns the SphericalCoordinates in the ReturnVector (r,\theta ,\phi )
+{//returns the SphericalCoordinates in the ReturnVector (r,\theta ,\phi )
+ //The geometry in Thief is a little bit rotated to this thoretically correct formulas still need to be adjusted.
   local v = DVectorBetween(from,to,UseCamera)
   local r = v.Length
   return ReturnVector(r,acos(v.z/r),atan2(v.x,v.y))
