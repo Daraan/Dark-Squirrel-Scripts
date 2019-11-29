@@ -1635,6 +1635,21 @@ function DoOff(DN)		//Cleanup
 #########################################
 class DHudCompass extends DBaseTrap
 /* Creates the frobbed item and tries to keep it in front of you camera. So actually not limited to the compass.
+
+TODO: 
+Using the camera is fine but maybe this could help fine tuning it.
+enum ePlayerMode
+{
+	kPM_Stand
+	kPM_Crouch
+	kPM_Swim
+	kPM_Climb
+	kPM_BodyCarry
+	kPM_Slide
+	kPM_Jump
+	kPM_Dead
+}
+
 */
 #########################################
 {
