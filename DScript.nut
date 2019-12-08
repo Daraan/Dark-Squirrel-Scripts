@@ -1,6 +1,7 @@
 /*#########################################
 DScript Version 0.30c
-Use at your liking. All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
+Use at your liking. 
+All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
 
 DarkUI.TextMessage("Here for fast copy paste test");
 
@@ -27,7 +28,7 @@ function DGetAllDescendants(at,objset)			//Emulation of the "@"-parameter. Brute
 
 
 ############################################
-function DCheckString(r,adv=false)			//Analysis of all given Parameters given as strings 
+function DCheckString(r,adv=false)			//Analysis of a given string parameter depending on its prefixed parameter.
 {	// adv(anced)=true returns the result in an array instead of a single entity
 	
 	//handling non strings
@@ -40,7 +41,7 @@ function DCheckString(r,adv=false)			//Analysis of all given Parameters given as
 			if (adv){return [r]}else{return r}
 		case "null":
 		case "bool":
-			return r
+			return r			//low prio TODO: Even if there should be no such situation, add adv.
 		}
 		
 	//Convenient sugar code for you
