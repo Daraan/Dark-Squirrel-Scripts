@@ -96,7 +96,7 @@ else
 or		
 DGetExecTime -> DBaseTrap
 
-enum DebugString
+enum DDebugString
 {
 //base.var	
 // scriptname, obj id, (source,case)
@@ -110,6 +110,8 @@ Generic		= "DDebug: (%s) \t on Obj(%d):\t Value1: %s\n\t\t Value2: %s\n\t\tValue
 exp func?"DoOn":"DoOff"	
 	
 format(DebugString.Case,vars)	
+DPrint(type,...)
+
 	
 # Implemented	
 	
@@ -150,12 +152,14 @@ The DDebug script (class) can be used on an object to automatically 'set DDebug 
 	{
 	/*
 	Will print the specified text message
-	*/
+	*/	
 		local var=Config.GetRaw("DDebug")
 		if (var||force) 				//Debug mode set?
 		{
 			if (var==null||self in DCheckString(var,true)) 	//Always debug or Debug on this object? TODO: Test. is the value null? or true?
 			{
+				DebugMessage=format(DDebugString.DebugMessage,)
+					
 				if (mode | 1)			//Bitewise operation, mode=3 is true for both
 					print(DebugMessage)
 				if (mode | 2)
