@@ -3,6 +3,9 @@
 
 
 #####################
+
+# IS IN WORK
+
 class DAdvGeoLib{
 
  function DVectorBetween(from,to,UseCamera=TRUE)
@@ -24,7 +27,8 @@ function DPolarCoordinates(from,to,UseCamera=TRUE)
   return ReturnVector(r,acos(v.z/r),atan2(v.Y,v.X)) //Note here we need Y,X!
 }
  
-  
+# NOT YET
+	
 class DCameraFaceObj extends DBaseTrap
 {
 //Calculate Vector and Facing, slowly change Camera to face point
@@ -59,6 +63,8 @@ class DTimeTravelLoad{
 
 }
 ##############################
+
+#Implemented but with a while over 1 second.	
 	
 class DGetExecTime{
 
@@ -89,7 +95,23 @@ else
 
 or		
 DGetExecTime -> DBaseTrap
+
+enum DebugString
+{
+//base.var	
+// scriptname, obj id, (source,case)
+MessageReceived = "DDebug: (%s) \t on Obj(%d):\tMessage  Received: %s."
+MsgWithSource	= "DDebug: (%s) \t on Obj(%d):\tMessage  Received: %s from %s."
+CapacitorFail	= "DDebug: (%s) \t on Obj(%d):\tNot activated: %s)"
+CounterFail	= "DDebug: (%s) \t on Obj(%d):\tCounter reached: %s)"
+Generic		= "DDebug: (%s) \t on Obj(%d):\t Value1: %s\n\t\t Value2: %s\n\t\tValue3: %s"
+}
+
+exp func?"DoOn":"DoOff"	
 	
+format(DebugString.Case,vars)	
+	
+# Implemented	
 	
 class DDebug extends SqRootScript
 {
