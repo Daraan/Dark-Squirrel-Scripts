@@ -1,5 +1,5 @@
 /*#########################################
-DScript Version 0.30c
+DScript Version 0.31a
 Use at your liking. 
 All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
 
@@ -1634,77 +1634,71 @@ function DoOff(DN)		//Cleanup
 #########END of UNDERCOVER SCRIPTS############
 
 #########################################
+#########################################
 class DHudCompass extends DBaseTrap
-/* Creates the frobbed item and tries to keep it in front of you camera. So actually not limited to the compass.
-
-TODO: 
-Using the camera is fine but maybe this could help fine tuning it.
-enum ePlayerMode
-{
-	kPM_Stand
-	kPM_Crouch
-	kPM_Swim
-	kPM_Climb
-	kPM_BodyCarry
-	kPM_Slide
-	kPM_Jump
-	kPM_Dead
-}
-
+/* Creates the frobbed item and keeps it in front of the camera. So actually not limited to the compass.
+Its original right(easternside) will always point north.
+A good down scale for the compass here is 0.25.
 */
 #########################################
 {
 DefOn="FrobInvEnd"
 DefOff="null"
 
-constructor()
-{	
-	if (!IsEditor()){return}	//Data is set in the editor, else multiple data is set.
-	SetData("Active",false)
-}
+	/*constructor()
+	{	
+		if (!IsEditor()){return}	//Data is set in the editor, else multiple data is set.
+		SetData("Active",false)
+	}*/
 
-function OnTimer()				//Update the position, sadly not realtime.....
-{
-	if (GetData("Active"))
+	function OnTimer()				//Update the position, sadly not realtime.....
 	{
-		local v=Camera.GetFacing()
-		//DEBUG DarkUI.TextMessage(vector(sin(v.y-90)*cos(v.z),sin(v.y-90)*sin(v.z),cos(v.y-90)))
-		local pitch=v.y
-		local heading=v.z+180
-		v.z=90-v.z
-		v.y=0
+		if (IsDataSet("Active"))
+		{
+			local v=Camera.GetFacing()
+			//rel rot to make the right(east) side of the object face north.
+			v.z=90-v.z
+			v.y=0
+			LinkTools.LinkSetData(GetData("CompassLink"), "rel rot", v)
+			
+			//Get Position:
+			//First will calculate the absolute targeted world position of the object.
+			//Then calculates the ralativ vector between the player to that point.
+			//Lastly adjust it by the relativ camera offset.
+			Object.CalcRelTransform("Player", "Player", v, vector(), 4, 0)
+			local v2 = Object.WorldToObject("Player",Camera.CameraToWorld(vector(0.75,0,-0.3)))+v	//should give back relative vector to CameraPosition.
+			LinkTools.LinkSetData(GetData("CompassLink"), "rel pos", v2)
+			
+			
+			SetOneShotTimer("Compass",1/60)		//Trying to do it once per frame: 1/FPS - Sadly it still jiggles compared to the standard inventory render :/
+		}
 
-		local v2=Camera.GetPosition()-Object.Position("Player")
-		v2 = vector(cos(pitch*DtR)-0.4*sin(pitch*DtR), 0 ,v2.z-sin((pitch+32)*DtR)) //Trigonometry is cool. Hard values seem to work nice in the game.
-
-		LinkTools.LinkSetData(GetData("CompassLink"), "rel rot", v)
-		LinkTools.LinkSetData(GetData("CompassLink"), "rel pos", v2)
-		SetOneShotTimer("Compass",0.0125)	//Sadly it does not work in realtime like the inventory compass :/
 	}
 
-}
+	function DoOn(DN)
+	{
+	// Off or ON? Toggling item
+		if (IsDataSet("Active"))
+			{return this.DoOff(DN)}
+		SetData("Active",true)
+		
+		local obj = Object.Create(DarkUI.InvItem())	//Create Selected item
+		Physics.DeregisterModel(obj)				//We wan't no physical interaction with anything.
+		local link=Link.Create("DetailAttachement",obj,"Player")
+			LinkTools.LinkSetData(link,"Type",3)
+			LinkTools.LinkSetData(link,"vhot/sub #",0) //is camera
+		
+		SetData("Compass",obj)						//Save the CreatedObj and LinkID to update them in the timer function and destroy it in the DoOff
+		SetData("CompassLink",link)
+		SetData("Timer",SetOneShotTimer("Compass",0.1))
+	}
 
-function DoOn(DN)
-{
-// Off or ON? Toggling item
-	if (GetData("Active"))
-		{return this.DoOff(DN)}
-	SetData("Active",true)
-	
-	local obj = Object.Create(DarkUI.InvItem())	//Create Selected item
-	Physics.DeregisterModel(obj)				//We wan't no physical interaction with anything.
-	local link=Link.Create("DetailAttachement",obj,"Player")
-	SetData("Compass",obj)						//Save the CreatedObj and LinkID to update them in the timer function and destroy it in the DoOff
-	SetData("CompassLink",link)
-	SetData("Timer",SetOneShotTimer("Compass",0.1))
-}
 
-
-function DoOff(DN)
-{ 
-	SetData("Active",false)						//TODO: Make script specific (maybe it is?) and why not remove it.
-	Object.Destroy(GetData("Compass"))
-}
+	function DoOff(DN)
+	{ 
+		ClearData("Active")						//TODO: Make script specific (it should be) and why not remove it.
+		Object.Destroy(GetData("Compass"))
+	}
 
 
 }
