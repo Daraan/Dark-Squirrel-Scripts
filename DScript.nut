@@ -1,6 +1,7 @@
 /*#########################################
-DScript Version 0.30c
-Use at your liking. All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
+DScript Version 0.31b
+Use at your liking. 
+All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
 
 DarkUI.TextMessage("Here for fast copy paste test");
 
@@ -25,9 +26,10 @@ function DGetAllDescendants(at,objset)			//Emulation of the "@"-parameter. Brute
 	return objset
 }
 
+SqRootScript.PlayerObject <- function() {return ObjID("Player")}
 
 ############################################
-function DCheckString(r,adv=false)			//Analysis of all given Parameters given as strings 
+function DCheckString(r,adv=false)			//Analysis of a given string parameter depending on its prefixed parameter.
 {	// adv(anced)=true returns the result in an array instead of a single entity
 	
 	//handling non strings
@@ -40,6 +42,8 @@ function DCheckString(r,adv=false)			//Analysis of all given Parameters given as
 			if (adv){return [r]}else{return r}
 		case "null":
 		case "bool":
+			return r			//low prio TODO: Even if there should be no such situation, add adv.
+		case "vector":
 			return r
 		}
 		
@@ -144,11 +148,11 @@ function DGetParam(par,def=null,DN=null,adv=false)	//Function to return paramete
 {
 	if(!DN){DN=userparams()}			//The Design Note has to be passed on to a) save userparams() calls and b)for this function to work for artificial tables and class objects as well.
 	if (par in DN)
-		{
+	{
 		return DCheckString(DN[par],adv)	//will return arrayed or single objs(adv=1).
-		}
+	}
 	else 						//Default Value
-		{	
+	{	
 		return DCheckString(def,adv)
 	}
 }
@@ -206,47 +210,58 @@ function DGetTimerData(m,KeyValue=false)		//Get back your data after timeout
 }
 
 
-##########################################
 
+######################################################
 ###########Section Counter and Capacitor Checks#######
-/* Script activation Count and Capacitors (activations in a limited time frame) are handled via Object Data, in this section they are set and controlled.*/
-
-function DCapacitorCheck(script,DN,OnOff="")	//Capacitors only, general "" or "On/Off" specific
+/*
+Script activation Count and Capacitors (activations in a limited time frame) are handled via Object Data, in this section they are set and controlled.
+*/
+######################################################
+function DCapacitorCheck(script,DN,OnOff="",DoDD=false)				//Capacitor Check. General "" or "On/Off" specific
 {
 		local Capa = GetData(script+OnOff+"Capacitor")+1	//NewValue
-		//DEBUG print(script+"Capa= "+Capa+"/"+DGetParam(script+OnOff+"Capacitor",null,DN)+"  Timer:"+DGetParam(script+OnOff+"CapacitorFalloff",null,DN))
-		if (Capa == DGetParam(script+OnOff+"Capacitor",0,DN).tointeger())	//Reached Threshold?										//DHub compability
+		local Threshold = DGetParam(script+OnOff+"Capacitor",0,DN).tointeger()
+		#
+			DPrint("DDebug ("+script+") - Stage 3 - on Obj("+self+"):\t "+OnOff+"Capacitor:("+Capa+" of "+Threshold+")",DoDD,DoDD)	
+		#
+		if (Capa == Threshold)	//Reached Threshold?										//DHub compability
 		{
 			SetData(script+OnOff+"Capacitor",0)				//Reset Capacitor and terminate now unnecessary FalloffTimer
 			if (DGetParam(script+OnOff+"CapacitorFalloff",false,DN))
 				{KillTimer(ClearData(script+OnOff+"FalloffTimer"))}
-			return null	//Don't abort
+			return null	//Don't abort<-false
 		}
 		else
 		{
 			if (DGetParam(script+OnOff+"CapacitorFalloff",false,DN))
 				{
-					if(IsDataSet(script+OnOff+"FalloffTimer")){KillTimer(GetData(script+OnOff+"FalloffTimer"))}											//reseting timer and killing old ones.
+					if(IsDataSet(script+OnOff+"FalloffTimer")){KillTimer(GetData(script+OnOff+"FalloffTimer"))}							//reseting timer and killing old ones.
 					SetData(script+OnOff+"FalloffTimer",SetOneShotTimer(script+"Falloff",DGetParam(script+OnOff+"CapacitorFalloff",false,DN).tofloat(),OnOff))
 				}
 			SetData(script+OnOff+"Capacitor",Capa)
-			return true	//Abort
+			return true	//Abort possible
 		}
 		
 }
 
-
-function DCountCapCheck(script,DN,func)		//Does all the checks and delays before the execution of a Script
+function DCountCapCheck(script,DN,func,DoDD=false)		//Does all the checks and delays before the execution of a Script
 {
-	//Checks if a Capacitor is set and if it is reached with the function above. func=1 means a TurnOn
+	/*Checks if a Capacitor is set and if it is reached with the function above. func=1 means a TurnOn
 	//Strange to look at it with the null statements I know. But this setup enables that the three different Setups can't interfere with each other.
-	//Abuses (null==null)==true, Once abort is false it can't be true anymore, while beeing null(undecided) it can.
-	//TODO Check if this is still true, and 
+	//Abuses (null==null)==true, Once abort is false it can't be true anymore, while needs to get 3x true to abort.
+	//As a little reminder Capacitors should fail until they are full.
+	//TODO Check if this is still true, and */
 	local abort = null
-	if (IsDataSet(script+"Capacitor")){if(DCapacitorCheck(script,DN)){abort = true}else{abort=false}}
-	if (IsDataSet(script+"OnCapacitor")&&func==1){if(DCapacitorCheck(script,DN,"On")){if (abort==null){abort = true}}else{abort=false}}
-	if (IsDataSet(script+"OffCapacitor")&&func==0){if(DCapacitorCheck(script,DN,"Off")){if (abort==null){abort = true}}else{abort=false}}
-	if (abort){return}	//If abort changed to true.
+	if (IsDataSet(script+"Capacitor")			 )	{if(DCapacitorCheck(script,DN,"",DoDD))						{abort = true} else{abort=false}}
+	if (IsDataSet(script+"OnCapacitor") &&func==1)	{if(DCapacitorCheck(script,DN,"On",DoDD)) {if (abort==null)	{abort = true}}else{abort=false}}
+	if (IsDataSet(script+"OffCapacitor")&&func==0)	{if(DCapacitorCheck(script,DN,"Off",DoDD)){if (abort==null)	{abort = true}}else{abort=false}}
+	if (abort) //If abort changed to true.
+	{
+		#
+			DPrint("DDebug ("+script+") - Stage 3X - on Obj("+self+"):\t Not activated as ("+func+")Capacitor threshold is not yet reached.",DoDD,DoDD)
+		#
+		return
+	}
 
 	
 	//Is a Counter Set?
@@ -257,7 +272,13 @@ function DCountCapCheck(script,DN,func)		//Does all the checks and delays before
 		if (CountOnly == 0 || CountOnly+1 == func +2)		//Disabled or On(param1+1)==On(func1+2), Off(param2+1)==Off(func0+2); 
 			{
 			local Count = SetData(script+"Counter",GetData(script+"Counter")+1)
-			if (Count > DGetParam(script+"Count",0,DN).tointeger()){return} //Over the Max abort. 
+			if (Count > DGetParam(script+"Count",0,DN).tointeger())
+				{
+				#
+					DPrint("DDebug ("+script+") - Stage 4X - on Obj("+self+"):\t Not activated as current Count: "+Count+" is above the Counter: "+DGetParam(script+"Count",null,DN),DoDD,DoDD)
+				#
+				return
+				} //Over the Max abort. 
 			}	
 		}
 
@@ -270,46 +291,63 @@ function DCountCapCheck(script,DN,func)		//Does all the checks and delays before
 	// All Checks green! Then Go or Delay it?
 	local d = DGetParam(script+"Delay",false,DN).tofloat()
 	if (d)
-		{
-		//Stop old timers if ExlusiveDelay is set.
-		if (IsDataSet(script+"DelayTimer")&& DGetParam(script+"ExclusiveDelay",false,DN))
 			{
-				KillTimer(GetData(script+"DelayTimer"))
-			}
-		
-		//Stop Infinite Repeat
-		if (IsDataSet(script+"InfRepeat"))	
-		{
-			if (GetData(script+"InfRepeat") != func) //Inverse Command received => end repeat and clean up. Same func gets ignored -> Activation is solely handled via the reapeating DelayTimer.
+			//Stop old timers if ExlusiveDelay is set.
+			if (IsDataSet(script+"DelayTimer")&& DGetParam(script+"ExclusiveDelay",false,DN))
+				{
+					KillTimer(GetData(script+"DelayTimer"))
+				}
+			
+			//Stop Infinite Repeat
+			if (IsDataSet(script+"InfRepeat"))	
 			{
-				KillTimer(GetData(script+"DelayTimer"))
-				ClearData(script+"DelayTimer")
-				ClearData(script+"InfRepeat")
+				if (GetData(script+"InfRepeat") != func) //Inverse Command received => end repeat and clean up. Same func gets ignored -> Activation is solely handled via the reapeating DelayTimer.
+				{
+					KillTimer(GetData(script+"DelayTimer"))
+					ClearData(script+"DelayTimer")
+					ClearData(script+"InfRepeat")
+					#
+						DPrint("DDebug ("+script+") - Stage 5X - on Obj("+self+"):\t Infinite Repeat has been stopped.",DoDD,DoDD)
+					#
+				}
 			}
-		}
-		else
-		//Start DelayTimer -> Above timer message handle activation when received.
-		{
-			local r=DGetParam(script+"Repeat",0,DN).tointeger()
-			if (r==-1){SetData(script+"InfRepeat",func)}	//If infinite repats store if they are ON or OFF.
-			//Store the Timer inside the ObjectsData and start it with all necessary information inside the timers name.
-			SetData(script+"DelayTimer",DSetTimerData(script+"Delayed",d,func,SourceObj,r,d))
-		}
+			else
+			//Start DelayTimer -> Above timer message handle activation when received.
+			{
+				local r=DGetParam(script+"Repeat",0,DN).tointeger()
+				if (r==-1){SetData(script+"InfRepeat",func)}	//If infinite repats store if they are ON or OFF.
+				//Store the Timer inside the ObjectsData and start it with all necessary information inside the timers name.
+				SetData(script+"DelayTimer",DSetTimerData(script+"Delayed",d,func,SourceObj,r,d))
+				#
+					DPrint("DDebug ("+script+") - Stage 5B - on Obj("+self+"):\t A ("+func+") Activation will be executed after a delay of "+d+" seconds.",DoDD,DoDD)
+				#
+			}
 		}
 	else	//No Delay. Excute the scripts ON or OFF functions.
-		{if (func){this.DoOn(DN)}else{this.DoOff(DN)}}
+		{
+		#
+			DPrint("DDebug ("+script+") - Stage 5 - on Obj("+self+"):\t Will be executed. Source Object was: ("+SourceObj+")" ,DoDD,DoDD)
+		#
+		if (func){this.DoOn(DN)}else{this.DoOff(DN)}
+		}
 
 }
 ##########
+
+
+
 
 #################################
 function DBaseFunction(DN,script) //this got turned into a global function so DHub can use it.
 #################################
 {
 ##Handle Special Messages
-	local bmsg=message()
-	local mssg =bmsg.message
-
+	local bmsg = message()
+	local mssg = bmsg.message
+	local DoDD=DGetParam(script+"Debug",false,DN)
+	#	
+		DPrint("DDebug ("+script+") - Stage 1 - on Obj("+self+"):\t Received Message:\t"+mssg ,DoDD,DoDD)
+	#
 	if (mssg == "ResetCount")	//ResetCount is not script specific! low prio todo: do
 		{if (IsDataSet(script+"Counter")){SetData(script+"Counter",0)}}	
 	
@@ -319,7 +357,7 @@ function DBaseFunction(DN,script) //this got turned into a global function so DH
 
 		if (msg==script+"Falloff") //Ending FalloffCapacitor Timer. This is script specific.
 			{
-				local cfo = bmsg.data	//ON or OFF or ""															//Check between On/Off/""Falloff
+				local cfo = bmsg.data	//ON or OFF or ""	//Check between On/Off/""Falloff
 				local dat=GetData(script+cfo+"Capacitor")-1
 				if (dat>-1)					//low prio TODO: One 'wasted' timer?
 					{
@@ -333,12 +371,15 @@ function DBaseFunction(DN,script) //this got turned into a global function so DH
 		//DELAY AND REPEAT
 		if (msg==script+"Delayed") //Delayed Activation now initiate script.
 			{
-				local ar =DGetTimerData(bmsg.data) 	//Get Stored Data, [ON/OFF,Source,More Repeats to do?,timerdelay]
-				ar[0]= ar[0].tointeger()		//func Off(0), ON(1)
+				local ar =DGetTimerData(bmsg.data) 	//Get Stored Data, [ON/OFF, Source, More Repeats to do?, timerdelay]
+				ar[0]= ar[0].tointeger()			//func Off(0), ON(1)
 				SourceObj=ar[1].tointeger()
-				if (ar[0]){this.DoOn(DN)}else{this.DoOff(DN)}
 				ar[2] = ar[2].tointeger()
-				if (ar[2]!=0)				//Are there Repeats left? If yes start new Timer
+				#
+					DPrint("DDebug ("+script+") - Stage 6 - on Obj("+self+"):\t Delayed ("+ar[0]+") Activation. Original Source: ("+SourceObj+"). "+(ar[2]-1)+" more repeats.\n" ,DoDD,DoDD)
+				#
+				if (ar[0]){this.DoOn(DN)}else{this.DoOff(DN)}
+				if (ar[2]!=0)					//Are there Repeats left? If yes start new Timer
 				{
 					if (ar[2]!=-1){ar[2]-=1}	//-1 infinite repeats.
 					ar[3]=ar[3].tofloat()		//Now start a new timer with savegame persistent data.
@@ -355,7 +396,7 @@ function DBaseFunction(DN,script) //this got turned into a global function so DH
 //Getting correct source in case of frob:
 	if (typeof bmsg == "sFrobMsg")
 		{SourceObj=bmsg.Frobber}
-	else{SourceObj = bmsg.from}	
+	else{SourceObj = bmsg.from}	//TODO: Add stim, room, obb...
 ###
 	
 //Let it fail?
@@ -367,16 +408,105 @@ function DBaseFunction(DN,script) //this got turned into a global function so DH
 //React to the received message? Checks if the script actually has a ON/OFF function and if the message is in the set of specified commands. And Yes a DScript can perform it's ON and OFF action if both accepct the same message.
 	if ("DoOn" in this)
 	{
-		if (DGetParam(script+"On",DGetParam("DefOn","TurnOn",this,1),DN,1).find(mssg)!=null){DCountCapCheck(script,DN,1)}
+		if (DGetParam(script+"On",DGetParam("DefOn","TurnOn",this,1),DN,1).find(mssg)!=null)
+		{
+			#
+				DPrint("DDebug ("+script+") - Stage 2 - on Obj("+self+"):\t Got DoOn(1) message:\t"+mssg +" from "+SourceObj ,DoDD,DoDD)
+			#
+			DCountCapCheck(script,DN,1,DoDD)
+		}
 	}
 
 	if ("DoOff" in this)
 	{
-		if (DGetParam(script+"Off",DGetParam("DefOff","TurnOff",this,1),DN,1).find(mssg)!=null){DCountCapCheck(script,DN,0)}
+		if (DGetParam(script+"Off",DGetParam("DefOff","TurnOff",this,1),DN,1).find(mssg)!=null)
+		{
+			#
+				DPrint("DDebug ("+script+") - Stage 2 - on Obj("+self+"):\t Got DoOff(0) message:\t"+mssg +" from "+SourceObj ,DoDD,DoDD)
+			#
+			DCountCapCheck(script,DN,0,DoDD)
+		}
 	}
 	
 }
 ##################END OF GLOBAL FUNCTIONS###############################
+
+DDebugMsgs <- {
+	MsgRecived 		= "DDebug (%s) - Stage 1 - on Obj(%d):\t Received Message: %s", 	// script,self,mssg
+	TimerTriggered	= "DDebug (%s) - Stage X - on Obj(%d):\t Delayed (%d) reaction: Original Source: %s . With %d repeats left", //script, self, 1/0, source, repeats left
+	ValidOnMsg		= "DDebug (%s) - Stage 2 - on Obj(%d):\t Got a DoOn message: %s from %d", 									//script, self, mssg, source
+	ValidOffMsg		= "DDebug (%s) - Stage 2 - on Obj(%d):\t Got a DoOff message: %s from %d", 									//script, self, mssg, source
+	CapacitorFail	= "DDebug (%s) - Stage 3 - on Obj(%d):\t Not activated as (%d)Capacitor threshold is not yet reached.", 		//script, self, 1/0 (ON/OFF)
+	CounterFail		= "DDebug (%s) - Stage 4 - on Obj(%d):\t Not activated as (%d)Counter has been reached. Current Count = %d",	//script, self, 1/0 (ON/OFF), Count
+	InfRepeatEnd	= "DDebug (%s) - Stage 5B - on Obj(%d):\t Infinite Repeat has been stopped.",								//script, self, (mssg)
+	StartDelayed	= "DDebug (%s) - Stage 5 - on Obj(%d):\t Will be executed (%d) after a delay of %d seconds.",				//script, self, 1/0, delay
+	Activate		= "DDebug (%s) - Stage 5 - on Obj(%d):\t Will be executed (%d). Received message was: %s from %d",			//
+	Generic			= "DDebug (%s) on Obj(%d):\t Value 1= %s\n \t\tValue 2= %s\n \t\tValue 3= %s"								//script, self, 3 string values.
+}
+
+####################################
+class DDebug extends SqRootScript
+####################################
+{
+/*In many scripting situations you might want output prints for debuging, problem you have to comment them out later or there are to many.
+The DPrint function will look for a config variable DDebug defined via 'set DDebug *'
+Replace * with
+- 1: All DPrints will be dumped. ('set DDebug 1')
+- #ObjID: DPrints only on this object will be dumped ('set DDebug #49')
+- (ObjGroup): I wished the # would be not necessary but this enables the standard DCheckString operators like 'set DDebug +@guard+@lever' without more qode.
+
+The output mode: 1,2,3 is 1=monolog, 2=UIText, 3=both(default).
+
+For convinience you can use the optional force parameter to use the DPrint without setting the config var via DPrint("your message",mode,true)
+
+The DDebug script (class) can be used on an object to automatically 'set DDebug #[self]' the variable is persistent until changed/unset/restart.
+
+Also as alternative without config vars [Scriptname]Debug=mode in the DesignNote will also enable dumps.
+*/
+
+
+	constructor()
+	/*
+	Automatically sets the config variable DDebug=ObjId for this object.
+	Without the destructor the variable is peristent until the next editor start.
+	*/
+	{
+		if (GetClassName() == "DDebug")	//Don't use on a child.
+			Debug.Command("set ddebug #"+self)
+		//SQUIRREL BUG! an extra space is added to the Command input, ddebug would be 'ObjID ' so I'm adding a # before it so the DStringCheck will understand it as a single integer.
+	}
+	
+	/* //Gets called in the editor.
+	function destructor()
+	//Cleans up the config variable when you delete the script or the object.
+	{
+		print("Sorry I got called on " + GetClassName())
+		if (GetClassName() == "DDebug")	
+			Debug.Command("unset ddebug")
+	}*/
+	
+	function DPrint(self,DebugMessage,force=false,mode=3)
+	{
+	/*
+	Will print the specified text message.
+	*/
+		local value=string()
+		local IsVarSet=Engine.ConfigGetRaw("DDebug",value)		//Checks if the variable exists and if so gets it.
+		if (IsVarSet || force) 									//Debug mode active?
+		{
+			if (force || value=="1" || DCheckString(value.tostring(),true).find(self)!=null) 	//Always debug or debug on this object only?
+			{		
+				if (mode==false)		//DBasteTrapDebuv: When set as var but not forced.
+					mode=3
+				if (mode | 1)			//Bitewise operation, mode=3 is true for both
+					print(DebugMessage)
+				if (mode | 2)
+					DarkUI.TextMessage(DebugMessage)
+			}
+		}
+	}
+}
+
 
 
 ############################################
@@ -389,7 +519,7 @@ If no parameter is set the scripts normaly respond to TurnOn and TurnOff, if you
 
 In the constructor() function it handles the necessary ObjectData needed for Counters and Capacitors.
 */
-	SourceObj=0	//if a message is delayed the source object is lost, it will be stored inside the timer and then when the timer triggers it will be made availiable again.
+	SourceObj=0		//if a message is delayed the source object is lost, it will be stored inside the timer and then when the timer triggers it will be made availiable again.
 	constructor()	//Setting up save game persistent data.
 	{
 		if (!IsEditor()){return}	//Initial data is set in the Editor. NOTE! possible TODO: Counter, Capacitor objects will not work when created in game!
@@ -401,6 +531,11 @@ In the constructor() function it handles the necessary ObjectData needed for Cou
 		if (DGetParam(script+"OffCapacitor",1,DN) != 1){SetData(script+"OffCapacitor",0)}else{ClearData(script+"OffCapacitor")}
 	}
 
+	function DPrint(DebugMessage,force=false,mode=3) //Dummy function.
+	{
+		DDebug.DPrint(self,DebugMessage,force,mode)  //if called like this self is not per se usable. Still not sure if I want these in DBaseTrap
+	}
+
 
 	function OnMessage()	//Message receiving.
 	{
@@ -409,47 +544,152 @@ In the constructor() function it handles the necessary ObjectData needed for Cou
 }
 ##################
 
+
+#############ADV GEO#############
+	/*How to interpret your return values in DromEd:
+	First in DromEd there are the Position:HBP values you see in your normal editor view and the Model->State:Facing XYZ Values.
+	The return functions are always based on the Facing XYZ Values, misleading is the reversed order H=Z, P=Y and B=X-Axis rotations
+
+	<distance, theta, phi>
+	theta: 	below  pi/2 (90°) means below the object, above above
+
+	phi: Negative Values mean east, positive west.
+	Absolute values above 90° mean south, below north:
+
+	EDIT: Now this a bit strange 1 day later: negative is south, 180° is east
+
+				
+	Native return Values:	
+	Theta							Phi
+	Above180°						N0°			
+	/						(0,90) 	| (0,-90)	
+	X---90° 				W++++90°X-- -90°--E
+	\						(90,180)| (-90,-180)
+	Below0°						180°S-180°	
+
+	Corrected Values:
+	Theta							Phi
+	Above90°						N180°			
+	/								|	
+	X---0° 				  W--270°---X---90°--E
+	\								|	
+	Below-90°						S0°	
+
+
+	Camera.GetFacing()/Player (X,Y,Z) The Y pitch values are a little bit different, the Z(heading) is like the corrected values.
+	Y
+	Above270°						N180°			
+	/							 	|	
+	X---0°/360° 			W--270°-X--90°--E
+	\								| 	
+	Below90°						S0°	
+
+	Normal Objects:
+
+	0° is South
+	Heading Clockwise
+	Pitch: South->North360 	Forward>
+	Bank: West->East360 	Left>
+	*/
+
+ function DVectorBetween(from,to,UseCamera=true)
+ /*Returns the Vector between the two objects.
+ //If UseCamera=True it will use the camera position instead of the player object.
+ //TODO: from may be obj id player.
+ //NOTE: Interestingly "player" and "Player" have slightly different coordinates 
+ DVectorBetween(player,player,true) will get you the distance to the camera.*/
+ {
+	if ( (PlayerObject() == from || PlayerObject() == to) && UseCamera )
+		return Camera.GetPosition()-Object.Position(from)
+	else 
+		return Object.Position(to)-Object.Position(from)
+ }
+
+function DPolarCoordinates(from,to,ReturnAngles=true,UseCamera=true)
+{//returns the SphericalCoordinates in the ReturnVector (r,\theta ,\phi )
+ //The geometry in Thief is a little bit rotated to this theoretically correct formulas still need to be adjusted.
+	local v = DVectorBetween(from,to,UseCamera)
+	local r = v.Length()
+	if (!ReturnAngles)
+		return vector(r,acos(v.z/r),atan2(v.y,v.x)) 		//NOTE it is atan2(Y,X) in squirrel and C++
+	else
+		return vector(r,acos(v.z/r)/DtR,atan2(v.y,v.x)/DtR)
+}
+
+function DRelativeAngles(from,to,ReturnAngles=true,UseCamera=true)
+{
+//Uses the standard DPolarCoordinates, and transforms the values to be more DromEd like, we want Z(Heading)=0° to be south and Y(Pitch)=0° horizontal.
+//Returns the relative XYZ facing values with x=0.
+	local v=DPolarCoordinates(from,to,ReturnAngles,UseCamera)
+	local hbp_v = vector(0,v.y-90,v.z)
+	return hbp_v
+}
+
+function DObjFaceObj(obj,to,correction=0)
+{
+	local a=DRelativeAngles(obj,to)+correction
+	Property.Set(obj,"PhysState","Facing",a)
+}
+
+
 //This is just a script for testing purposes, please ignore
 class DLowerTrap extends DBaseTrap								
 {
-
 	DefOn = "TurnOn"	//Default On message that this script is waiting for but differing from the standard TurnOn
-	constructor()
-	{
-
-
-
-	}
-
-	function OnMessage()	//General catching for testing.
+	/*		local rp=vector()
+		local rf=vector() //difference between the facing values
+		Object.CalcRelTransform("Player",2,rp,rf,0,0) */
+	
+	function DFunc()	//General catching for testing.
 	{
 		local DN=userparams()
-		base.OnMessage()
 		local script="DLowerTrap"
 		//DarkUI.TextMessage("Capacitor:= "+GetData(script+"Capacitor")+"/"+DGetParam(script+"Capacitor",1,DN)+"  OnCap= "+GetData(script+"OnCapacitor")+"/"+DGetParam(script+"OnCapacitor",1,DN)+"  OffCap= "+GetData(script+"OffCapacitor")+"/"+DGetParam(script+"OffCapacitor",1,DN)+"  Counter= "+GetData(script+"Counter")+"/"+DGetParam(script+"Count",0,DN))		
-
 		local from = Camera.GetFacing()
+		//from = vector(sin(from.y)*cos(from.z),sin(from.y)*sin(from.z),cos(from.y))
+		local v2=DRelativeAngles("Player",2,true,true)
+		DarkUI.TextMessage("Camera Face: "+from+"\nDegree: "+v2)
+		DObjFaceObj(2,PlayerObject())
+	//	print(PlayerObject())
 
-		from = vector(sin(from.y)*cos(from.z),sin(from.y)*sin(from.z),cos(from.y))
+		local v=vector()
 
-		DarkUI.TextMessage(from)
-	}
-	
-	function OnTimer()
-	{
+		
+		//Object.CalcRelTransform("Player", "Player", v, vector(), 4, 0)
+		v=Camera.CameraToWorld(vector(1,0,-0.25))
+		Object.Teleport(7,v,vector())
+		print("A "+v
+		+"\n"+Object.Position("Player"))
+		
 
 	}
 
 	function DoOn(DN)
 	{
-		SetOneShotTimer("fd",1)
-		Link.BroadcastOnAllLinks(self,"TurnOn","ControlDevice")
+		DFunc()
 	}
 
 	function DoOff(DN)
 	{
 
-		Link.BroadcastOnAllLinks(self,"TurnOff","ControlDevice")
+/* 
+Submodels and camera distance
+
+SQUIRREL> A 0.000000, 0.000000, 0.230000
+SQUIRREL> B 0.000000, 0.000000, 3.000000
+SQUIRREL> C 0.000000, 0.000000, 0.600000
+SQUIRREL> D 0.000000, 0.000000, 2.600000
+SQUIRREL> E 0.000000, 0.000000, 2.200000
+SQUIRREL> 0.000000, 0.000000, 0.570000
+
+SQUIRREL> A 0.000000, 0.000000, -1.800000
+SQUIRREL> B 0.000000, 0.000000, 3.000000
+SQUIRREL> C 0.000000, 0.000000, 0.600000
+SQUIRREL> D 0.000000, 0.000000, 2.600000
+SQUIRREL> E 0.000000, 0.000000, 2.200000
+SQUIRREL> 0.000000, 0.000000, 2.600000
+
+*/
 
 	}
 
@@ -909,7 +1149,7 @@ DArmAttachmentUseObject:
 = 0 (Default): Will create a dummy object and give it the Shape->Model: DArmAttachmentModel
 = 1 Will create a copy of a real object/archetype specified in DArmAttachmentModel. If you want to attach special effects for example.
 = 2 (experimental and not really working): Same as 1 but the object will be really physical -> Real collision sounds based on the object.
-= 3 (experimental little working): Same as 2 but works even better. Disadvantage: Errors in DromED, Model will pass through walls/objects.
+= 3 (experimental little working): Same as 2 but works even better. Disadvantage: Errors in DromEd, Model will pass through walls/objects.
 
 DArmAttachmentModel: model name(0) or object Archtype (1) depending on (DArmAttachmentUseObject)
 DArmAttachmentRot and DArmAttachmentPos: The model will most likely need some adjustments in position and Rotation. Both parameters take 3 arguments separated by , like this: "90,0,0" or "0.1,-0.6,-0.43". They stand for HPB Roation respectively xyz translation. But most like don't behave like you expect it. Best method how to figure out the numbers is to use it in combination with set game_mode_backup 0 (NEVER SAVE AFTER!) and modify the DetailAttachment Link. It's trial and error.
@@ -1114,7 +1354,7 @@ local attach = DGetParam("DRayAttach",false,DN)
 					}
 
 				//Here the fancy stuff: Adjust SFX size to distance.
-				local h = vector(v.x,v.y,0).GetNormalized()		//Normalization of the projected connecting vektor
+				local h = vector(v.x,v.y,0).GetNormalized()		//Normalization of the projected connecting vector
 				local facing = null
 				if (type != 0)	//Scaling Type 1: Increases the lifetime of the particles. Looks more like a shooter.
 				{
@@ -1287,16 +1527,145 @@ function DoOff(DN)
 }
 
 
+
 #########################################
-class DCompileTrap extends DBaseTrap
-/* compiles the EdComment! (Yes NOT the Design Note) and runs it if you need short squirrel code */
+class DHudCompass extends DBaseTrap
+/* Creates the frobbed item and keeps it in front of the camera. (So actually not limited to the compass.)
+Its original right(easternside) will always point north.
+A good down scale for the compass here is 0.25.*/
+
+//function GetObjectScreenBounds(object obj, int_ref x1, int_ref y1, int_ref x2, int_ref y2){}
+
+
 #########################################
 {
-function DoOn(DN)
-{
-	local func = compilestring(GetProperty("EdComment"))
-	func()
+DefOn="FrobInvEnd"
+DefOff="null"
+offset=vector(0.75,0,-0.4)
+	
+	constructor()
+	{	
+		this.offset = DGetParam("DHudCompassOffset",vector(0.75,0,-0.4),userparams())
+	}
+
+	function OnTimer()				//Update the position, sadly not realtime.....
+	{
+		if (IsDataSet("Active"))
+		{
+			local v=Camera.GetFacing()
+			//rel rot to make the right(east) side of the object face north.
+			v.z=90-v.z
+			v.y=0
+			LinkTools.LinkSetData(GetData("CompassLink"), "rel rot", v)
+			
+			//Get Position:
+			//First will calculate the absolute targeted world position of the object.
+			//Then calculates the ralativ vector between the player to that point.
+			//Lastly adjust it by the relativ camera offset.
+			//I think this might be doable with skipping WorldToObj and CalcRel to (0,0,0)
+			Object.CalcRelTransform("Player", "Player", v, vector(), 4, 0)
+			LinkTools.LinkSetData(GetData("CompassLink"), "rel pos", Object.WorldToObject("Player",Camera.CameraToWorld(offset))+v)
+			
+			
+			SetOneShotTimer("Compass",1/60)		//Trying to do it once per frame: 1/FPS - Sadly it still jiggles compared to the standard inventory render :/
+		}
+
+	}
+
+	function DoOn(DN)
+	{
+	// Off or ON? Toggling item
+		if (IsDataSet("Active"))
+			{return this.DoOff(DN)}
+		SetData("Active",true)
+	
+	//TODO: Automatic downscaling
+	
+		local obj = Object.Create(DarkUI.InvItem())	//Create Selected item
+		Physics.DeregisterModel(obj)				//We wan't no physical interaction with anything.
+		local link=Link.Create("DetailAttachement",obj,"Player")
+			LinkTools.LinkSetData(link,"Type",3)
+			LinkTools.LinkSetData(link,"vhot/sub #",0) //is camera
+		
+		SetData("Compass",obj)						//Save the CreatedObj and LinkID to update them in the timer function and destroy it in the DoOff
+		SetData("CompassLink",link)
+		SetOneShotTimer("Compass",0.1)
+	}
+
+
+	function DoOff(DN)
+	{ 
+		ClearData("Active")						//TODO: Make script specific (it should be) and why not remove it.
+		Object.Destroy(GetData("Compass"))
+	}
+
+
 }
+
+#########################################
+class DAddScript extends DBaseTrap
+/*SQUIRREL: Can be used as Root -> D[Add/Remove]ScriptFunc
+
+Adds the Script specified by DAddScriptScript to the objects specified by DAddScriptTarget. Default: &ControlDevice.
+Additionally it sets the DesignNote via DAddScriptDN. If the DAddScriptScript parameter is not set only the DesignNote is added/changed.
+
+On TurnOff will clear the Script 4 slot. Warning: This is not script specific BUT DromEd will dump an ERROR if it can not override it, so you should be aware of if there is any collision. And maybe you want to use it exactly because of that.
+TODO: Make this optional, dump warning
+
+NOTE:
+• It will try to add the Script in Slot 4. It will check if it is empty or else if the Archetype has it already, else you will get an error and should use a Metaproperty.
+• It is possible to only change the DesignNote with this script and so change the behavior of other scripts BUT this only works for NON-squirrel scripts, these require a reload(TODO: confirm) or even a restart first!
+• Using Capacitor or Count for will not work for newly added DScripts. As these are created and kept clean in the Editor.
+#########################################*/
+{
+
+	function DAddScriptFunc(DN)
+	{
+		local script= GetClassName()
+		local add = DGetParam(script+"Script",false,DN)	//Which script
+		local nDN = DGetParam(script+"DN",false,DN)		//Your NewDesignNote
+
+		foreach (t in DGetParam(script+"Target","&ControlDevice",DN,1))
+			{
+			if (nDN)									//Add a DesignNote?
+				{Property.Add(t,"DesignNote")
+				Property.SetSimple(t,"DesignNote",nDN)
+				}
+			
+			if (!add)									//Only add a DesginNote
+				continue
+			
+			Property.Add(t,"Scripts")
+			local i = Property.Get(t,"Scripts","Script 3")
+			//Check if the slot is already used by another script or the Archetype has the script already.
+			if (i == 0 || i == "" || Property.Get(Object.Archetype(t),"Scripts","Script 3"))
+				{
+					Property.Set(t,"Scripts","Script 3",add)
+				}
+				else
+				{
+					print(script+" ERROR on ("+self+"): Object ("+t+") has script slot 4 in use with "+i+" - Don't want to change that. Please fall back to adding a Metaproperty.")
+				}
+			}
+	}
+
+
+	function DRemoveSciptFunc(DN) //TODO: Make this specific. Dump a warning if another script get's removed.
+	{
+		foreach (t in DGetParam(script+"Target","&ControlDevice",DN,1))
+			{Property.Set(t,"Scripts","Script 3","")}
+	}
+########
+	function DoOn(DN)
+	{
+		DAddScriptFunc(DN)
+	}
+
+	function DoOff(DN)
+	{
+		DRemoveSciptFunc(DN)
+	}
+
 }
 
 
@@ -1411,6 +1780,8 @@ function OnTimer()
 	}
    
 }
+
+
 
 #########################################
 class DImUndercover extends DBaseTrap
@@ -1632,66 +2003,6 @@ function DoOff(DN)		//Cleanup
 }
 #########END of UNDERCOVER SCRIPTS############
 
-#########################################
-class DHudCompass extends DBaseTrap
-/* Creates the frobbed item and tries to keep it in front of you camera. So actually not limited to the compass.
-*/
-#########################################
-{
-DefOn="FrobInvEnd"
-DefOff="null"
-
-constructor()
-{	
-	if (!IsEditor()){return}	//Data is set in the editor, else multiple data is set.
-	SetData("Active",false)
-}
-
-function OnTimer()				//Update the position, sadly not realtime.....
-{
-	if (GetData("Active"))
-	{
-		local v=Camera.GetFacing()
-		//DEBUG DarkUI.TextMessage(vector(sin(v.y-90)*cos(v.z),sin(v.y-90)*sin(v.z),cos(v.y-90)))
-		local pitch=v.y
-		local heading=v.z+180
-		v.z=90-v.z
-		v.y=0
-
-		local v2=Camera.GetPosition()-Object.Position("Player")
-		v2 = vector(cos(pitch*DtR)-0.4*sin(pitch*DtR), 0 ,v2.z-sin((pitch+32)*DtR)) //Trigonometry is cool. Hard values seem to work nice in the game.
-
-		LinkTools.LinkSetData(GetData("CompassLink"), "rel rot", v)
-		LinkTools.LinkSetData(GetData("CompassLink"), "rel pos", v2)
-		SetOneShotTimer("Compass",0.0125)	//Sadly it does not work in realtime like the inventory compass :/
-	}
-
-}
-
-function DoOn(DN)
-{
-// Off or ON? Toggling item
-	if (GetData("Active"))
-		{return this.DoOff(DN)}
-	SetData("Active",true)
-	
-	local obj = Object.Create(DarkUI.InvItem())	//Create Selected item
-	Physics.DeregisterModel(obj)				//We wan't no physical interaction with anything.
-	local link=Link.Create("DetailAttachement",obj,"Player")
-	SetData("Compass",obj)						//Save the CreatedObj and LinkID to update them in the timer function and destroy it in the DoOff
-	SetData("CompassLink",link)
-	SetData("Timer",SetOneShotTimer("Compass",0.1))
-}
-
-
-function DoOff(DN)
-{ 
-	SetData("Active",false)						//TODO: Make script specific (maybe it is?) and why not remove it.
-	Object.Destroy(GetData("Compass"))
-}
-
-
-}
 
 
 
@@ -1772,70 +2083,27 @@ function DoOff(DN=null)
 
 }
 
+
+
 #########################################
-class DAddScript extends DBaseTrap
-/*SQUIRREL: Can be used as Root -> D[Add/Remove]ScriptFunc
-
-Adds the Script specified by DAddScriptScript to the objects specified by DAddScriptTarget. Default: &ControlDevice.
-Additionally it sets the DesignNote via DAddScriptDN. If the DAddScriptScript parameter is not set only the DesignNote is added/changed.
-
-On TurnOff will clear the Script 4 slot. Warning: This is not script specific BUT DromEd will dump an ERROR if it can not override it, so you should be aware of if there is any collision. And maybe you want to use it exactly because of that.
-TODO: Make this optional, dump warning
-
-NOTE:
-• It will try to add the Script in Slot 4. It will check if it is empty or else if the Archetype has it already, else you will get an error and should use a Metaproperty.
-• It is possible to only change the DesignNote with this script and so change the behavior of other scripts BUT this only works for NON-squirrel scripts, these require a reload(TODO: confirm) or even a restart first!
-• Using Capacitor or Count for will not work for newly added DScripts. As these are created and kept clean in the Editor.
-#########################################*/
+class SafeDevice extends SqRootScript
+/*
+The player can not interact twice with an object until its animation is finished.
+Basically it's to prevent midway triggering of levers which allows to skip the opposite message and will trigger the last one again.
+*/
+#########################################
 {
 
-function DAddScriptFunc(DN)
-{
-	local script= GetClassName()
-	local add = DGetParam(script+"Script",false,DN)	//Which script
-	local nDN = DGetParam(script+"DN",false,DN)		//Your NewDesignNote
-
-	foreach (t in DGetParam(script+"Target","&ControlDevice",DN,1))
-		{
-		if (nDN)									//Add a DesignNote?
-			{Property.Add(t,"DesignNote")
-			Property.SetSimple(t,"DesignNote",nDN)
-			}
-		
-		if (!add)									//Only add a DesginNote
-			continue
-		
-		Property.Add(t,"Scripts")
-		local i = Property.Get(t,"Scripts","Script 3")
-		//Check if the slot is already used by another script or the Archetype has the script already.
-		if (i == 0 || i == "" || Property.Get(Object.Archetype(t),"Scripts","Script 3"))
-			{
-				Property.Set(t,"Scripts","Script 3",add)
-			}
-			else
-			{
-				print(script+" ERROR on ("+self+"): Object ("+t+") has script slot 4 in use with "+i+" - Don't want to change that. Please fall back to adding a Metaproperty.")
-			}
-		}
-}
-
-
-	function DRemoveSciptFunc(DN) //TODO: Make this specific. Dump a warning if another script get's removed.
+function OnFrobWorldEnd()
 	{
-		foreach (t in DGetParam(script+"Target","&ControlDevice",DN,1))
-			{Property.Set(t,"Scripts","Script 3","")}
+		Object.AddMetaProperty(self,"FrobInert")
 	}
 
-	function DoOn(DN)
+function OnTweqComplete()
 	{
-		DAddScriptFunc(DN)
+		Object.RemoveMetaProperty(self,"FrobInert")
 	}
-
-	function DoOff(DN)
-	{
-		DRemoveSciptFunc(DN)
-	}
-
+	
 }
 
 #########################################
@@ -1905,23 +2173,6 @@ class DModelByCount extends DStackToQVar
 	}
 }
 
-#########################################
-class SafeDevice extends SqRootScript
-/* The player can not interact twice with an object until its animation is finished. Basically it's to prevent midway triggering of levers which allows to skip the opposite message and will trigger the last one again. */
-#########################################
-{
-
-function OnFrobWorldEnd()
-	{
-		Object.AddMetaProperty(self,"FrobInert")
-	}
-
-function OnTweqComplete()
-	{
-		Object.RemoveMetaProperty(self,"FrobInert")
-	}
-	
-}
 
 
 ####################  Portal Scripts ###################################
@@ -2109,7 +2360,9 @@ DPortalTarget="+player+#88+@M-MySpecialAIs"
 
 }
 
-####################################################
+#################End Teleport###################################
+
+
 /*
 class DImportObj extends DBaseTrap HAS BEEN MOVED
 ####################################################
@@ -2177,6 +2430,18 @@ for (i=1,i <= omax,i++)
 */
 
 
+#########################################
+class DCompileTrap extends DBaseTrap
+/* compiles the EdComment! (Yes NOT the Design Note) and runs it if you need short squirrel code */
+#########################################
+{
+	function DoOn(DN)
+	{
+		local func = compilestring(GetProperty("EdComment"))
+		func()
+	}
+}
+
 
 ##############In Editor Mode Trap########
 class DEditorTrap extends SqRootScript
@@ -2209,31 +2474,70 @@ if ( DGetParam("DEditorTrapOn",0,dn)==1 )
 }
 }
 
+##########################################
+// If your function is inside a specific class, make sure it gets inherited via extend or call it classname.function()
+class DPerformanceTest extends DBaseTrap
+##########################################
+{
+DefOn="Test" //Set def on at construction and DBaseFunction remove that check.
+			//Set via Constructor -> faster calls.
+	function DoTest()
+	{
+		print("-------------------------------------\nStart Test: For Function 1")
+		local i=0
+		local DN=userparams()
+		local start=time()
+		local end=start+1
+		while (time()==start){} 		//sinc to .0 second.
+		while (time()==end)				//Time interval is exactly 1 second.
+			{
+#################Insert the test function here#######################
+				DefOn=DGetParam("DPerformanceTestCount")
+#####################################################################				
+				i++						//Checks how often this action can be perfomed within that 1 second.
+			}
+		print("Function 1: was executed: " +i+" times in 1 second. Execution time: "+ (1.0/i) +" ms")
+		
+#####################################################################
+//set true if you want to compare it to a second function
+		if (true)
+#####################################################################
+		{
+			print("Start Test: For 2nd Function")
+			local j=0
+			local start2=time()
+			local end2=start2+1
+			while (time()==start2){} 		//sinc to .0 second.
+			while (time()==end2)			//Time interval is exactly 1 second.
+			{
+################# Insert compare function here#######################
+				DefOn=DGetParam("DPerformanceTestCount",DN)
+#####################################################################
+				j++
+			}
+			print("Function 2: was executed: " +j+" times in 1 second. Execution time: "+ (1.0/j) +" ms\n-------------------------------------")
+		}
+	}
+	
+	// Constructor is also a good alternative with the current setup it fails. You might need to integrate the DoTest body into the constructor.
+	constructor()
+	{
+#####################################################################
+		if(false) //set true to enable testing
+#####################################################################
+			DoTest()
+	}
+	
+	
+	function OnMessage()
+	{
+		if (MessageIs("Test"))
+			DoTest()
+	}
+	
+	function DoOn(DN)
+	{
+		local i=1+1
+	}
 
-//######################## Personal//Scripts ###############################
-
-
-/*TABLE OF CONTENT
-
--Base Functions
-Scipts:
-DBaseTrap
--DLowerTrap
--DRelayTrap
-DHub
--DDrunkPlayerTrap
--DCopyPropertyTrap
--DWatchMe
--DCompileTrap
---Undercover scripts
-
--------
--DTPBase
--DTrapTeleporter
--DTeleportPlayerTrap
--DPortal
--DEditorTrap
-
-
-
-*/
+}
