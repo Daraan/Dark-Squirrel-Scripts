@@ -29,24 +29,25 @@ function DGetAllDescendants(at,objset)			//Emulation of the "@"-parameter. Brute
 SqRootScript.PlayerObject <- function() {return ObjID("Player")}
 
 ############################################
-function DCheckString(r,adv=false)			//Analysis of a given string parameter depending on its prefixed parameter.
+function DCheckString(r,adv=false)		//Analysis of a given string parameter depending on its prefixed parameter.
 {	// adv(anced)=true returns the result in an array instead of a single entity
 	
 	//handling non strings
 	switch (typeof(r))
 		{
-		case "array":
-			if (adv){return r}else{return r.pop()}
+		case "string":			//When it's a string skip
+			break
 		case "float":
 		case "integer":
 			if (adv){return [r]}else{return r}
 		case "null":
-		case "bool":
-			return r			//low prio TODO: Even if there should be no such situation, add adv.
-		case "vector":
+		case "bool":			//low prio TODO: Even if there should be no such situation, add adv.
+		case "vector":			//I only have one default vecot
 			return r
+		case "array":
+			if (adv){return r}else{return r.pop()}
 		}
-		
+	
 	//Convenient sugar code for you
 	switch (r)
 		{
@@ -1528,27 +1529,114 @@ function DoOff(DN)
 
 
 
+
+############################
+
+#In Progress:
+
+function DGetPhysDims(obj, point_max=null, point_min=null, ofModel=true)
+/*
+Returns the max size of the objects model, equal to the DWH values in the DromEd Window (TODO: Is there really no way to grab them?)
+and if given two arguments, the relativ vector to the bottom left, topright (TODO: check DromEd coordinates) will be returned in the point_ variables.
+
+- By default this will return the the size of the Shape->Model no matter the physics of the concrete object.
+- Setting ofModel=false it will return the Physics->Dimensions of the concrete object.
+- Setting ofModel to a string/explicit model name will work as well. obj, will be omited then and can be null.
+	For Example: DGetPhysDims(null,a,b,"stool")
+*/
+	{
+	//Directly the BBox values can't be accessed.
+	
+	//Workarround: We need an archetype with PhysModel OBB and chance it's model to the objects model.
+	//after creating it we can get it's phys dims which match the model bounds, dang... that is not what I wanted but might be usefull too.
+	
+	//I'm abusing the OBBTrigger marker here.
+	if(ofModel)
+	{
+		if(typeof(ofModel)=="string")
+			local model=ofModel
+		else
+			local model=Property.GetSimple(obj,"ModelName")
+
+		local dummyarch = ObjId("BoundsTrigger")	//Change if you want.
+		#&
+		local backup =Propertiy.GetSimple(dummyarch,"ModelName")
+		//Set and create dummy
+		Property.SetSimple(dummyarch,"ModelName",model)
+		local dummy = Object.Create(dummyarch)
+		
+		local PhysDims = Property.Get(dummy,"PhysDims","Size")
+		
+		//Cleanup
+		Object.Destroy(dummy)
+		Property.SetSimple(dummyarch,"ModelName",backup)
+			
+		local Pos = Object.Position(obj)
+	}
+		//Return Values:
+		point_max = Pos + PhysDims
+		point_min = Pos - PhysDims
+		return PhysDims*2
+	}
+
+
+function DGetObjBounds(obj, point_max=null, point_min=null)
+/* #$Discontinued.
+Let's try again, with the PhysDims at hand
+*/
+{
+	local Pos=Object.Position(obj)
+	local Rot=Object.Facing(obj)
+	DGetPhysDims(obj,point_max,point_min)
+	
+	//WorldToObj?
+	temp_point_max = Object.ObjToWorld(point_max)
+	temp_point_min = Object.ObjToWorld(point_min)
+	
+	
+	//what if point_max.-y/-x is elevated higher?
+	point_max = max()
+		
+	//else work it out with rotation matrix
+}
+
+function Max(...) //there is really no basic squirrel function declared?
+{
+	local Max = vargv[0]
+   	for (item in vargv):
+       		 if item > Max:
+            		Max = item
+   	return Max
+	
+}
+
+function DScaleToMatch(obj,MaxSize=1)
+{
+	local Dim = DGetPhysDims(obj,point_max,point_min)
+	local vmax = Max(Dim.x,Dim.y,Dim.z)
+	local ScaleFactor = MaxSize/vmax
+	Property.SetSimple(obj,"Scale",Property.GetSimple(obj,"Scale")*ScaleFactor)
+}
+	
+
+
 #########################################
 class DHudCompass extends DBaseTrap
 /* Creates the frobbed item and keeps it in front of the camera. (So actually not limited to the compass.)
 Its original right(easternside) will always point north.
 A good down scale for the compass here is 0.25.*/
-
-//function GetObjectScreenBounds(object obj, int_ref x1, int_ref y1, int_ref x2, int_ref y2){}
-
-
 #########################################
 {
 DefOn="FrobInvEnd"
 DefOff="null"
 offset=vector(0.75,0,-0.4)
 	
-	constructor()
+	constructor() 	//Storing this in the class instance and save the periodic param grabbing during runtime.
 	{	
-		this.offset = DGetParam("DHudCompassOffset",vector(0.75,0,-0.4),userparams())
+		this.offset = DGetParam(GetClassName()+"Offset",vector(0.75,0,-0.4),userparams())
 	}
 
-	function OnTimer()				//Update the position, sadly not realtime.....
+	function OnTimer()	//Update the position, sadly not per frame.
 	{
 		if (IsDataSet("Active"))
 		{
@@ -1569,26 +1657,31 @@ offset=vector(0.75,0,-0.4)
 			
 			SetOneShotTimer("Compass",1/60)		//Trying to do it once per frame: 1/FPS - Sadly it still jiggles compared to the standard inventory render :/
 		}
-
 	}
 
+	
+	function CreateHudObj(ObjType)
+	{
+		local obj = Object.Create(ObjType)	//Create Selected item
+		Physics.DeregisterModel(obj)				//We wan't no physical interaction with anything.
+		local link=Link.Create("DetailAttachement",obj,"Player")
+		LinkTools.LinkSetData(link,"Type",3)
+		LinkTools.LinkSetData(link,"vhot/sub #",0) //is camera
+		SetData("Compass",obj)						//Save the CreatedObj and LinkID to update them in the timer function and destroy it in the DoOff
+		SetData("CompassLink",link)
+		
+		return obj
+	}
+	
 	function DoOn(DN)
 	{
+	//Add no toggle option.
 	// Off or ON? Toggling item
 		if (IsDataSet("Active"))
 			{return this.DoOff(DN)}
 		SetData("Active",true)
-	
-	//TODO: Automatic downscaling
-	
-		local obj = Object.Create(DarkUI.InvItem())	//Create Selected item
-		Physics.DeregisterModel(obj)				//We wan't no physical interaction with anything.
-		local link=Link.Create("DetailAttachement",obj,"Player")
-			LinkTools.LinkSetData(link,"Type",3)
-			LinkTools.LinkSetData(link,"vhot/sub #",0) //is camera
 		
-		SetData("Compass",obj)						//Save the CreatedObj and LinkID to update them in the timer function and destroy it in the DoOff
-		SetData("CompassLink",link)
+		CreateHudObj(DarkUI.InvItem())
 		SetOneShotTimer("Compass",0.1)
 	}
 
@@ -1600,6 +1693,22 @@ offset=vector(0.75,0,-0.4)
 	}
 
 
+}
+
+
+class DHudModel extends DHudCompass
+{
+	constructor()
+	{
+		base.constructor() //Get Offset	atm not necessary
+	}
+	
+	function DoOn(DN)
+	{
+		local obj = CreateHudObj(DGetParam(script+"Object",DarkUI.InvItem()))
+		DScaleToMatch(obj,MaxSize=1)
+		SetOneShotTimer("Compass",0.1)
+	}
 }
 
 #########################################
