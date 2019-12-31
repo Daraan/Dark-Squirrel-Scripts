@@ -1,10 +1,10 @@
 /*#########################################
-DScript Version 0.50a
+DScript Version 0.50
 Use to your liking. 
 All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
 
 This is not a stable release!
-While many aspects got improved and added. They have been only minimaly been tested.
+While many aspects got improved and added. They have only been tested minimally.
 The DHub script does not work in this version.
 
 
