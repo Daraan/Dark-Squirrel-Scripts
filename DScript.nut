@@ -1,17 +1,15 @@
 /*#########################################
-DScript Version 0.31a
+DScript Version 0.4a
 Use at your liking. 
 All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
 
-DarkUI.TextMessage("Here for fast copy paste test");
-
-The real scripts currently start at arround line 460
+Check out the more advanced version in the Scripts-In-progress branch.
 ##########################################*/
 
 
 #################BASE FUNCTIONS###############
 
-const DtR = 0.01745			// DegToRad PI/180
+const DtR = 0.01745	// DegToRad PI/180
 
 #######Getting Parameter functions####
 
@@ -23,7 +21,6 @@ function DGetAllDescendants(at,objset)			//Emulation of the "@"-parameter. Brute
 		if (id>0){objset.append(id)}
 		else {DGetAllDescendants(id,objset)}
 	}
-	return objset
 }
 
 
@@ -64,9 +61,7 @@ function DCheckString(r,adv=false)			//Analysis of a given string parameter depe
 				break
 				
 			case '*': 		//Object of Type, without descendants
-				local id=0
 				r=r.slice(1)
-				
 				if (r[0]=='-')	//Single Archetype
 				{
 					r=r.tointeger()
@@ -76,9 +71,9 @@ function DCheckString(r,adv=false)			//Analysis of a given string parameter depe
 					r=ObjID(r)
 				}
 					
-				foreach ( l in Link.GetAll("~MetaProp",ObjID(r.slice(1))))	//TODO: Check this
+				foreach ( l in Link.GetAll("~MetaProp",ObjID(r.slice(1))))
 					{
-					id=LinkDest(l);
+					local id=LinkDest(l);
 					if (id>0){objset.append(id)}
 					}
 				break
@@ -86,13 +81,13 @@ function DCheckString(r,adv=false)			//Analysis of a given string parameter depe
 			case '@': 		//Object of Type, with descendants. See first function above.
 				r=r.slice(1)
 				if (r[0]=='-')			//Example @-441
-					{
+				{
 					r=r.tointeger()
-					}
+				}
 				else				//@switches
-					{
+				{
 					r=ObjID(r)
-					}
+				}
 				DGetAllDescendants(r,objset)
 				break
 				
@@ -118,7 +113,7 @@ function DCheckString(r,adv=false)			//Analysis of a given string parameter depe
 							foreach (k in removeset)
 								{
 								idx = objset.find(k)
-								if (idx!=null) {objset.remove(idx)}	//TODO: THow null==null in squirrel?
+								if (idx!=null) {objset.remove(idx)}
 								}
 							}
 					}
@@ -135,7 +130,7 @@ function DCheckString(r,adv=false)			//Analysis of a given string parameter depe
 				return vector(ar[1].tofloat(),ar[2].tofloat(),ar[3].tofloat())		
 			default : 
 				objset.append(r)	//problem for example +42 gives back a "42"-string which is not an object... and TurnOn can't be converted into an integer.
-		}					//TODO: Where did I put the workaround? Possible with Try..catch or???
+		}					//TODO: Where did I put the workaround? Possible with Try..catch or??? Fixed in new version.
 	if (adv){return objset}else{return objset.pop()}	//Return an array or single entity
 }
 
@@ -145,11 +140,11 @@ function DGetParam(par,def=null,DN=null,adv=false)	//Function to return paramete
 {
 	if(!DN){DN=userparams()}			//The Design Note has to be passed on to a) save userparams() calls and b)for this function to work for artificial tables and class objects as well.
 	if (par in DN)
-		{
+	{
 		return DCheckString(DN[par],adv)	//will return arrayed or single objs(adv=1).
-		}
+	}
 	else 						//Default Value
-		{	
+	{	
 		return DCheckString(def,adv)
 	}
 }
@@ -241,8 +236,7 @@ function DCountCapCheck(script,DN,func)		//Does all the checks and delays before
 {
 	//Checks if a Capacitor is set and if it is reached with the function above. func=1 means a TurnOn
 	//Strange to look at it with the null statements I know. But this setup enables that the three different Setups can't interfere with each other.
-	//Abuses (null==null)==true, Once abort is false it can't be true anymore, while beeing null(undecided) it can.
-	//TODO Check if this is still true, and 
+	//Abuses (null==null)==true, Once abort is false it can't be true anymore, while beeing null(undecided) it can be changed by the OnOff checks.
 	local abort = null
 	if (IsDataSet(script+"Capacitor")){if(DCapacitorCheck(script,DN)){abort = true}else{abort=false}}
 	if (IsDataSet(script+"OnCapacitor")&&func==1){if(DCapacitorCheck(script,DN,"On")){if (abort==null){abort = true}}else{abort=false}}
@@ -254,8 +248,7 @@ function DCountCapCheck(script,DN,func)		//Does all the checks and delays before
 	if (IsDataSet(script+"Counter")) //low prio todo: add DHub compability	
 		{
 		local CountOnly = DGetParam(script+"CountOnly",0,DN)	//Count only ONs or OFFs
-//TODO!!!: Did I do this wrong? func+1=Count. 1n1 and 2n0; Count+func==2, or do just thing wrongly currently
-		if (CountOnly == 0 || CountOnly+1 == func +2)		//Disabled or On(param1+1)==On(func1+2), Off(param2+1)==Off(func0+2); 
+		if (CountOnly == 0 || CountOnly+func == 2)		//Disabled or On(CountOnly1+Func1=2), Off(CountOnly2+Func0=2) 
 			{
 			local Count = SetData(script+"Counter",GetData(script+"Counter")+1)
 			if (Count > DGetParam(script+"Count",0,DN).tointeger()){return} //Over the Max abort. 
@@ -322,7 +315,7 @@ function DBaseFunction(DN,script) //this got turned into a global function so DH
 			{
 				local cfo = bmsg.data	//ON or OFF or ""															//Check between On/Off/""Falloff
 				local dat=GetData(script+cfo+"Capacitor")-1
-				if (dat>-1)					//low prio TODO: One 'wasted' timer?
+				if (dat>-1)					//low prio TODO: One 'wasted' timer? fixed in next ver.
 					{
 					SetData(script+cfo+"Capacitor",dat)	//Reduce Capacitor by 1 and start a new Timer. The Timer(ID) is stored to catch it.
 					SetData(script+cfo+"FalloffTimer",SetOneShotTimer(script+"Falloff",DGetParam(script+cfo+"CapacitorFalloff",0,DN).tofloat(),cfo))}
