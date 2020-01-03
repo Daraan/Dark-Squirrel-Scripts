@@ -1,21 +1,39 @@
-/*#########################################
-DScript Version 0.50
+/*/////////////////////////////////////////////////////////////////
+DScript Version 0.53a
 Use to your liking. 
 All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
 
 This is not a stable release!
-While many aspects got improved and added. They have only been tested minimally.
+While many aspects got improved and added. They have been only minimally been tested.
 The DHub script does not work in this version.
 
 
 The real scripts currently start at around line 460
-##########################################*/
+/////////////////////////////////////////////////////////////////*/
 
+
+###### CONSTANTS #####
+
+const DtR = 0.01745				// DegToRad PI/180
+
+
+##Hard coded values
+//for DGetPhysDims / DHudObject
+const cDummyArchtype	= -1527 	// Sign(-1521) - needs to be an archetype with Physics->Model->Type:OBB and without Physics->Model->Dimension.
+
+//For DPersistentLoad
+//The cdLoadName location is normally between position 4500 and 6000. So 4000 to 8095 should be plenty.
+const cDLoadOffset		= 4000		// Blob offset for DPersistentLoad in taglist_vals.txt.
+const cDLoadBlobSize	= 4095		// actual Blob size after the offset.
+const cDLoadName	= "Env Zone 63"	// Data Field where DPersistentLoad will look for its data.
+const cDLoadDataLength	= 63		// bytes to read after cDLoadName. Choosing another cDLoadName location can enable up to 255 bytes to be read.
+									// low prio todo: get optional values out of a .ini, .cfg or .dml file.
+
+
+//SqRootScript.Timestart <- ::Time()
 
 #####################BASE FUNCTIONS###################
-
-const DtR = 0.01745			// DegToRad PI/180
-
+								
 #######Getting Parameter functions####
 
 PlayerID <- function()
@@ -27,6 +45,8 @@ But this is more for convenience as it is easier to write. Both ways are extreme
 		::PlayerObjID <- SqRootScript.ObjID("Player")
 		return ::PlayerObjID
 }
+
+::PlayerID2 <- SqRootScript.ObjID("Player")	//TODO: check before use: might not be present at compile time.
 
 class DBasics extends SqRootScript
 {
@@ -57,7 +77,7 @@ class DBasics extends SqRootScript
 				else
 					break
 			case "null":
-				print("DScript Warning: Returning empty null parameter on Obj: "+self)
+				DPrint("Warning: Returning empty null parameter.",true,1)
 			case "bool":
 			case "vector":
 			case "float":
@@ -79,6 +99,8 @@ class DBasics extends SqRootScript
 			case "[player]":
 			case "player":
 				{if (adv){return [::PlayerID()]}else{return ::PlayerID()}}
+			case "null":	//Don't handle this message
+				return
 			}
 
 		//Operator check.
@@ -190,7 +212,7 @@ class DBasics extends SqRootScript
 					objset.append(r.slice(1).tofloat())
 					break
 					
-#############Additional advanced after filters#################
+	#############Additional advanced after filters#################
 				case '?': 	//random return
 					objset=DCheckString(r.slice(1),true)
 					objset=array(1,objset[Data.RandInt(0,objset.len())])
@@ -215,7 +237,7 @@ class DBasics extends SqRootScript
 					local d=null
 					local v=null
 					local anchor=self
-			//SQUIRREL BUG: The regexp class in squirrel is bugged - operators are not as greedy as they should be and empty capture returns are possible. That's why this is not as minimal as it could be.
+			#!SQUIRREL BUG: The regexp class in squirrel is bugged - operators are not as greedy as they should be and empty capture returns are possible. That's why this is not as minimal as it could be.
 					local expr=regexp(@"{(?:([<>])?(-?\d+\.?\d*)[^<>:%]?)?(?:([<>])?\(? *(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)? *\)?%?([^:]*)?:(.*))") //nice+
 					local res=expr.capture(r)
 					local values=array(9)
@@ -227,20 +249,20 @@ class DBasics extends SqRootScript
 					foreach(i,val in res)
 					{
 						values[i]=r.slice(val.begin,val.end)
-						//DPrint("} Parameter"+i+" : "+values[i],true,1)
+						//DPrint("} Parameter"+i+" : "+values[i]+" ( "+typeof(values[i])+")",true,1)
 					}
 					
 					//Getting parameters, radius, vector, anchor, objset
 					if (values[2] != "")
 					{
 						d=values[2].tofloat()
-						if (values[1][0] == '>')
+						if (values[1] == ">")
 							dgreater=true
 					}
 					if (values[4] != "")
 					{
 						v=[values[4].tofloat(),values[5].tofloat(),values[6].tofloat()]
-						if (values[3][0] == '>')
+						if (values[3] == ">")
 							vgreater=true
 					}
 					if (values[7] != "")
@@ -401,17 +423,35 @@ class DBasics extends SqRootScript
 			return foundobjs
 	}	
 	
+	
+///////////Conditional Debug Print function/////////////////
+	function DPrint(DbgMessage,force=false,mode=3)
+	{
+		if (force)
+		{
+			local s="DDebug("+GetClassName()+") on "+Object.GetName(Object.Archetype(self))+"("+self+"):\t"
+			if (mode==false)		//DBasteTrapDebuv: When set as var but not forced.
+				mode=3
+			if (mode & 4)			//ignore timers
+				if (message().name == "Timer")
+					return
+			if (mode & 1)			//Bitewise operation, mode=3 is true for both
+				print(s + DbgMessage)
+			if (mode & 2)
+				DarkUI.TextMessage(s + DbgMessage)
+			if (mode & 8)
+				Debug.Log(s + DbgMessage)
+		}
+	}
+	
 }
 
 
 class DBaseTrap extends DBasics
 {
-######################################################
-#########Section Counter and Capacitor Checks#########
-/*
-Script activation Count and Capacitors are handled via Object Data, in this section they are set and controlled.
-*/
-######################################################
+#################Counter and Capacitor Checks#################
+/*Script activation Count and Capacitors are handled via Object Data, in this section they are set and controlled.*/
+##############################################################
 function DCapacitorCheck(script,DN,OnOff="",DoDD=false)				//Capacitor Check. General "" or "On/Off" specific
 {
 		local Capa = GetData(script+OnOff+"Capacitor")+1	//NewValue
@@ -439,15 +479,18 @@ function DCapacitorCheck(script,DN,OnOff="",DoDD=false)				//Capacitor Check. Ge
 		
 }
 
-function DCountCapCheck(script,DN,func,DoDD=false)		//Does all the checks and delays before the execution of a Script
+function DCountCapCheck(script,DN,func,DoDD=false)
 /*
+Does all the checks and delays before the execution of a Script.
 Checks if a Capacitor is set and if its threshold is reached with the function above. func=1 means a TurnOn
+
 Strange to look at it with the null statements. But this setup enables that a On/Off capacitor can't interfere with the general one.
 
 Abuses (null==null)==true, Once abort is false it can't be true anymore.
 As a little reminder Capacitors should abort until they are full.
 */
 {
+	//Capacitor check.
 	local abort = null																		
 	if (IsDataSet(script+"Capacitor")			 )	{if(DCapacitorCheck(script,DN,"",DoDD))				{abort = true}			else{abort=false}}
 	if (IsDataSet(script+"OnCapacitor") &&func==1)	{if(DCapacitorCheck(script,DN,"On",DoDD)) {if (abort==null){abort = true}}	else{abort=false}}
@@ -459,7 +502,6 @@ As a little reminder Capacitors should abort until they are full.
 		#
 		return
 	}
-
 	
 	//Is a Counter Set?
 	if (IsDataSet(script+"Counter")) //low prio todo: add DHub compatibility	
@@ -481,26 +523,24 @@ As a little reminder Capacitors should abort until they are full.
 			}	
 		}
 
-		
 	//Use a Negative Fail chance to increase Counter and Capacitor even if it could fail later.
-	local FailChance = DGetParam(script+"FailChance",0,DN).tointeger()
+	local FailChance = DGetParam(script+"FailChance",0,DN)
 	if (FailChance < 0) {if (FailChance <= Data.RandInt(-100,0)){return}}
-
 
 	// All Checks green! Then Go or Delay it?
 	local d = DGetParam(script+"Delay",false,DN).tofloat()
 	if (d)
-			{
+	{
 			//Stop old timers if ExlusiveDelay is set.
-			if (IsDataSet(script+"DelayTimer")&& DGetParam(script+"ExclusiveDelay",false,DN))
+			if ( IsDataSet(script+"DelayTimer") && DGetParam(script+"ExclusiveDelay",false,DN) )
 				{
-					KillTimer(GetData(script+"DelayTimer"))
+					KillTimer(GetData(script+"DelayTimer"))		//TODO: BUG CHECK - exclusive Delay and inf repeat, does it cancel without restart?
 				}
 			
 			//Stop Infinite Repeat
 			if (IsDataSet(script+"InfRepeat"))	
 			{
-				if (GetData(script+"InfRepeat") != func) //Inverse Command received => end repeat and clean up. Same func gets ignored -> Activation is solely handled via the reapeating DelayTimer.
+				if (GetData(script+"InfRepeat") != func) //Inverse Command received => end repeat and clean up. Same func gets ignored -> Activation is solely handled via the repeating DelayTimer.
 				{
 					KillTimer(GetData(script+"DelayTimer"))
 					ClearData(script+"DelayTimer")
@@ -521,14 +561,14 @@ As a little reminder Capacitors should abort until they are full.
 					DPrint("Stage 5B - ("+func+") Activation will be executed after a delay of "+d+" seconds.",DoDD,DoDD)
 				#
 			}
-		}
-	else	//No Delay. Excute the scripts ON or OFF functions.
-		{
+	}
+	else	//No Delay. Execute the scripts ON or OFF functions.
+	{
 		#
 			DPrint("Stage 5 - Script will be executed. Source Object was: ("+SourceObj+")" ,DoDD,DoDD)
 		#
 		if (func){this.DoOn(DN)}else{this.DoOff(DN)}
-		}
+	}
 
 }
 ##########
@@ -655,7 +695,7 @@ In the constructor() function it handles the necessary ObjectData needed for Cou
 }
 
 ####################################
-class DDebug extends SqRootScript
+//class DDebug extends SqRootScript
 /*DPrint is a conditional print. Which can serve you to debug your scripts but also other who would like some additional output during mission building.
 
 The main use will be to set [ScriptName]Debug=1 in the DesignNote for a specific script and object.
@@ -675,49 +715,166 @@ The DDebug script (class) can be used on an object to automatically 'set ddebug 
 NOTE: For performance I deactivated the config var check. Look for the #&GLOBAL DEBUG line a few lines below to activate it.
 */
 ####################################
-{
-	function DPrint(DebugMessage,force=false,mode=3)
-	{
-#&GLOBAL DEBUG&&&&&&&&&&&&&&&&&&&&&&
-#For a wider range DDebug remove the /* */ around the next the lines and comment out the other if clause
-		/*
-		local value = string()
-		local IsVarSet=Engine.ConfigIsDefined("DDebug")
-		if (force || value=="1" || DCheckString(value.tostring(),true).find(self)!=null) 	//Always debug or debug on this object only?
-		*/
-		if (force)
-#&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-		{
-			local s="DDebug ("+GetClassName()+") on Obj("+self+"):\t"
-			if (mode==false)		//DBasteTrapDebuv: When set as var but not forced.
-				mode=3
-			if (mode | 1)			//Bitewise operation, mode=3 is true for both
-				print(s + DebugMessage)
-			if (mode | 2)
-				DarkUI.TextMessage(s + DebugMessage)
-		}
-	}
-	
-	constructor()
-	/*
-	Automatically sets the config variable DDebug=ObjId for this object. Without the destructor the variable is persistent until the next editor start.
-	*/
-	{
-		if (GetClassName() == "DDebug")	//Don't use on a child.
-			Debug.Command("set ddebug #"+self)
-#SQUIRREL BUG! an extra space is added to the Command input, ddebug would be 'ObjID ' so I'm adding a # before it so the DStringCheck will understand it as a single integer.
-	}
-	
-	function destructor()
-	{
-		Debug.Command("unset ddebug")
-	}
-}
-DBaseTrap.DPrint <- DDebug.DPrint
+
 #################################
 
-class DGeoFunctions extends DBaseTrap
-{#$$$$$$$ADV GEO$$$$$$$
+class DSpy extends DBasics
+/*Prints the whole data of a received message to the Monolog only.*/
+{
+
+//Message.data names that reference the table they are coming from.
+//if there is a conflict like for ActionType a subtable is used.
+//Squirrel note: I think directly storing the reference is more efficient than storing the string and getting the reference later in the script.
+static numlist =
+{
+	Type	= getconsttable().eTweqType,
+	Op		= getconsttable().eTweqOperation,
+	Dir		= getconsttable().eTweqDirection,
+	ObjType	= getconsttable().eObjType,
+	TransitionType	= getconsttable().eRoomChange,
+	SrcLoc	= getconsttable().eFrobLoc,
+	DstLoc	= getconsttable().eFrobLoc,
+	ActionType = {sDoorMsg = getconsttable().eDoorAction, sBodyMsg = getconsttable().eBodyAction}
+	PrevActionType = getconsttable().eDoorAction,
+	event	= getconsttable().eContainsEvent,
+	level	= getconsttable().eAIScriptAlertLevel
+	oldLevel= getconsttable().eAIScriptAlertLevel
+	mode	= getconsttable().eAIMode
+	previous_mode	= getconsttable().eAIMode
+	action	= getconsttable().eAIAction
+	result	= getconsttable().eAIActionResult
+	collType	= getconsttable().ePhysCollisionType
+	contactType	= getconsttable().ePhysContactType //bitwise
+	flags		= getconsttable().eScrMsgFlags
+	
+	
+	##unsupported ReportMessage
+	//Flags		= [ "HotRegion", "Selection", "Hilight", "AllObj", "Concrete", "Abstract", "ToFile", "ToMono", "ToScreen" ] //bitwise //for ReportMessage not really squirrel compatible.
+	//WarnLevel = { "Errors only", "Warnings too", "Info", "Dump Everything possible" }
+	//Types = { "Header", "Per Obj", "All Obj", "WorldDB", "Rooms", "AIPath", "Script", "Debug", "Models", "Game" }
+}
+
+//Data that represents objects
+static isobject = ["from", "to", "targetObject", "FromObjId", "ToObjId", "MoveObjId", "waypoint","moving_terrain", "SrcObjId",
+					"DstObjId", "Frobber", "culprit", "containee", "container", "combiner", "weapon", "patrolObj", "target",
+					"collObj", "contactObj", "transObj", "stimulus"]
+
+//	= getconsttable().
+
+
+	function InterpretConstants(dataname, datavalue)
+	{
+		if (datavalue == null)		//eyecandy
+			return "--NULL--"
+		if (!(dataname in numlist))	//no constant
+			{ 
+			if (isobject.find(dataname)!=null) //interpret as ObjID
+				{	
+				if (!(message().message == "PhysFellAsleep" || message().message == "PhysWokeUp" && dataname != "to"))
+					return datavalue + " (" +(datavalue>0?Object.GetName(Object.Archetype(datavalue)):Object.GetName(datavalue)) +")"
+				else
+					return datavalue + " This is probably no ObjID for 'PhysFellAsleep' and 'PhysWakeUp'."
+				}
+			else
+				return datavalue
+			}
+		
+		local bitwise = true
+		local ret = null
+		local table = numlist[dataname]
+		
+		//Handle conflicts in same data name
+		if (dataname == "ActionType")
+			table = table[typeof(message())]
+		
+		foreach (name, constant in table)
+			{
+				if (constant == 3)		//expect for ePhysScriptMsgType (which are not used in message data) a 3 value means it's not a bitflag enum.
+					bitwise=false
+				if (constant == datavalue)
+					ret = datavalue + " ("+name+")"
+				else	//should not happen
+					ret = datavalue+" should be constant!"
+			}
+		//
+		if (!bitwise)
+			return ret
+		else
+			{
+			//add a name for eacht bit
+				ret = datavalue + " Bits: "
+				foreach (name, constant in table)
+				{
+					if (constant & datavalue)
+						ret+=name+"("+constant+") | "
+				}
+				return ret
+			}
+	}
+
+	function OnBeginScript()
+	{
+		Physics.SubscribeMsg(self,1023)	// ALL
+	}
+
+	function OnEndScript()
+	{
+		Physics.UnsubscribeMsg(self,1023)//I'm not sure why they always clean them up, but I keep it that way.
+	}
+
+	function OnMessage()
+	{	
+		local ignore = DGetParam("DSpyIgnore",2) 
+		local bmsg=message()
+		local mssg=bmsg.message
+		Reply("DSpy replies from " + self)
+		if (ignore)
+		{
+			if (typeof(ignore)=="integer")
+			{
+				local ignoreset=[]
+				if (ignore & 1)
+					ignoreset.append("Timer")
+				if (ignore & 2)
+					ignoreset.extend(["BeginScript","Sim","DarkGameModeChange"])
+				if (ignore & 4)
+					ignoreset.extend(["PhysFellAsleep", "PhysWokeUp", "PhysMadePhysical", "PhysMadeNonPhysical", "PhysCollision", "PhysContactCreate", "PhysContactDestroy", "PhysEnter", "PhysExit"])
+				ignore=ignoreset
+			}
+			else
+				ignore=split(ignore,",")
+			//Check if the message should be ignored.
+			if (ignore.find(mssg)!=null)
+				return
+		}
+		
+		DPrint("Message received: "+mssg + "("+typeof(bmsg)+")\n Data included:",true,1)
+		foreach (k,v in bmsg.__getTable)
+			Debug.MPrint("\t" + k + ((k.len()>7)?"\t: ":"\t\t: ") + InterpretConstants(k, bmsg[k]))
+		print("\n")
+		
+	}
+	
+}
+
+
+class DAdvancedGeo extends DBaseTrap
+{
+
+	function Max(...) //there is really no basic squirrel function declared?
+	{
+		if (typeof vargv[0] == "array")
+			vargv=vargv[0]
+		local Max = vargv[0]
+		foreach (item in vargv)
+		{
+			if (item > Max)
+				Max = item
+		}
+		return Max
+	}
+
+#$$$$$$$ADV GEO$$$$$$$
 	
 	/*How to interpret your return values in DromEd:
 	First in DromEd there are the Position:HBP values you see in your normal editor view and the Model->State:Facing XYZ Values.
@@ -794,103 +951,251 @@ class DGeoFunctions extends DBaseTrap
 		local xyz_v = vector(0,v.y-90,v.z)
 		return xyz_v
 	}
+	
+	function DGetModelDims(obj, scale=false, ofModel=null)
+	/*Returns the size of the objects model, equal to the DWH values in the DromEd Window
+
+	By default this will return the the size of the Shape->Model no matter the physics or scaling the object.
+	- Scale=true will take the objects scaling into account.
+	- Setting ofModel to an explicit model name will work as well. In that case obj and scale will be ignored.
+	For Example: DGetPhysDims(null,false,"stool")*/
+	{
+	//From what I know the BBox values can't be accessed. 
+	
+	//Workaround: We need an archetype with PhysModel OBB but no PhysDims and change its model to the objects model.
+	//after creating it we can get its PhysDims which will match the model bounds.
+	//I'm abusing the Sign Archetype here marker here, declared as a constant.
+	
+		if(typeof(ofModel)=="string")					//Use Model instead?
+			local model=ofModel
+		else
+			local model=Property.Get(obj,"ModelName")	
+
+		local backup = Property.Get(cDummyArchtype,"ModelName")
+		
+		//Set and create dummy
+		Property.Add(cDummyArchtype,"ModelName")
+		Property.SetSimple(cDummyArchtype,"ModelName",model)
+		local dummy = Object.Create(cDummyArchtype)
+		local PhysDims = Property.Get(dummy,"PhysDims","Size")
+		if (scale)
+			PhysDims = PhysDims * Property.Get(obj,"Scale")
+		
+		//Cleanup
+		Object.Destroy(dummy)
+		if(backup)
+			Property.SetSimple(cDummyArchtype,"ModelName",backup)
+		else 													//if there was none
+			Property.Remove(cDummyArchtype,"ModelName")
+		
+		return PhysDims
+	}
+
+
+	function DScaleToMatch(obj,MaxSize=0.25)
+	{
+		local Dim = DGetModelDims(obj)
+		local vmax = Max(Dim.x,Dim.y,Dim.z)
+		Property.SetSimple(obj,"Scale",vector(MaxSize/vmax))
+	}
+	
 }
+
+class DTweqDevice extends DBaseTrap
+{
+DefOn="FrobWorldEnd"
+
+	constructor()
+	{	
+		//Start reverse joints in reverse position.
+		local DN=userparams()
+		local script = GetClassName()
+		local objset = DGetParam(script+"Target",self,DN,true)
+		local joints = split(DGetParam(script+"Joints","2",DN).tostring(),"[,]")
+		
+		foreach (obj in objset)
+		{
+			if (Property.Possessed(obj,"JointPos"))		//is added by Tweq Scripts at OnBeginScript
+				{continue}
+			foreach (j in joints)
+			{
+				if (j[0]=='-')
+					{
+						Property.Set(obj,"JointPos","Joint "+j.slice(1),Property.Get(obj,"CfgTweqJoints","    rate-low-high"+j.slice(1)).z)
+					}
+			}
+		}
+	}
+
+	function DoOn(DN)
+	{
+		local script=GetClassName()
+		local objset = DGetParam(script+"Target",self,DN,true)
+		local joints = split(DGetParam(script+"Joints","2",DN).tostring(),"[,]")
+		local control = DGetParam(script+"Control",false,DN)+1
+		
+		foreach (obj in objset)
+		{
+			local primjoin=Property.Get(obj,"CfgTweqJoints","Primary Joint")
+			local current=Property.Get(obj,"StTweqJoints","Joint"+primjoin+"AnimS")
+			foreach (j in joints)
+			{
+				if (j[0]=='-')
+				{
+					current = current^2 //XOR reverses the reverse
+					j=j.slice(1)
+				}
+				Property.Set(obj,"StTweqJoints","Joint"+j+"AnimS",current|1)	//is always On.
+			}
+			if (control!=false)
+				ActReact.React("tweq_control", 0, obj, obj, control , eTweqDo.kTweqDoContinue, TWEQ_AS_ONOFF)
+		}
+	}
+}
+
+
+class DFileExtractor extends DBaseTrap
+{
+
+
+}
+
+
 
 
 //This is just a script for testing purposes. ignore
 class DLowerTrap extends DBaseTrap								
 {
 	DefOn = "TurnOn"	//Default On message that this script is waiting for but differing from the standard TurnOn
-	/*		local rp=vector()
+	/*	local rp=vector()
 		local rf=vector() //difference between the facing values
 		Object.CalcRelTransform("Player",2,rp,rf,0,0) */
 
-
-	constructor()
+	function PrintAllConstants()
+	/* Prints all constants and enumerations.*/
 	{
-		/*local r=["{<-22.00 :@guards",
-		"{32 %[source]:@guards",
-		"{>(-111,-22.7,-3.700):@guards",
-		"{>( 221.0  ,  -1.9222 ,-1.72  )%player:@guards",
-		"{6.52(-1.2,1.3,1.4):@guards",
-		"{>-3.5 >(1,-7,8)%player:@guards"]
-		
-		//local expr=regexp(@"}(([<>])(-?\d+\.\d*))?(([<>])(-?\d+\.?\d*) *\, *(-?\d+\.?\d*) *\, *(-?\d+\.?\d*))?((%.*)?:(.*))")
-		//local expr=regexp(@"}([<>])?(-?\d+\.\d*)?([<>])?(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)?(%.*)?:(.*)") works
-		 // local expr=regexp(@"}(?:([<>])(-?\d+\.\d*))?(?:([<>])?(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)?(%.*)?:(.*))") //works+
-		 // local expr=regexp(@"}(?:([<>])(-?\d+\.\d*))?(?:([<>])?(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)?%?([^:]*)?:(.*))") //works++
-		//local expr=regexp(@"}(?:([<>])(-?\d+\.\d*))?(?:([<>])?\(?(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)?\)?%?([^:]*)?:(.*))") //NICE
-		//local expr=regexp(@"}(?:([<>])(-?\d+\.\d*))?(?:([<>])?\(? *(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)? *\)?%?([^:]*)?:(.*))") //nice+
-		 // local expr=regexp(@"}(?:([<>])(-?\d+\.?\d*)[^<>:%]*)?(?:([<>])?\(? *(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)? *\)?%?([^:]*)?:(.*))") //nice+
-		    local expr=regexp(@"{(?:([<>])?(-?\d+\.?\d*)[^<>:%]?)?(?:([<>])?\(? *(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)? *\)?%?([^:]*)?:(.*))") //nice+
-
-		local res=[]
-		res.append(expr.capture(r[0]))
-		res.append(expr.capture(r[1]))
-		res.append(expr.capture(r[2]))
-		res.append(expr.capture(r[3]))
-		res.append(expr.capture(r[4]))
-		res.append(expr.capture(r[5]))		
-		
-
-		foreach(i,val in res)
+		foreach (k,t in getconsttable())
 		{
-			print("======"+i+" : "+val+"=====")
+			if (typeof t =="table")			//is enumerations
+				{print("\n====="+k)
+				foreach (c,v in t)
+					print("\t"+c+"  :   "+v)}
+			else
+				print(k+"\t= "+t)
 		}
+	}
 
-		print("\n0:")
-		foreach(i,valv in res[0])
+	function BlobGetValue(blob, pos, length, linebreak=true)
+	/*Gets the next bits of data behind the pos in a blob. By default stops at a linebreak.*/
+	{
+		local ret = []
+		for (local i=pos;i<pos+length;i++)
 			{
-				print(format("match number[%02d] '%s'  |From%d To:%d",
-					i,r[0].slice(valv.begin,valv.end),valv.begin,valv.end)); //prints "Test"
-			}		
-		
-		print("\n1:")
-		foreach(i,valv in res[1])
-			{
-				print(format("match number[%02d] '%s'  |From%d To:%d",
-					i,r[1].slice(valv.begin,valv.end),valv.begin,valv.end)); //prints "Test"
+				if (linebreak && blob[i]==10) // '\n'=10 end.
+					return ret
+				ret.append(blob[i])
 			}
-		print("\n2:")
-		foreach(i,valv in res[2])
-			{
-				print(format("match number[%02d] '%s'  |From%d To:%d",
-					i,r[2].slice(valv.begin,valv.end),valv.begin,valv.end)); //prints "Test"
-			}
-		print("\n3:")
-		foreach(i,valv in res[3])
-			{
-				print(format("match number[%02d] '%s'  |From%d To:%d",
-					i,r[3].slice(valv.begin,valv.end),valv.begin,valv.end)); //prints "Test"
-			}
-		print("\n4:")	
-		foreach(i,valv in res[4])
-			{
-				print(format("match number[%02d] '%s'  |From%d To:%d",
-					i,r[4].slice(valv.begin,valv.end),valv.begin,valv.end)); //prints "Test"
-			}
-		print("\n5:")
-		foreach(i,valv in res[5])
-			{
-				print(format("match number[%02d] '%s'  |From%d To:%d",
-					i,r[5].slice(valv.begin,valv.end),valv.begin,valv.end)); //prints "Test"
-		*/
-		
-		/*foreach (obj in DCheckString("@MechBlueAlarm",true))
-			//Property.Remove(obj,"RenderAlpha")
-			{Property.Add(obj,"RenderAlpha")
-			Property.SetSimple(obj,"RenderAlpha",0.4)}*/
-		
+		return ret
 	}
 	
+	
+	function BlobLookForString(blob, str)
+	/* Looks for a string inside of a blob (8 bit is assumed).
+		If found returns an array with the beginning and end position for the pointer.
+		Logs an error if string was not found.
+	*/
+	{
+		local index = 0
+		local len=str.len()
+		local endat = blob.len()
+		do
+		{
+			if (blob[index] == str[0])
+			{
+				index++
+				for (local i=1;i<=len-1;i++,index++)
+				{
+					if (!(blob[index] == str[i]))
+						break
+					if (i==len-1)
+						return [index-len+1,index]
+				}	
+			}
+		index++
+		}while(index<endat)
+		
+		// not found
+		DPrint("ERROR: '"+str+"' not found in data.",true,9)
+		return null
+	}
+	
+	function CharToStrings(array)	//works for blobs as well
+	{
+		local out=""
+		foreach (c in array)
+			{//print(c)
+			out+=c.tochar()}
+		
+		return out
+	}
+	
+	constructor()
+	{
+		print("Playerid is "+test)
+		local myfile = "taglist_vals.txt"
+		try 
+		{
+			myfile = file(myfile, "r")
+		}
+		catch(exception)
+		{
+			DPrint("ERROR!!!: "+myfile+" not found. Necessary file for this script.",true,9)
+			return
+		}
+		
+		myfile.seek(cDLoadOffset)
+		local myblob=myfile.readblob(cDLoadBlobSize)
+		local pos = BlobLookForString(myblob, cDLoadName)
+		
+		assert(pos)
+		local value = BlobGetValue(myblob, pos[1]+3, cDLoadDataLength)
+
+		
+		print(CharToStrings(value))
+
+	}
+	
+		function OnPhysCollision()
+		{
+		if((Object.InheritsFrom(message().collObj,"Avatar")))
+			{
+			SetProperty("PhysAttr","Flags",1)
+		//	Reply(ePhysMessageResult.kPM_StatusQuo)
+			}
+		else
+			{Reply(ePhysMessageResult.kPM_NonPhys)}
+		}
+
+		function OnPhysEnter()
+		{
+			//Physics.UnsubscribeMsg(self,1023)
+			SetProperty("PhysAttr","Flags",0)
+		}
+	
+		
+		
 	function DFunc()	//General catching for testing.
 	{
-		
+		local value = "pimp"
+		print(time() +" "+ GetTime())
+		print("POST\n=====================")
+		//local value = SendMessage(405,"ReportMessage")
+		print("Return of SEND=" + value+" ("+ typeof(value)+") @" + self )
 	}
 
 
 	function DoOn(DN)
-	{
+	{	
 		DFunc()
 	}
 
@@ -933,7 +1238,7 @@ With DRelayTrap[On/Off]Target (NEW: Also [On/Off]TDest works as an alternative) 
 
 As a TOn, TOff message you can also send a Stim to do this, first enter the intensity surrounded by square brackets, followed by the stim name. For example: [ScriptName]TOn="[5.00]WaterStim".
 
-NEW v.30:  DRelayTrapToQVar="QVarName"; will store the ObjectsID into the specified QVar. It then can for example be targeted via $QVarName. Usefull to always sent a command to a specific but variable object.
+NEW v.30:  DRelayTrapToQVar="QVarName"; will store the ObjectsID into the specified QVar. It then can for example be targeted via $QVarName. Useful to always sent a command to a specific but variable object.
 
 Design Note example:
 NVRelayTrapOn="+TurnOn+BashStimStimulus";NVRelayTrapTOn="+TurnOn+[5]FireStim";NVRelayTrapOnTarget="+player+^ZombieTypes"
@@ -1091,7 +1396,7 @@ constructor() 		//Initializing Script Data
 			}
 			else //Make a default array.
 			{
-				DefDN[def*2-1]=v	//Writes the specified value into the corresponding slot in our artifical DefDesignNote.
+				DefDN[def*2-1]=v	//Writes the specified value into the corresponding slot in our artificial DefDesignNote.
 			}
 			}
 		}	
@@ -1234,44 +1539,44 @@ function OnMessage()	//Similar to the base functions in the first part.
 }
 
 //Here the Message is sent.
-function DoOn(DN)
-	{
-		local baseDN=userparams()
-		local m=message()
-		local mssg=m.message
-		local idx=""
-		
-		if (i!=1){idx=i}
-		
-		if (mssg=="Timer")
+	function DoOn(DN)
 		{
-			if (endswith(m.name,"Delayed"))
-				{
-				mssg= m.name.slice(4,-7)
-				idx=""
-				}
-
-		}
-		
-		foreach (msg in DGetParam("DHub"+mssg+idx+"Relay",0,DN,1))
-		{
-			foreach (t in DGetParam("DHub"+mssg+idx+"Target",0,DN,1))
+			local baseDN=userparams()
+			local m=message()
+			local mssg=m.message
+			local idx=""
+			
+			if (i!=1){idx=i}
+			
+			if (mssg=="Timer")
 			{
-				if (msg[0]!='[')			//As in DRelayTrap it checks for a Stimulus
-					{SendMessage(t,msg)}
-				else
+				if (endswith(m.name,"Delayed"))
+					{
+					mssg= m.name.slice(4,-7)
+					idx=""
+					}
+
+			}
+			
+			foreach (msg in DGetParam("DHub"+mssg+idx+"Relay",0,DN,1))
+			{
+				foreach (t in DGetParam("DHub"+mssg+idx+"Target",0,DN,1))
 				{
-					local ar=split(msg,"[]")
-					//ar.remove(0)
-					if (!GetDarkGame())		//T1/G compability = 0
-						{ActReact.Stimulate(t,ar[2],ar[1].tofloat(),self)}
+					if (msg[0]!='[')			//As in DRelayTrap it checks for a Stimulus
+						{SendMessage(t,msg)}
 					else
-						{ActReact.Stimulate(t,ar[2],ar[1].tofloat())}
+					{
+						local ar=split(msg,"[]")
+						//ar.remove(0)
+						if (!GetDarkGame())		//T1/G compability = 0
+							{ActReact.Stimulate(t,ar[2],ar[1].tofloat(),self)}
+						else
+							{ActReact.Stimulate(t,ar[2],ar[1].tofloat())}
+					}
 				}
 			}
-		}
 
-	}
+		}
 }
 ################################
 ## END of HUB
@@ -1299,11 +1604,11 @@ Basically it's to prevent midway triggering of levers which allows to skip the o
 #########################################
 class DStdButton extends DRelayTrap
 #########################################
-/*Has all the StdButton features - even TrapControlFlags work. Once will lock the Object.
+/*Has all the StdButton features - even TrapControlFlags work.
 as well as the DRelayTrap features, so basically this can save some script markers which only wait for a Button TurnOn.
 
-Additional:
-If the button is LOCKED the joint will not activate and the Schema specified by DStdButtonLockSound will be played, by default "noluck" the wrong lockpick sound.
+Additionally:
+Once will lock the Object. And if the button is LOCKED the joint will not activate and the Schema specified by DStdButtonLockSound will be played, by default "noluck" the wrong lockpick sound.
 
 NOTE: As this is a DRelayTrap script as well it can be activated via TurnOn; but the Default message is "DIOn" (I=Internal); sending this message will bypass the Lock check and TrapControlFlags.
 ######################################### */
@@ -1316,7 +1621,7 @@ DefOff="DIOff"
 	   {
 		  if(Property.Possessed(self,"CfgTweqJoints"))					// Standard procedure to have other property as well.
 			Property.Add(self,"JointPos");
-		Physics.SubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);	//Remember that Buttons can be activated by walking against them. Actiavting the OnPhysCollision() below. TODO: Make this optional.
+		Physics.SubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);	//Remember that Buttons can be activated by walking against them. Activating the OnPhysCollision() below. TODO: Make this optional.
 	   }
 
 	function OnEndScript()
@@ -1324,12 +1629,12 @@ DefOff="DIOff"
 		  Physics.UnsubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);//I'm not sure why they always clean them up, but I keep it that way.
 	   }
 	   
-	function ButtonPush(DN)
+	function ButtonPush()
 	   {
 			//Play Sound when locked and standard Event Activate sound. TODO: Check for sounds but should be fine.
 			if (Property.Get(self,"Locked"))
 			{
-				Sound.PlaySchemaAtObject(self,DGetParam("DStdButtonLockSound","noluck",DN),self)
+				Sound.PlaySchemaAtObject(self,DGetParam("DStdButtonLockSound","noluck"),self)
 				return
 			}
 			Sound.PlayEnvSchema(self,"Event Activate",self,null,eEnvSoundLoc.kEnvSoundAtObjLoc)
@@ -1362,14 +1667,14 @@ DefOff="DIOff"
 			if(! (Object.InheritsFrom(message().collObj,"Avatar")
 				  || Object.InheritsFrom(message().collObj,"Creature"))) //TODO: This is the standard function but I wanna look at it again.
 			{
-			   ButtonPush(userparams());
+			   ButtonPush();
 			}
 		  }
 	   }
 	
 	function OnFrobWorldEnd()
 	   {
-		  ButtonPush(userparams());
+		  ButtonPush();
 	   }
 }
 
@@ -1622,7 +1927,7 @@ Each parameter can target multiple objects also more than one special effect can
 							vfrom+=(v/2)				//new Box center coordiantes
 								
 							//Scale up the amount of needed particles
-							local n = vmax*tmax+abs(bmin.x)+bmax.x //Absolute lenghth of the area the particles can appear
+							local n = vmax*tmax+abs(bmin.x)+bmax.x //Absolute length of the area the particles can appear
 							/*important TODO: Think about it
 							local n = extra+(2*newb)
 							but => extra + d - etra=d , then next line is useless d/d=1. Mistake not checking the old values?
@@ -1736,26 +2041,26 @@ If you use a custom On command, multiple links could be created so you may want 
 
 DefOn ="BeginScript" 		//By default reacts to BeginScript instead of TurnOn
 
-function DoOn(DN)
-{
-	// If any ancestor has an AI-Utility-Watch links default option set, that one will be used and the Step 1 - Argument 1 will be changed.
-	if ( Property.Possessed(Object.Archetype(self),"AI_WtchPnt"))
-	{																		
-		Property.CopyFrom(self,"AI_WtchPnt",Object.Archetype(self));
-		SetProperty("AI_WtchPnt","   Argument 1",self);
-	}	
-	
-	// Else the Watch links default property of the script object will be used automatically on link creation (hard coded). The Archetype has priority. TODO: Change this the other way round.
-	
-	local target = DGetParam("DWatchMeTarget","@human",DN,1)
-	foreach (t in target){Link.Create("AIWatchObj",t,self)}
-}
+	function DoOn(DN)
+	{
+		// If any ancestor has an AI-Utility-Watch links default option set, that one will be used and the Step 1 - Argument 1 will be changed.
+		if ( Property.Possessed(Object.Archetype(self),"AI_WtchPnt"))
+		{																		
+			Property.CopyFrom(self,"AI_WtchPnt",Object.Archetype(self));
+			SetProperty("AI_WtchPnt","   Argument 1",self);
+		}	
+		
+		// Else the Watch links default property of the script object will be used automatically on link creation (hard coded). The Archetype has priority. TODO: Change this the other way round.
+		
+		local target = DGetParam("DWatchMeTarget","@human",DN,1)
+		foreach (t in target){Link.Create("AIWatchObj",t,self)}
+	}
 
-function DoOff(DN)
-{
-	foreach (l in Link.GetAll("~AIWatchObj",self)) //Destroys all AIWatchObj links.
-		{Link.Destroy(l)}
-}
+	function DoOff(DN)
+	{
+		foreach (l in Link.GetAll("~AIWatchObj",self)) //Destroys all AIWatchObj links.
+			{Link.Destroy(l)}
+	}
 
 
 }
@@ -1763,70 +2068,9 @@ function DoOff(DN)
 
 ############################
 
-#In Progress:
-
-function DGetModelDims(obj, scale=false, ofModel=null)
-/*
-Returns the size of the objects model, equal to the DWH values in the DromEd Window
-
-By default this will return the the size of the Shape->Model no matter the physics or scaling the object.
-- Scale=true will take the objects scaling into account.
-- Setting ofModel to an explicit model name will work as well. In that case obj, will be omitted then and can be null.
-	For Example: DGetPhysDims(null,false,"stool")
-*/
-{
-	//From what I know the BBox values can't be accessed. 
-	
-	//Workaround: We need an archetype with PhysModel OBB and chance it's model to the objects model.
-	//after creating it we can get it's phys dims which match the model bounds, dang... that is not what I wanted but might be useful too.
-	
-	//I'm abusing the Sign Archetype here marker here.
-	if(typeof(ofModel)=="string")
-		local model=ofModel
-	else
-		local model=Property.Get(obj,"ModelName")	
-#&
-	local dummyarch = "Sign"	//Change if conflicting
-#&
-	local backup = Property.Get(dummyarch,"ModelName")
-	
-	//Set and create dummy
-	Property.Add(dummyarch,"ModelName")
-	Property.SetSimple(dummyarch,"ModelName",model)
-	local dummy = Object.Create(dummyarch)
-	local PhysDims = Property.Get(dummy,"PhysDims","Size")
-	//Cleanup
-	Object.Destroy(dummy)
-	if(backup)
-		Property.SetSimple(dummyarch,"ModelName",backup)
-	else 													//if there was none
-		Property.Remove(dummyarch,"ModelName")
-		
-	return PhysDims
-}
 
 
-function Max(...) //there is really no basic squirrel function declared?
-{
-	local Max = vargv[0]
-   	foreach (item in vargv)
-	{
-		if (item > Max)
-            Max = item
-	}
-   	return Max
-	
-}
-
-function DScaleToMatch(obj,MaxSize=0.25)
-{
-	local Dim = DGetModelDims(obj)
-	local vmax = Max(Dim.x,Dim.y,Dim.z)
-	Property.SetSimple(obj,"Scale",vector(MaxSize/vmax))
-	
-}
-
-class DFaceObject extends DGeoFunctions
+class DFaceObject extends DAdvancedGeo
 /*
 
 */
@@ -1853,7 +2097,7 @@ class DFaceObject extends DGeoFunctions
 }
 
 #########################################
-class DHudCompass extends DBaseTrap
+class DHudCompass extends DAdvancedGeo
 /* Creates the frobbed item and keeps it in front of the camera. (So actually not limited to the compass.)
 Its original right(easternside) will always point north.
 A good down scale for the compass is 0.25.
