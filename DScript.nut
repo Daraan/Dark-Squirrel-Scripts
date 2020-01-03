@@ -1,5 +1,5 @@
 /*/////////////////////////////////////////////////////////////////
-DScript Version 0.53a
+DScript Version 0.53b
 Use to your liking. 
 All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
 
@@ -12,22 +12,33 @@ The real scripts currently start at around line 460
 /////////////////////////////////////////////////////////////////*/
 
 
-###### CONSTANTS #####
+###### CONSTANTS ######
 
 const DtR = 0.01745				// DegToRad PI/180
 
+##For readability##
+const kReturnArray 	= true			// DGetParam and DCheckString
+const kDoPrint		= true			// DPrint guarantee error prints outside of DebugMode
 
+enum ePrintTo =					// DPrint mode options. Bitwise use.
+{
+	kMonolog 	= 1			// Editor monolog.txt
+	kUI	 	= 2			// Ingame Interface Message
+	kIgnoreTimers 	= 4			// Ignore Timer message.
+	kLog		= 8			// Editor.log and Game.log file, very serious reports only.
+}
+	
 ##Hard coded values
 //for DGetPhysDims / DHudObject
-const cDummyArchtype	= -1527 	// Sign(-1521) - needs to be an archetype with Physics->Model->Type:OBB and without Physics->Model->Dimension.
+const kDummyArchtype	= -1527 	// Sign(-1521) - needs to be an archetype with Physics->Model->Type:OBB and without Physics->Model->Dimension.
 
 //For DPersistentLoad
 //The cdLoadName location is normally between position 4500 and 6000. So 4000 to 8095 should be plenty.
-const cDLoadOffset		= 4000		// Blob offset for DPersistentLoad in taglist_vals.txt.
-const cDLoadBlobSize	= 4095		// actual Blob size after the offset.
-const cDLoadName	= "Env Zone 63"	// Data Field where DPersistentLoad will look for its data.
-const cDLoadDataLength	= 63		// bytes to read after cDLoadName. Choosing another cDLoadName location can enable up to 255 bytes to be read.
-									// low prio todo: get optional values out of a .ini, .cfg or .dml file.
+const kDLoadOffset	= 4000		// Blob offset for DPersistentLoad in taglist_vals.txt.
+const kDLoadBlobSize	= 4095		// actual Blob size after the offset.
+const kDLoadName	= "Env Zone 63"	// Data Field where DPersistentLoad will look for its data.
+const kDLoadDataLength	= 63		// bytes to read after cDLoadName. Choosing another cDLoadName location can enable up to 255 bytes to be read.
+					// low prio todo: get optional values out of a .ini, .cfg or .dml file.
 
 
 //SqRootScript.Timestart <- ::Time()
@@ -63,7 +74,7 @@ class DBasics extends SqRootScript
 	}												
 
 	#################
-	function DCheckString(r,adv=false)		
+	function DCheckString(r, returnInArray = false)		
 	/*Analysis of a given string parameter depending on its prefixed parameter.
 	adv(anced)=true will return the found entities in an array else only a single one.*/
 	{
@@ -73,38 +84,38 @@ class DBasics extends SqRootScript
 			case "string":		
 				local intexp=regexp(@"^\s*(-?[0-9]+)\s*$")	//If the string is digits only. To get rid of the necessity of using the # tointeger operator.
 				if (intexp.match(r))
-					r=r.tointeger()
+					r = r.tointeger()
 				else
 					break
 			case "null":
-				DPrint("Warning: Returning empty null parameter.",true,1)
+				DPrint("Warning: Returning empty null parameter.", kDoPrint, ePrintTo.kMonolog)
 			case "bool":
 			case "vector":
 			case "float":
 			case "integer":
-				if (adv){return [r]}else{return r}
+				if (returnInArray){return [r]}else{return r}
 			case "array":
-				if (adv){return r}else{return r.pop()}
+				if (returnInArray){return r}else{return r.pop()}
 			}
 		
 		//Convenient sugar code for you
 		switch (r.tolower())
 			{
 			case "[me]":
-				{if (adv){return [self]}else{return self}}
+				{if (returnInArray){return [self]}else{return self}}
 			case "[source]":
-				{if (adv){return [SourceObj]}else{return SourceObj}}
+				{if (returnInArray){return [SourceObj]}else{return SourceObj}}
 			case "":
-				{if (adv){print("DScript Warning: Returning empty string array, that's kinda strange.");return [""]}else{return ""}}
+				{if (returnInArray){print("DScript Warning: Returning empty string array, that's kinda strange.");return [""]}else{return ""}}
 			case "[player]":
 			case "player":
-				{if (adv){return [::PlayerID()]}else{return ::PlayerID()}}
-			case "null":	//Don't handle this message
+				{if (returnInArray){return [::PlayerID()]}else{return ::PlayerID()}}
+			case "null":	//Don't handle this parameter
 				return
 			}
 
 		//Operator check.
-		local objset=array(0)
+		local objset = array(0)
 		switch (r[0])
 			{
 				case '&': 	//Linked Objects of &LinkType.
@@ -242,14 +253,17 @@ class DBasics extends SqRootScript
 					local res=expr.capture(r)
 					local values=array(9)
 					
-					//0: whole string 1:<> 2:float 3:<> 4,5,6: v1,v2,v3 7:AltAnchor 8:Set
-					if (res==null)
-						{DPrint("ERROR! '{' operator wrong format. {<2.0[SPACE!!!] <(1,2,3)%Anchor:Target",true,1);return}
+					//Index[0]: whole string [1]: '<' or '>' [2]:distance [3]:'<>'  [4,5,6]: v1,v2,v3 [7]:AltAnchor [8]:TargetedObjSet
+					if (res == null)
+						{
+							DPrint("ERROR! '{' operator wrong format. {<2.0[SPACE!!!] <(1,2,3)%Anchor:Target", kDoPrint, ePrintTo.kMonolog || ePrintTo.kUI )
+							return
+						}
 					
 					foreach(i,val in res)
 					{
 						values[i]=r.slice(val.begin,val.end)
-						//DPrint("} Parameter"+i+" : "+values[i]+" ( "+typeof(values[i])+")",true,1)
+						//DPrint("} Parameter"+i+" : "+values[i]+" ( "+typeof(values[i])+")", kDoPrint, ePrintTo.kMonolog)
 					}
 					
 					//Getting parameters, radius, vector, anchor, objset
@@ -303,33 +317,33 @@ class DBasics extends SqRootScript
 					objset.append(r)
 			}//End of Switch
 			
-		if (adv){return objset}else{return objset.pop()}	//Return an array or single entity
+		if (returnInArray){return objset}else{return objset.pop()}	//Return an array or single entity
 	}
 
 
-	function DGetParam(par,def=null,DN=null,adv=false)	//Function to return parameters, returns given default value. if adv=1 an array of objects will be returned.
+	function DGetParam(par, default = null, DN=null, returnInArray = false)	//Function to return parameters, returns given default value. if adv=1 an array of objects will be returned.
 	{
-		if(!DN){DN=userparams()}						//The Design Note has to be passed on to a) save userparams() calls and b)for this function to work for artificial tables and class objects as well.
+		if(!DN){DN=userparams()}					//The Design Note has to be passed on to a) save userparams() calls and b)for this function to work for artificial tables and class objects as well.
 		if (par in DN)
 		{
-			return DCheckString(DN[par],adv)			//Will return a single entity or all matching ones in an array(adv=1).
+			return DCheckString(DN[par], returnInArray)			//Will return a single entity or all matching ones in an array(adv=1).
 		}
 		else 	//Default Value
 		{	
-			return DCheckString(def,adv)
+			return DCheckString(default, returnInArray)
 		}
 	}
 
-	function DGetStringParam(param,def,str,adv=false,cuts=";=")	//Like the above function but works with strings instead of a table. To get an (object) array set adv=1.
+	function DGetStringParam(param, default, str, returnInArray = false, cuts = ";=")	//Like the above function but works with strings instead of a table. To get an (object) array set adv=1.
 	{
-		str=str.tostring()
-		local div = split(str,cuts);					//Puts the values into arrays which where before separated by your characters specified by cuts
-		local key = div.find(param);
+			str 	= str.tostring()
+		local 	kvArray = split(str, cuts);		//Puts the values into arrays which where before separated by your characters specified by cuts
+		local 	key 	= div.find(param);
 
 		if (key)
-			{return DCheckString(div[key+1],adv)}		//Parameter=Value form [...ParameterIndex,ParameterIndex+1,...] indexed pairs.
+			{return DCheckString(kvArray[key+1], returnInArray)}		//Parameter=Value form [...ParameterIndex,ParameterIndex+1,...] indexed pairs.
 		else 
-			{return DCheckString(def,adv)}
+			{return DCheckString(default, returnInArray)}
 	}
 
 	/*#########Carry over Data via TimerData Functions###################
@@ -339,52 +353,52 @@ class DBasics extends SqRootScript
 
 	This functions allows the sending and retrieving of multiple values via a timer which is save game persistent.
 	*/
-	function DArrayToString(ar,o="+")	//Creates a long string out of your array data separated by +
+	function DArrayToString(ar, seperator = "+" )	//Creates a long string out of your array data separated by +
 	{
-		local data=""
-		local l = ar.len()-1
+		local data = ""
+		local maxIndex = ar.len() - 1
 
 		
-		for(local i = 0; i< l; i++)
+		for( local i = 0; i < maxIndex; i++)
 		{
-			data += ar[i]+o				//appends your next indexed value and your divide operator
+			data += ar[i] + seperator		//appends your next indexed value and your divide operator
 		}
-		return data +=ar[l]				//Returns your string
+		return data += ar[maxIndex]			//Returns your string
 	}
 
-	function DSetTimerDataTo(To,name,delay,...)		//Target to another object. '...' Means it takes an unspecified amount of data -> vargv
+	function DSetTimerDataTo(To, name, delay, ...)		//Target to another object. '...' Means it takes an unspecified amount of data -> vargv
 	{
 		local data = DArrayToString(vargv)
-		return SetOneShotTimer(To,name,delay,data)
+		return SetOneShotTimer(To, name, delay, data)
 	}
 
-	function DSetTimerData(name,delay,...)			//Target is self
+	function DSetTimerData(name, delay, ...)		//Target is self
 	{
 		local data = DArrayToString(vargv)
-		return SetOneShotTimer(name,delay,data)
+		return SetOneShotTimer(name, delay, data)
 	}
 
-	function DGetTimerData(m,KeyValue=false)		//Get back your data after timeout
+	function DGetTimerData(m, KeyValue = false)		//Get back your data after timeout
 	{	
-		local o="+"					
-		if (KeyValue){o="+="}				//Is your data only separated by + or by Key1=Value1+Key2=....
-		return split(m,o)					//low prio todo: While IMO not necessary add general operator option.
+		local o = "+"					
+		if (KeyValue){o = "+=" }				//Is your data only separated by + or by Key1=Value1+Key2=....
+		return split(m, o)					//low prio todo: While IMO not necessary add general operator option.
 	}
 
 	###### Functions for &=LinkPaths ####
-	function DObjectsInNet(linktype,objset,current=0)
+	function DObjectsInNet(linktype, objset, current=0)
 	/* Get all objects in a Path witch branches. The set is ordered by distance to the start point.*/
 	{
 		foreach ( l in Link.GetAll(linktype, objset[current]) )
 		{
-			local nextobj=LinkDest(l)
-			if (!objset.find(nextobj))							//Checks if next object is already present.
+			local nextobj = LinkDest(l)
+			if (!objset.find(nextobj))					//Checks if next object is already present.
 			{
 				objset.append(nextobj)
 			}
 		}
-		if (!objset.len()==current)								//Ends when the current object is the last one in the set. minor todo: could be a parameter, probably faster.
-			return DObjectsInNet(linktype,objset,current++)		//return enables a Tail Recursion with call stack collapse.
+		if (!objset.len() == current)						//Ends when the current object is the last one in the set. minor todo: could be a parameter, probably faster.
+			return DObjectsInNet(linktype, objset, current++)		//return enables a Tail Recursion with call stack collapse.
 	}
 
 	function DObjectsInPath(linktype,objset)
@@ -393,12 +407,12 @@ class DBasics extends SqRootScript
 		local curobj = objset.top()
 		if(Link.AnyExist(linktype,curobj))					//Returns the link with the lowest LinkID.
 		{
-			objset.append(LinkDest(Link.GetOne(linktype,curobj)))
-			return DObjectsInPath(linktype,objset)			//Tail Recursion with call stack collapse
+			objset.append(LinkDest( Link.GetOne(linktype,curobj) ))
+			return DObjectsInPath(linktype, objset)				//Tail Recursion with call stack collapse
 		}
 	}
 
-	function DObjectsLinkedFromSet(objset,linktypes,onlyfirst=false)	
+	function DObjectsLinkedFromSet(objset, linktypes, onlyfirst=false)	
 	/* Returns the first or all object that are linked via a ~linktype to a set of objects. */
 	//For example returns the Elevator in a TPath (~TPathInit, ~TPathNext), or AI on a control Path.
 	{			
@@ -407,13 +421,11 @@ class DBasics extends SqRootScript
 		{
 			foreach (linktype in linktypes)
 			{
-				if(Link.AnyExist(linktype,curobj))
+				if(Link.AnyExist(linktype, curobj))
 				{
-					local nextobj = LinkDest(Link.GetOne(linktype,curobj))
+					local nextobj = LinkDest(Link.GetOne(linktype, curobj))
 					if (!objset.find(nextobj))				//Checks if next object is already present.
-					{
 						foundobjs.append(nextobj)
-					}
 				}
 			}
 		}
@@ -425,21 +437,20 @@ class DBasics extends SqRootScript
 	
 	
 ///////////Conditional Debug Print function/////////////////
-	function DPrint(DbgMessage,force=false,mode=3)
+	function DPrint(DbgMessage, DoPrint = false, mode = ePrintTo.kMonolog || ePrintTo.kUI)
 	{
-		if (force)
+		if (DoPrint)
 		{
-			local s="DDebug("+GetClassName()+") on "+Object.GetName(Object.Archetype(self))+"("+self+"):\t"
-			if (mode==false)		//DBasteTrapDebuv: When set as var but not forced.
-				mode=3
-			if (mode & 4)			//ignore timers
-				if (message().name == "Timer")
-					return
-			if (mode & 1)			//Bitewise operation, mode=3 is true for both
+			local s = "DDebug("+GetClassName()+") on "+Object.GetName(Object.Archetype(self))+"("+self+"):\t"
+			if (mode == false)			//Old Version: DBaseTrapDebug: When set as var but not.
+				mode = 3
+			if (mode & ePrintTo.kIgnoreTimers && message().name == "Timer") 	//ignore timers	
+				return
+			if (mode & ePrintTo.kMonolog)		//Bitewise operation, mode=3 is true for both
 				print(s + DbgMessage)
-			if (mode & 2)
+			if (mode & ePrintTo.kUI)
 				DarkUI.TextMessage(s + DbgMessage)
-			if (mode & 8)
+			if (mode & ePrintTo.kLog)
 				Debug.Log(s + DbgMessage)
 		}
 	}
@@ -452,18 +463,18 @@ class DBaseTrap extends DBasics
 #################Counter and Capacitor Checks#################
 /*Script activation Count and Capacitors are handled via Object Data, in this section they are set and controlled.*/
 ##############################################################
-function DCapacitorCheck(script,DN,OnOff="",DoDD=false)				//Capacitor Check. General "" or "On/Off" specific
+function DCapacitorCheck(script, DN, OnOff="", DoDD=false)				//Capacitor Check. General "" or "On/Off" specific
 {
 		local Capa = GetData(script+OnOff+"Capacitor")+1	//NewValue
-		local Threshold = DGetParam(script+OnOff+"Capacitor",0,DN).tointeger()
+		local Threshold = DGetParam(script+OnOff+"Capacitor", 0, DN).tointeger()
 		#
-			DPrint("Stage 3 - "+OnOff+"Capacitor:("+Capa+" of "+Threshold+")",DoDD,DoDD)	
+			DPrint("Stage 3 - "+OnOff+"Capacitor:("+Capa+" of "+Threshold+")", DoDD, DoDD)	
 		#
 		if (Capa == Threshold)	//Reached Threshold?										//DHub compatibility
 		{
-			SetData(script+OnOff+"Capacitor",0)				//Reset Capacitor and terminate now unnecessary FalloffTimer
-			if (DGetParam(script+OnOff+"CapacitorFalloff",false,DN))
-				{KillTimer(ClearData(script+OnOff+"FalloffTimer"))}
+			SetData(script+OnOff+"Capacitor", 0)				//Reset Capacitor and terminate now unnecessary FalloffTimer
+			if (DGetParam(script+OnOff+"CapacitorFalloff", false, DN))
+				{KillTimer( ClearData(script+OnOff+"FalloffTimer") )}
 			return false	//Don't abort<-false
 		}
 		else
@@ -479,7 +490,7 @@ function DCapacitorCheck(script,DN,OnOff="",DoDD=false)				//Capacitor Check. Ge
 		
 }
 
-function DCountCapCheck(script,DN,func,DoDD=false)
+function DCountCapCheck(script, DN, func, DoDD = false)
 /*
 Does all the checks and delays before the execution of a Script.
 Checks if a Capacitor is set and if its threshold is reached with the function above. func=1 means a TurnOn
@@ -493,8 +504,8 @@ As a little reminder Capacitors should abort until they are full.
 	//Capacitor check.
 	local abort = null																		
 	if (IsDataSet(script+"Capacitor")			 )	{if(DCapacitorCheck(script,DN,"",DoDD))				{abort = true}			else{abort=false}}
-	if (IsDataSet(script+"OnCapacitor") &&func==1)	{if(DCapacitorCheck(script,DN,"On",DoDD)) {if (abort==null){abort = true}}	else{abort=false}}
-	if (IsDataSet(script+"OffCapacitor")&&func==0)	{if(DCapacitorCheck(script,DN,"Off",DoDD)){if (abort==null){abort = true}}	else{abort=false}}
+	if (IsDataSet(script+"OnCapacitor")  && func == 1)	{if(DCapacitorCheck(script,DN,"On",DoDD)) {if (abort==null){abort = true}}	else{abort=false}}
+	if (IsDataSet(script+"OffCapacitor") && func == 0)	{if(DCapacitorCheck(script,DN,"Off",DoDD)){if (abort==null){abort = true}}	else{abort=false}}
 	if (abort) //If abort changed to true.
 	{
 		#
@@ -507,7 +518,7 @@ As a little reminder Capacitors should abort until they are full.
 	if (IsDataSet(script+"Counter")) //low prio todo: add DHub compatibility	
 		{
 		local CountOnly = DGetParam(script+"CountOnly",0,DN)	//Count only ONs or OFFs
-		if (CountOnly == 0 || CountOnly+func==2)				//Disabled or On(param1+1)==On(func1+2), Off(param2+1)==Off(func0+2); 
+		if (CountOnly == 0 || CountOnly+func == 2)				//Disabled or On(param1+1)==On(func1+2), Off(param2+1)==Off(func0+2); 
 			{
 			local Count = SetData(script+"Counter",GetData(script+"Counter")+1)
 				#
@@ -848,11 +859,10 @@ static isobject = ["from", "to", "targetObject", "FromObjId", "ToObjId", "MoveOb
 				return
 		}
 		
-		DPrint("Message received: "+mssg + "("+typeof(bmsg)+")\n Data included:",true,1)
+		DPrint("Message received: "+mssg + "(" + typeof(bmsg) + ")\n Data included:", kDoPrint, DGetParam("DSpyMode",ePrintTo.kMonolog))
 		foreach (k,v in bmsg.__getTable)
-			Debug.MPrint("\t" + k + ((k.len()>7)?"\t: ":"\t\t: ") + InterpretConstants(k, bmsg[k]))
+			Debug.MPrint("\t" + k + ( (k.len()>7)?"\t: " : "\t\t: " ) + InterpretConstants( k, bmsg[k]))
 		print("\n")
-		
 	}
 	
 }
@@ -971,12 +981,12 @@ class DAdvancedGeo extends DBaseTrap
 		else
 			local model=Property.Get(obj,"ModelName")	
 
-		local backup = Property.Get(cDummyArchtype,"ModelName")
+		local backup = Property.Get(kDummyArchtype,"ModelName")
 		
 		//Set and create dummy
-		Property.Add(cDummyArchtype,"ModelName")
-		Property.SetSimple(cDummyArchtype,"ModelName",model)
-		local dummy = Object.Create(cDummyArchtype)
+		Property.Add(kDummyArchtype,"ModelName")
+		Property.SetSimple(kDummyArchtype,"ModelName",model)
+		local dummy = Object.Create(kDummyArchtype)
 		local PhysDims = Property.Get(dummy,"PhysDims","Size")
 		if (scale)
 			PhysDims = PhysDims * Property.Get(obj,"Scale")
@@ -984,13 +994,12 @@ class DAdvancedGeo extends DBaseTrap
 		//Cleanup
 		Object.Destroy(dummy)
 		if(backup)
-			Property.SetSimple(cDummyArchtype,"ModelName",backup)
+			Property.SetSimple(kDummyArchtype,"ModelName",backup)
 		else 													//if there was none
-			Property.Remove(cDummyArchtype,"ModelName")
+			Property.Remove(kDummyArchtype,"ModelName")
 		
 		return PhysDims
 	}
-
 
 	function DScaleToMatch(obj,MaxSize=0.25)
 	{
@@ -1125,7 +1134,7 @@ class DLowerTrap extends DBaseTrap
 		}while(index<endat)
 		
 		// not found
-		DPrint("ERROR: '"+str+"' not found in data.",true,9)
+		DPrint("ERROR: '"+str+"' not found in data.",kDoPrint, ePrintTo.kMonolog || ePrintTo.kLog)
 		return null
 	}
 	
@@ -1153,12 +1162,12 @@ class DLowerTrap extends DBaseTrap
 			return
 		}
 		
-		myfile.seek(cDLoadOffset)
-		local myblob=myfile.readblob(cDLoadBlobSize)
-		local pos = BlobLookForString(myblob, cDLoadName)
+		myfile.seek(kDLoadOffset)
+		local myblob=myfile.readblob(kDLoadBlobSize)
+		local pos = BlobLookForString(myblob, kDLoadName)
 		
 		assert(pos)
-		local value = BlobGetValue(myblob, pos[1]+3, cDLoadDataLength)
+		local value = BlobGetValue(myblob, pos[1]+3, kDLoadDataLength)
 
 		
 		print(CharToStrings(value))
@@ -2306,22 +2315,20 @@ DefOn="+Contained+Create+Combine"
 	//We want to find the object that is already inside the inventory, were the stack is kept - if there is one, else the return will be this object
 		foreach ( l in Link.GetAll("Contains","player"))	//Crawling through the inventory looking for a match.
 		{
-		if (Object.Archetype(LinkDest(l))==type)
-			{
-			return LinkDest(l)
-			}
+			if (Object.Archetype(LinkDest(l)) == type)
+				return LinkDest(l)
 		}
 	}
 
-	function StackToQVar(qvar=false)
+	function StackToQVar(qvar = false)
 	{
-	local o = GetObjOnPlayer(Object.Archetype(self)) 		//Get the object in the inventory
-		
-	if (qvar && qvar!="")
-		Quest.Set(qvar,Property.Get(o,"StackCount"),eQuestDataType.kQuestDataUnknown)
-	else
-		DPrint("ERROR: QVar: "+qvar+" is empty or not set!",1,true)
-	return Property.Get(o,"StackCount")					//Returns the new Stack Count
+		local invObj = GetObjOnPlayer(Object.Archetype(self)) 		//Get the object in the inventory
+
+		if (qvar && qvar!="")
+			Quest.Set(qvar,Property.Get(invObj,"StackCount"),eQuestDataType.kQuestDataUnknown)
+		else
+			DPrint("ERROR: QVar: "+qvar+" is empty or not set!", kDoPrint, ePrintTo.kMonolog)
+		return Property.Get(invObj,"StackCount")			//Returns the new Stack Count
 	}
 ########
 	function DoOn(DN)
@@ -2369,9 +2376,9 @@ class DTPBase extends DBaseTrap
 #########################################
 {
 
-	function DTeleportation(who,where)
+	function DTeleportation(who, where)
 	{	
-		if (Property.Possessed(who,"AI_Patrol"))							//If we are teleporting an AI that is patrolling, we start a new patrol path. Sadly a short delay is neccessary here
+		if (Property.Possessed(who, "AI_Patrol"))							//If we are teleporting an AI that is patrolling, we start a new patrol path. Sadly a short delay is neccessary here
 		{
 			Property.SetSimple(who,"AI_Patrol",0);
 			Link.Destroy(Link.GetOne("AICurrentPatrol",who));
@@ -2387,7 +2394,7 @@ class DTPBase extends DBaseTrap
 		
 		if ( name == "AddPatrol")
 			{
-			Property.SetSimple(msg.data,"AI_Patrol",1);	
+				Property.SetSimple(msg.data,"AI_Patrol",1);	
 			//Link.Create("AICurrentPatrol", msg.data, Object.FindClosestObjectNamed(msg.data,"TrolPt"));		//Should not be necessary to force a patrol link.
 			}
 	}	
