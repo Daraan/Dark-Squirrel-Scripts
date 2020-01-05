@@ -4,7 +4,7 @@
 
 #####################
 
-# IS IN WORK
+# Added to in progress version
 
 class DAdvGeoLib{
 
@@ -64,10 +64,10 @@ class DTimeTravelLoad{
 }
 ##############################
 
-#Implemented but with a while over 1 second.	
+# Implemented but with a while over 1 second.	
+# Improve: Try with post message and while. to limit to frames.
 	
 class DGetExecTime{
-
 
 function OnBeginScript()
 {
@@ -75,17 +75,13 @@ local t = System.Time()
 this.DoTest.DoOn(DN)
 print ("Execution Time: " + System.Time-t + " s")
 }
-	
 
-constructor()
-{//would this work, probably not? How to properly.
-this.DoTest <- ::TestScript	
-}
 
 
 }
 
 //Or do it via exetend and just run it normally
+# Needs testing.
 DEBUG=true
 if (DEBUG)	
 	class DBaseTrap extends DGetExecTime
@@ -96,6 +92,7 @@ else
 or		
 DGetExecTime -> DBaseTrap
 
+# dropped.
 enum DDebugString
 {
 //base.var	
@@ -113,7 +110,7 @@ format(DebugString.Case,vars)
 DPrint(type,...)
 
 	
-# Implemented	
+# Implemented	but removed the config var option.
 	
 class DDebug extends SqRootScript
 {
