@@ -1,403 +1,793 @@
-/*/////////////////////////////////////////////////////////////////
-DScript Version 0.53b
-Use to your liking. 
-All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
+##		--/					 §HEADER					--/
 
-This is not a stable release!
-While many aspects got improved and added. They have been only minimally been tested.
-The DHub script does not work in this version.
+#include DConfigDefault.nut
+// This file IS NECESSARY for DScript.nut to compile.
+//	In it are adjustable constants which might need to be changed.
+//	Most importantly you can specify a minimum DScript version
+//	your FanMission >needs< to function properly.
+
+// --------------------------------------------------------------------------
+// This and all other files are released under the CC0 1.0 Universal License.
+//	Use them to your liking. 
+// --------------------------------------------------------------------------
+
+##		/--		§#		§_INTRODUCTION__§		§#		--\
+//////////////////////////////////////////////////////////////////// 
+//					 	
+const DScriptVersion = 0.55 	// This is not a stable release!
+//
+// While many aspects got improved and added. They have been only minimally been tested.
+//  The DHub script should not work in this version.
+// --------------------------------------------------------------------------
+//
+// #NOTE: All Squirrel scripts get combined together so you can use these scripts in here via extends in other .nut files as well.
+//			Only restriction is that their file name must come later in the alphabet.
+//
+// ----------------------------------------------------------------
+//
+// This file has been designed to be used with an updated 'userDefineLang_Squirrel OSM.xml' file
+//  -> 'userDefineLang_Squirrel DScript.xml'
+//  To highlight code, special functions and constants and especially the use of custom fold points.
+//  An advanced text editor like notepad++ is recommended and necessary to use them. Like DromEd this file uses ANSI characters.
+//
+//		/--		§#		§_DEMO_CATEGORY_§		§#		--\
+//			<-- fold it on the left
+//		|--			#		Paragraph		#			--|
+//			To fold the code into meaningful paragraphs.
+//			And ignore parts like these which you don't want to read.
+//
+//		|--			#	Comment conventions	#			--|
+
+/*
+Multi line comments normally contain a higher level explanation
+of what this specific script or functions does */
+/*
+
+// Single line comments are mostly used to describe what the current point of code is doing.
+// Or give very short information about the current section.
+
+# Comments are used to be a descriptive header for the following block. 
+	Or mark a special point like #DEBUG POINT or #NOTE
+
+##		|--			#	Special Points		#			--|
+
+I marked certain points in the code to be easily found via the search function.
+#NOTE I'm not using a space here.
+
+						# #DEBUG #
+
+There are three categories of output prints in this file, labeled as these at the specific locations.
+
+- #DEBUG ERROR	: Fatal failure of a script. It will not execute and maybe a Squirrel error follows.
+					When you get a Squirrel error maybe scroll back a few lines in the Monolog to find information.
+- #DEBUG WARNING: Script will execute but maybe not as you want. For example a spelling mistake when using the @ operator or parameter not set.
+- #DEBUG POINT	: Only printed for a specific script when the [ScriptName]Debug parameter is set.
+					Used to track down logical mistakes when setting up wrong but valid parameters.
+
+						# #NOTES #
+
+#NOTE points contain various information about squirrel, this script, thief, the engine... 
+		which might be interesting to read or should be taken into account.
 
 
-The real scripts currently start at around line 460
-/////////////////////////////////////////////////////////////////*/
 
+The real scripts currently start at around line > 1000
+*/
+/////////////////////////////////////////////////////////////////
 
-###### CONSTANTS ######
+// ----------------------------------------------------------------
+##		/--		§#		§___CONSTANTS___§		§#		--\
+// Adjustable Constants are in the DConfig*.nut files.
+// ----------------------------------------------------------------
 
-const DtR = 0.01745				// DegToRad PI/180
+const kDegToRad			 = 0.01745	// DegToRad PI/180
 
-##For readability##
-const kReturnArray 	= true			// DGetParam and DCheckString
-const kDoPrint		= true			// DPrint guarantee error prints outside of DebugMode
+##		|--			#	For Readability		#			--|
+					
+const kReturnArray 	= true		// DGetParam and DCheckString
+const kDoPrint		= true		// DPrint guarantee error prints outside of DebugMode.
 
-enum ePrintTo =					// DPrint mode options. Bitwise use.
+enum ePrintTo					// DPrint mode options. used bitwise.
 {
-	kMonolog 	= 1			// Editor monolog.txt
-	kUI	 	= 2			// Ingame Interface Message
+	kMonolog 		= 1			// Editor monolog.txt
+	kUI	 			= 2			// Ingame Interface Message. TODO: Not Shock compatible. What is the function???
 	kIgnoreTimers 	= 4			// Ignore Timer message.
-	kLog		= 8			// Editor.log and Game.log file, very serious reports only.
+	kLog			= 8			// Editor.log and Game.log file, very serious reports only.
+	kError			= 16		// Force a Squirrel Error. (code will still continue) //TODO yes?
 }
-	
-##Hard coded values
-//for DGetPhysDims / DHudObject
-const kDummyArchtype	= -1527 	// Sign(-1521) - needs to be an archetype with Physics->Model->Type:OBB and without Physics->Model->Dimension.
-
-//For DPersistentLoad
-//The cdLoadName location is normally between position 4500 and 6000. So 4000 to 8095 should be plenty.
-const kDLoadOffset	= 4000		// Blob offset for DPersistentLoad in taglist_vals.txt.
-const kDLoadBlobSize	= 4095		// actual Blob size after the offset.
-const kDLoadName	= "Env Zone 63"	// Data Field where DPersistentLoad will look for its data.
-const kDLoadDataLength	= 63		// bytes to read after cDLoadName. Choosing another cDLoadName location can enable up to 255 bytes to be read.
-					// low prio todo: get optional values out of a .ini, .cfg or .dml file.
 
 
-//SqRootScript.Timestart <- ::Time()
+enum eScriptTurn				// Used by the DBaseTrap checks
+{
+	Off
+	On
+}
 
-#####################BASE FUNCTIONS###################
-								
-#######Getting Parameter functions####
 
-PlayerID <- function()
-/*PlayerID() will cache the ObjID of the Player in the Variable PlayerObjID and return it.
+##		|--			#Constant_after_compiling			--|
+
+/* 
+::PlayerID() will cache the ObjID of the Player in the Variable PlayerObjID and return it.
 For more than one call this is more efficient than looking up the "Player" object via string.
 But this is more for convenience as it is easier to write. Both ways are extremely fast, choose what you prefer.*/
-{
+::PlayerID <- function(){ 
 		::PlayerID <- function(){return PlayerObjID}
 		::PlayerObjID <- SqRootScript.ObjID("Player")
 		return ::PlayerObjID
 }
 
-::PlayerID2 <- SqRootScript.ObjID("Player")	//TODO: check before use: might not be present at compile time.
+::PlayerID2 <- SqRootScript.ObjID("Player")	// TODO: Better but check before use: might not be present at compile time.
+
+print("IDs: "+ PlayerID() +" \tID2="+ PlayerID2 +" n: "+ SqRootScript.ObjID("Player"))
+
+// -----------------------------------------------------------------
+
+##		/--		§#	  	  §VERSION_CHECK§		§#		--\
+/* If a FanMission author defines a dRequiredVersion in a separate DConfig file this test will check if the 
+	current DScriptVersion of this file is sufficient or outdated and will display a ingame and monolog message to them. */
+
+if (dRequiredVersion > DScriptVersion){
+		DarkUI.TextMessage(	"!WARNING!\nThis FM requires DScript version: " + dRequiredVersion
+							+ ".\nYou are using only version "		+ DScriptVersion + ". Please upgrade your DScript.nut files.", 255, 60000)
+		print(				"!WARNING! This FM requires DScript version: " + dRequiredVersion
+							+ ".\n\t\tYou are using only version "	+ DScriptVersion + ". Please upgrade your DScript.nut files.")
+}
+
+
+##		/--		§#	  §HELLO_&_HELP_DISPLAY§	§#		--\
+##		|--			#	   General_Help		#			--|
+
+if (!Engine.ConfigIsDefined("dsnohello") && dHelloMessage && IsEditor() && DScriptVersion > 0.6)	// will be enabled in Version 0.6 onward.
+{
+	print( "Hello and Thank You for using DScript. Current Version: " + DScriptVersion 
+			+ "\n--------------------------------------------------------------------\n"
+			+ "Use 'set dhelp' to see all included DScripts and a little description. Use 'set dhelp all' to display scripts by other authors as well.\n"
+			+ "Use 'set dhelp scriptname' to get a more detailed explanation about the specific DScript. \n Help will be displayed after the 'script_reload'"
+			+ "\n\n To permanently disable this message: Either open the DScript.nut file and set const dHelloMessage = false or add a dsnohello line to your DromEd.cfg "
+			)
+	Debug.Command("set dsnohello")			// Don't want to spam you more than necessary.
+}
+
+##		|--			#	   Detailed_Help	#			--|
+if (Engine.ConfigIsDefined("dhelp")) 		//TODO: Setup attributes.
+{
+	local parameter = string()
+	Engine.ConfigGetRaw("dhelp", parameter)
+	if (parameter == "" || parameter == "all")
+	{
+		print("Currently included scripts starting with D:")
+		
+		
+	}
+	else // more detailed info
+	{
+	
+	
+	}
+	Debug.Command("unset dhelp")
+}
+
+##		|-- ------------------------------------------- /--
+##		/--		§# §______BASE_FUNCTIONS_____§  §#		--\
+//
+// 				String and Parameter analysis
+//
+// The DBasics class was created with the idea in mind to make it shareable, to be used with simpler scripts
+// which have no need of the more advanced message and parameter handling of the DBaseTrap Framework. But still
+// need to interpret user input data. It contains functions revolving around getting and interpreting parameters.
+// So other script designers (you?) don't have to worry about these parts during your own coding.
+// 
+// Additionally it contains the DPrint function which can be embedded into the code to only
+// print unter certain conditions, meant to to solve logical mistakes made by the user.
+// ----------------------------------------------------		
+
+	function DivideAtNext(str, char, include = false){
+	/* Divides a string, array or dblob at the next found 'char' and returns an array with the part before and the part after it.
+		If the character is not found the array will be spitted into the complete and an empty string/blob.
+		By default the character will be completely sliced out, with include = true it will be included in the second part.*/
+		local i = 0
+		for (i; i < str.len(); i++)
+		{
+			if (str[i] == char)
+				break
+		}
+		if (i == str.len())
+			return [str.slice(0,i)	, ""]
+		return [	str.slice(0,i)	, str.slice( include ? i : i+1 )]
+	}
+
+
+
+class dblob
+{
+ // dblob("A") + dblob("B") 	= dblob("AB") combined
+ // dblob("A") + "string" 		= "Astring"
+ // dblob("A").tostring() 		= "A"
+ // dblob(realblob)	 			= stores the blob as a dblob.
+ // dblob(dblob("2"))			= dblob("2")
+ // dblob.myblob or dblob.toblob() = returns the stored blob
+myblob = null
+
+	constructor(str){
+		switch (typeof str)
+		{
+			case "string":
+				myblob = ::blob()
+				writec(str)
+				break
+			case "blob" :
+				if (str instanceof ::blob){
+					myblob = str
+				} else if (str instanceof dblob)
+					myblob = str.myblob
+				  else throw "Can only combine real blobs and DBlobs."
+				break
+			case "float" :
+				str.tointeger()
+			case "integer" :
+				myblob = ::blob()
+				myblob.writen(str, 'c') // 'c' 8 bit signed integer (char)
+				break
+			default :
+				throw "Trying to construct a dblob with invalid parameter."
+		}
+	}
+	
+	function _typeof()
+		return "blob"
+	
+	function toblob()
+		return myblob
+	
+	function _tostring(){
+		local str = ""
+		foreach (c in myblob)
+			str += c.tochar()
+		return str
+	}	
+	
+	function writec(str)
+		foreach (char in str)
+				myblob.writen(char,'c')
+	
+	function _add(other){
+		myblob.seek(0,'e')
+		myblob.writeblob(other instanceof ::blob ? other : other.myblob)
+		return this
+	}
+	
+	function slice(start, end = 0){
+	/* returns a copy containing only the elements from start to the end point.
+		if start is negative it will slice at the end of the stream - the offset.*/
+		myblob.seek(start, start < 0? 'e' : 'b')
+		return dblob( myblob.readblob(end <= 0? myblob.len() + end : end - start))
+	}
+		
+	function len()
+		return myblob.len()
+		
+	function tell()
+		return myblob.tell()
+	
+	function seek(offset, origin = 'b')
+		myblob.seek(offset, origin)
+	
+	function _set(key, value){
+		if (typeof key == "integer"){
+			if (typeof value == "integer")
+				myblob[key] = value
+			else {
+			myblob.seek(key, key < 0? 'e' : 'b')
+			writec(value)
+			}
+		}
+	}
+	
+	function _get(key){
+		if (typeof key == "integer") {
+			return myblob[key]
+		}
+		throw null
+	}
+	
+	/* function _newslot(key, value)		// If you know you you are doing
+		throw "Can't add new slots." */
+	
+	function _nexti(previdx) {
+		if (myblob.len() == 0) {
+			return null;
+		} else if (previdx == null) {
+			return 0;
+		} else if (previdx == myblob.len()-1) {
+			return null;
+		} else {
+			return previdx + 1;
+		}
+	}
+	
+}
+
+b <- dblob("ADCDEFG")
+
+print(b.tell())
+
+print(c <- dblob("ABC#EFG"))
+
+print(DivideAtNext(c,'#')[0] + "_" + DivideAtNext(c,'#')[1])
+
 
 class DBasics extends SqRootScript
 {
+//----------------------------------
+</
+Help 		= "Handles Parameter analysis. No ingame use."
+Help2		= "More detail"
+SubVersion 	= 0.5
+/>
+//---------------------------------- 
 
-	function DGetAllDescendants(at,objset)
-	/*Emulation of the "@"-parameter. Gets all descending concrete objects of an archetype or metaproperty.*/
-	{
-		foreach ( l in Link.GetAll("~MetaProp",at))	//~MetaProp links are invisible in the editor but form the hierarchy of our archetypes. Counterintuitively going from Ancestor to Descendant.
+static sSharedSet = null
+
+	#  |-- 	Get Descending Objects 		--|
+	// #NOTE: ~MetaProp links are invisible in the editor but form the hierarchy of our archetypes. 
+	//				Counterintuitively going from Ancestor to Descendant. 
+			
+	// #NOTE: ~MetaProp links also go from a Meta-Property to objects. 
+	//			So @ will also return every concrete object that inherit them via archetypes.
+	//			And * will return only the concrete objects which have that Meta-Property set directly.	
+	function DGetAllDescendants(from, objset, allowInherit = true){
+	/* '@' and '*' operator analysis. Gets all descending concrete objects of an archetype or meta property.*/	
+		foreach ( l in Link.GetAll("~MetaProp", from))
 		{
-			local id=LinkDest(l)
-				if(id>0){objset.append(id)}
-				else 	{DGetAllDescendants(id,objset)}
+			local id = LinkDest(l)
+			if (id > 0)
+			{
+				objset.append(id)
+				continue
+			}
+			// @ operator will check for abstract (negative ObjID) inheritance as well.
+			if (allowInherit)	
+				DGetAllDescendants(id, objset)
 		}
 	}												
 
-	#################
-	function DCheckString(r, returnInArray = false)		
-	/*Analysis of a given string parameter depending on its prefixed parameter.
-	adv(anced)=true will return the found entities in an array else only a single one.*/
+	function StringToObject(str)
+	/* Readies a string like @guard to be used by DGetAllDescendants.*/
 	{
-		//handling non strings
-		switch (typeof(r))
-			{
-			case "string":		
-				local intexp=regexp(@"^\s*(-?[0-9]+)\s*$")	//If the string is digits only. To get rid of the necessity of using the # tointeger operator.
-				if (intexp.match(r))
-					r = r.tointeger()
+		if (str[0] == '-')	//Catch ArchetypeID if it comes as string.
+			str = str.tointeger()
+		else				//Returns the object with this Symbolic name or the Archetype ID
+		{
+			str = ObjID(str)
+			#DEBUG WARNING str not found (str = 0)
+			if (!str)
+				DPrint("Warning! * or @ Operator target is Object 0 (ALL OBJECTS). Spelling Mistake? If not use -1.", kDoPrint, ePrintTo.kMonolog || ePrintTo.kLog)
+		}
+		return str
+	}
+	
+	// Pre return function for the DCheckString function to match the desired need.
+	function DReturnThis(param, inArray = false)
+	{
+		if (typeof(param) == "array")
+		{
+			// if it is already an array return it or a single value out of it.
+			if (inArray)
+				return param
+			return param.pop()
+		}
+		// else if a single value in an array is needed return it in one.
+		if (inArray)
+			return [param]
+		return param
+	}
+	
+	## |-- 	§Main_Analysis_Function		--|
+	function DCheckString(str, returnInArray = false)		
+	/* 
+	Analysis of a given string parameter depending on its prefixed parameter.
+		if returnInArray is set it will return the found entities in an array else only a single one.
+		Most of the time this function revolves around objects but especially with the + operator it can for example be used to combine messages.
+	*/
+	{
+		# |-- Handling non strings	--|
+		switch (typeof(str))
+		{
+			case "null":
+				#DEBUG WARNING
+				DPrint("Warning: Returning empty null parameter.", kDoPrint, ePrintTo.kMonolog)
+				return DReturnThis(str, returnInArray)
+			case "string":
+				//Check if the string is digits only. To get rid of the necessity of using the # tointeger operator.
+				local intexp = regexp(@"^\s*(-?[0-9]+)\s*$")
+				if (intexp.match(str))
+					str = str.tointeger()
 				else
 					break
-			case "null":
-				DPrint("Warning: Returning empty null parameter.", kDoPrint, ePrintTo.kMonolog)
 			case "bool":
 			case "vector":
 			case "float":
 			case "integer":
-				if (returnInArray){return [r]}else{return r}
+				return DReturnThis(str, returnInArray)
 			case "array":
-				if (returnInArray){return r}else{return r.pop()}
-			}
+				return DReturnThis(str, returnInArray)
+		}
 		
-		//Convenient sugar code for you
-		switch (r.tolower())
-			{
+		# |-- Sugar Code 			--|
+		switch (str.tolower())
+		{
 			case "[me]":
-				{if (returnInArray){return [self]}else{return self}}
+				return DReturnThis(self, returnInArray)
 			case "[source]":
-				{if (returnInArray){return [SourceObj]}else{return SourceObj}}
+				return DReturnThis(SourceObj, returnInArray)
 			case "":
-				{if (returnInArray){print("DScript Warning: Returning empty string array, that's kinda strange.");return [""]}else{return ""}}
+				if (returnInArray){
+					#DEBUG WARNING
+					DPrint(" Warning: Returning empty string array, that's kinda strange.", kDoPrint, ePrintTo.kMonolog)
+					return [""]
+				}
+				return ""
 			case "[player]":
-			case "player":
-				{if (returnInArray){return [::PlayerID()]}else{return ::PlayerID()}}
-			case "null":	//Don't handle this parameter
-				return
-			}
+			case  "player" :
+				if (returnInArray){return [::PlayerID()]}else{return ::PlayerID()}
+			case "null":	// Don't handle this parameter. TODO: Check for errors.
+				return DReturnThis(null, returnInArray)	// still return null or errors follow.
+		}
 
-		//Operator check.
+		# |-- Operator Analysis 	--|
 		local objset = array(0)
-		switch (r[0])
-			{
-				case '&': 	//Linked Objects of &LinkType.
-					local s=split(r,"%")
-					if (s.len()==1)	//no % present
-					{
-						if (r[1]!= '-' && r[1]!= '=')
-						{	foreach ( l in Link.GetAll(r.slice(1),self)){objset.append(LinkDest(l))}}
-						else 	//Objects which are linked together with that LinkType.
-						{
-							objset.append(self)
-							if (r[1] == '-')
-								DObjectsInPath(r.slice(2),objset)		//Single Line, no loop support. Follows the lowest LinkID.
-							else
-								DObjectsInNet(r.slice(2),objset)		//Alternativ gets every object. Also ordered in distance to start.
-						}
-					}	//Object at path &=TPath%~TPathInit%~TPathNext
-					else
-					{	//DObjectsLinkedFromSet(array objset, array linktypes, bool onlyfirst=false)
-						local firstone=false
-						if (s[1][0] == '^')	//return first found.
-						{	
-							firstone=true
-							s[1]=s[1].slice(1)
-						}
-						objset=DObjectsLinkedFromSet(DCheckString(s.remove(0),true),s,firstone)	//s.remove(0) returns:"&T=Path" s:["~TPathInit", "~TPathNext"]
-					}
-					break
-					
-				case '*': 		//Object of Type, without descendants
-					r=r.slice(1)
-					if (r[0]=='-')	//Single Archetype
-					{
-						r=r.tointeger()
-					}
-					else		//If obj is a concrete one it will still work
-					{
-						r=ObjID(r)
-					}
-						
-					foreach ( l in Link.GetAll("~MetaProp",r))	//TODO: Check this
-					{
-						local id=LinkDest(l);
-						if (id>0){objset.append(id)}
-					}
-					break
-					
-				case '@': 		//Object of Type, with descendants. See first function above.
-					r=r.slice(1)
-					if (r[0]=='-')		//Example @-441
-					{
-						r=r.tointeger()
-					}
-					else				//@switches
-					{
-						r=ObjID(r)
-					}
-					DGetAllDescendants(r,objset)
-					break
-				case '$':		//Looks for QVar variable
-					objset.append(Quest.Get(r.slice(1)))
-					break
-				case '^':		//Read line below ;) Not sure if this works for T1/G
-					local anchor=self
-					if (r[1]=='%')
-						{r=split(r,"%")
-						anchor=DCheckString(r[1])
-						r=Object.GetName(DCheckString(r[2]))
-						}
-					else
-						r=Object.GetName(DCheckString(r.slice(1)))
-					objset.append(Object.FindClosestObjectNamed(anchor, r))
-					break	
+		switch (str[0])
+		{
+			# |-- Linked Objects
+			case '&':
+				str = str.slice(1)
+				local anchor = self
+				if ( str[0] == '%')		//&%sthelse%
+				{ 
+					local divide = DivideStringAtNext(str, '%')
+					anchor = DCheckString(divide[0])
+					str = divide[1]
+				}
 				
-				// Add/Remove subset with + and +- operator
-				case '+':
-					local ar= split(r,"+")
-					ar.remove(0)
-					foreach (t in ar)	//Loops back into this function to get your specific set
-						{
-							if (t[0]!= '-')
-								{objset.extend(DCheckString(t,true))}
-							else // +- operator, remove subset
-							{
-								local removeset = DCheckString(t.slice(1),true)
-								local idx=null
-								foreach (k in removeset)
-								{
-									idx = objset.find(k)
-									if (idx!=null) {objset.remove(idx)}
-								}
-								
-								//.map(function(obj){if (!objset.find(obj){return obj}})
-							}
-						}
-					break
-				//  integer, float, vector check if they come as string.
-				case '<':	//vector
-					local ar= split(r,"<,")
-					return vector(ar[1].tofloat(),ar[2].tofloat(),ar[3].tofloat())
-				case '#':	//needed for +#ID+ identification.
-					objset.append(r.slice(1).tointeger())
-					break
-				case '.':	//Here for completion: .5.25 - but the case of an unexpected float normally doesn't happen.
-					objset.append(r.slice(1).tofloat())
-					break
-					
-	#############Additional advanced after filters#################
-				case '?': 	//random return
-					objset=DCheckString(r.slice(1),true)
-					objset=array(1,objset[Data.RandInt(0,objset.len())])
-					break
+				local s = split(str,"[")
+				if (s.len() == 1)						//no [ present
+				{
+					if (str[1] != '-' && str[1] != '=')	// normal behavior.
+					{
+						foreach ( link in Link.GetAll(str, anchor))
+							objset.append(LinkDest(link))
+					}
+					else 							// Objects which are > linked together < with that LinkType.
+					{
+						objset.append( anchor )
+						if (str[1] == '-')
+							DObjectsInPath(str.slice(2), objset)	//Single Line, no loop support. Follows the lowest LinkID.
+						else
+							DObjectsInNet(str.slice(2), objset)		//Alternativ gets every object. Also ordered in distance to start.
+					}
+				}
+				else
+				{
+					# Objects linked to linked objects like: Object path &=TPath[~TPathInit[~TPathNext return attached elevators.
+					local firstone = false
+					if (s[1][0] == '^')	//return first found.
+					{	
+						firstone = true
+						s[1] = s[1].slice(1)
+					}
+							// DObjectsLinkedFromSet(array objset, array linktypes, bool onlyfirst = false)
+							// s.remove(0) returns: "&T=Path" and s = ["~TPathInit", "~TPathNext"]
+							// TODO: Make [ independent from &
+					objset = DObjectsLinkedFromSet(DCheckString(s.remove(0), kReturnArray), s ,firstone)	
+				}
+				break
+			# |-- * @ $ ^ Parameters
+			# Object of Type, without descendants
+			case '*':
+				DGetAllDescendants(StringToObject(str.slice(1)), objset, false)
+				break
+				
+			# Object of Type, with descendants.
+			case '@':
+				DGetAllDescendants(StringToObject(str.slice(1)), objset)
+				break
+			
+			# Use a Quest Variable as Parameter, can be on ObjID but also strings, vectors,... depending on the situation
+			case '$':
+				objset.append(Quest.Get(str.slice(1)))
+				break
+			
+			# Use a config variable
+				case '§': // Paragraph sign. #NOTE: Finally it happens, the ASCII ISO, ANSI, Unicode trouble.
+							# First squirrel uses signed character values from -127 to 127. While references mostly display 0 - 255
+							# '§' is equal to -89 (167) but there are several very different standards for these additional 128 characters.
+							#NOTE: DON'T TRUST THE MONOLOG.
+							# DromEd uses ANSI with modern characters like €(128) in contrary the Windows Terminal uses 850 OEM where 128 represents Ç and § is displayed as º!
+				local ref = string()
+				#DEBUG WARNING
+				if(!Engine.ConfigGetRaw(str.slice(1), ref))
+					DPrint("Warning: Config variable " + str.slice(1) + "not set. Returning 0.", kDoPrint, ePrintTo.kMonolog)
+				objset = DCheckString(ref.tostring(), kReturnArray)
+				break
+				
+			# Reply; GetData from another object.
+			case '/' : // /@guard(.DPingBack) : Sends a PingBack message	/@guard.*Target	/@guard.NVRelayTrapTDest	/@guard/&AIWatchObj
+						// OnPingBack SendMessage PingingBack	/@guard.PingBack.TurnOn
+					print(str)
+					local start = false
+					if (str[1] == '/')	// start of the chain.
+					{
+							start = true
+							sSharedSet = [] //when to clear?
+					}
+					local endaction = start? split(str,".") : message().data2
+					# Get First Object Set
+					local division = DivideStringAtNext(str, '/')
+					local tempset = DCheckString(division[0], kReturnArray)
 
-				//Filter rendered objects
-				case '}':
-					if (r[1] == '!') //Only add not rendered
-					{
-						objset=DCheckString(r.slice(2),true).map(function(obj){if (!Object.RenderedThisFrame(obj)){return obj}})
-					}
-					else			//Add rendered objects
-					{
-						objset=DCheckString(r.slice(1),true).map(function(obj){if (Object.RenderedThisFrame(obj)){return obj}})
-					}
-					break
 					
-				//Filter by distance.
-				case '{':
-					local dgreater=false
-					local vgreater=false
-					local d=null
-					local v=null
-					local anchor=self
-			#!SQUIRREL BUG: The regexp class in squirrel is bugged - operators are not as greedy as they should be and empty capture returns are possible. That's why this is not as minimal as it could be.
-					local expr=regexp(@"{(?:([<>])?(-?\d+\.?\d*)[^<>:%]?)?(?:([<>])?\(? *(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)? *\)?%?([^:]*)?:(.*))") //nice+
-					local res=expr.capture(r)
-					local values=array(9)
-					
-					//Index[0]: whole string [1]: '<' or '>' [2]:distance [3]:'<>'  [4,5,6]: v1,v2,v3 [7]:AltAnchor [8]:TargetedObjSet
-					if (res == null)
+					# Send what?
+					if (endaction[1] == "PingBack")
+					{
+						foreach (obj in tempset)
 						{
-							DPrint("ERROR! '{' operator wrong format. {<2.0[SPACE!!!] <(1,2,3)%Anchor:Target", kDoPrint, ePrintTo.kMonolog || ePrintTo.kUI )
-							return
+							SendMessage(obj, "DPingBack", str.len() == 3? endaction[2] : null) 	
 						}
+						
+						foreach (obj in sSharedSet)
+							print(obj)
+					}
+					else
+					{
 					
-					foreach(i,val in res)
-					{
-						values[i]=r.slice(val.begin,val.end)
-						//DPrint("} Parameter"+i+" : "+values[i]+" ( "+typeof(values[i])+")", kDoPrint, ePrintTo.kMonolog)
+						SendMessage(obj, "DPingBack", false, division[1], endaction)
+					
 					}
 					
-					//Getting parameters, radius, vector, anchor, objset
-					if (values[2] != "")
+					
+					objset = sSharedSet
+				break
+				
+			# The closest object out of a set.
+			case '^':			// TODO: Does this work for Meta-Properties too?
+				local anchor = self	
+				if (str[1] == '%')		// ^%^TrolPt%Guard	would for example give you the closest guard, relative to the closest Patrol Point.
+				{
+					str = split(str,"%")
+					anchor = DCheckString(str[1])
+					str = Object.GetName(DCheckString(str[2]))
+				}
+				else
+					str = Object.GetName(DCheckString(str.slice(1)))
+				objset.append( Object.FindClosestObjectNamed(anchor, str) )
+				break	
+			
+			# |-- + Operator to add and remove subsets.
+			case '+':
+				local ar = split(str, "+")
+				ar.remove(0)
+				foreach (t in ar)	//Loops back into this function to get your specific set
 					{
-						d=values[2].tofloat()
-						if (values[1] == ">")
-							dgreater=true
-					}
-					if (values[4] != "")
-					{
-						v=[values[4].tofloat(),values[5].tofloat(),values[6].tofloat()]
-						if (values[3] == ">")
-							vgreater=true
-					}
-					if (values[7] != "")
-					{
-						anchor=DCheckString(values[7])
-					}
-					//checks each obj in the returned array via the map function and generates a new array.
-					objset=DCheckString(values[8],true).map(function(obj)
-					{
-						local opos=Object.Position(obj)
-						local apos=Object.Position(anchor)
-						local dist=(opos-apos).Length()
-						local remove=false
-						if (d)
+						if (t[0] != '-')
+							objset.extend( DCheckString(t, kReturnArray) )
+						else // +- operator, remove subset
 						{
-							if (dgreater){if(dist<d) remove=true}
-									else {if(dist>d) remove=true}
+							local removeset = DCheckString(t.slice(1), kReturnArray)
+							local idx=null
+							foreach (k in removeset)
+							{
+								idx = objset.find(k)
+								if (idx!=null) {objset.remove(idx)}
+							}
+							// TODO: .map(function(obj){if (!objset.find(obj){return obj}})
 						}
-						if (v)
+					}
+				break
+			# |-- Interpretation of other data types if they come as string.
+			case '<':	//vector
+				local ar = split(str, "<,")
+				return DReturnThis(vector(ar[1].tofloat(), ar[2].tofloat(), ar[3].tofloat()), returnInArray) 
+			case '#':	//needed for +#ID+ identification.	#NOTE: Not explicitly needed anymore.
+				objset.append(str.slice(1).tointeger())
+				break
+			case '.':	//Here for completion: .5.25 - but the case of an unexpected float normally doesn't happen.
+				objset.append(str.slice(1).tofloat())
+				break
+				
+			# |-- After_Filters --|
+			# Return one Random Object
+			case '?': 	//random return
+				objset = DCheckString(str.slice(1), kReturnArray)
+				objset = [objset[Data.RandInt(0, objset.len())]] // One random item into new array.
+				break
+
+			# Filter rendered objects
+			case '}':
+				local keepOnRender = TRUE		//Using them here explicit as 0 and 1
+				if (str[1] == '!')
+					keepOnRender = FALSE
+				objset = DCheckString(str.slice(2 - keepOnRender), kReturnArray).map(
+					function(obj)
+					{
+						if ( Object.RenderedThisFrame(obj) == keepOnRender )
+							return obj
+					})
+				break
+				
+			# Filter by distance --| //TODO: Look at this again a little bit more. 
+			case '{':
+				local checkradius	= null
+				local checkvector	= null
+				local dgreater	= false
+				local vgreater	= false
+				local anchor	= self
+				#NOTE SQUIRREL BUG: The regexp class in squirrel is bugged - operators are not as greedy as they should be and empty capture returns are possible. That's why this is not as logical as it should be.
+				local expr	= regexp(@"{(?:([<>])?(-?\d+\.?\d*)[^<>:%]?)?(?:([<>])?\(? *(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)? *\,? *(-?\d+\.?\d*)? *\)?%?([^:]*)?:(.*))")
+				local res	= expr.capture(str)
+				local values= array(9)
+				
+				//Index[0]: whole string [1]: '<' or '>' [2]:checkradius [3]:'<>'  [4,5,6]: v1,v2,v3 [7]:AltAnchor [8]:TargetedObjSet
+				if (!res)
+				{
+					#DEBUG ERROR
+					DPrint("ERROR! '{' operator wrong format. "+str+"\n \t Format should be like this: {<2.0_<(1, 2, 3)%Anchor:Target", kDoPrint, ePrintTo.kMonolog || ePrintTo.kUI )
+					return []
+				}
+				
+				foreach(i,val in res)
+				{
+					values[i] = str.slice(val.begin, val.end)
+					#DEBUG POINT
+					DPrint("{ Distance filter: Parameter "+i+" : "+values[i]+" ( "+typeof(values[i])+")")
+				}
+				
+				//Getting parameters, checkradius, vector, anchor, objset
+				if (values[2] != "")
+				{
+					checkradius = values[2].tofloat()
+					if (values[1] == ">")
+						dgreater = true
+				}
+				if (values[4] != "")
+				{
+					checkvector = [values[4].tofloat(), values[5].tofloat(), values[6].tofloat()]
+					if (values[3] == ">")
+						vgreater = true
+				}
+				if (values[7] != "")
+				{
+					anchor = DCheckString(values[7])
+				}
+				// Checks each obj in the returned array via the map function and generates a new array.
+				objset = DCheckString(values[8], kReturnArray).map(
+					function(obj){
+						local objpos	= Object.Position(obj)
+						local ancpos	= Object.Position(anchor)
+						local dist		= (objpos - ancpos).Length()
+						local remove= false
+						if (checkradius)
 						{
-							opos=[opos.x,opos.y,opos.z]
-							apos=[apos.x,apos.y,apos.z]
-							foreach (i,axis in v)
+							if (dgreater){if (dist < checkradius) remove = true}
+									else {if (dist > checkradius) remove = true}
+						}
+						if (checkvector)
+						{
+							// easier to iterate if these are arrays
+							objpos = [objpos.x, objpos.y, objpos.z]
+							ancpos = [ancpos.x, ancpos.y, ancpos.z]
+							foreach (i, axis in checkvector)
 							{
 								if (axis) //skip if 0
 								{
-									if (vgreater){if(opos[i]>(apos[i]-axis) && opos[i]<apos[i]+axis) {remove=true}}	//remove if in bbox
-											else {if(opos[i]<(apos[i]-axis) || opos[i]>apos[i]+axis) {remove=true}}	//remove if outside
+									if (vgreater)
+									{
+										//remove if in bbox
+										if (objpos[i] > (ancpos[i] - axis) && objpos[i] < (ancpos[i] + axis))
+											remove = true
+										else 
+											remove = false	//TODO this overrides radius, look at this again
+									}
+									else 
+									{
+										//remove if outside
+										if (objpos[i] < (ancpos[i] - axis) || objpos[i] > (ancpos[i] + axis))
+											remove = true
+										else
+											remove = false
+									}
 								}
 							}
 						}
 						if (!remove)
-							{return obj}
+							return obj
 					})
-					break
-				//End distance check.
-				default :
-					objset.append(r)
-			}//End of Switch
+				break
+			//End distance check.
 			
-		if (returnInArray){return objset}else{return objset.pop()}	//Return an array or single entity
-	}
+					default :
+				objset.append(str)
+		}
+		//End of Switch
+		// Return the entity. Either as a single one or as group in an array.
+		return DReturnThis(objset, returnInArray)
+}
 
+	#  |-- 	Get_Parameter_Functions 	--|
 
-	function DGetParam(par, default = null, DN=null, returnInArray = false)	//Function to return parameters, returns given default value. if adv=1 an array of objects will be returned.
+	function DGetParam(par, defaultValue = null, DN = null, returnInArray = false)
+	/* Function to return parameters if the parameter is not found returns given default value.
+	if returnInArray is set an array of entities will be returned.
+	By default works with the DesignNote table but can also work with other tables or even classes. */
 	{
-		if(!DN){DN=userparams()}					//The Design Note has to be passed on to a) save userparams() calls and b)for this function to work for artificial tables and class objects as well.
+		if(!DN){DN = userparams()}
 		if (par in DN)
-		{
 			return DCheckString(DN[par], returnInArray)			//Will return a single entity or all matching ones in an array(adv=1).
-		}
-		else 	//Default Value
-		{	
-			return DCheckString(default, returnInArray)
-		}
+		return DCheckString(defaultValue, returnInArray)
 	}
+	// TODO add a simple version without analysis.
 
-	function DGetStringParam(param, default, str, returnInArray = false, cuts = ";=")	//Like the above function but works with strings instead of a table. To get an (object) array set adv=1.
+	function DGetStringParam(param, defaultValue, str, returnInArray = false, separators = eSeparator.kStringData)	
+	/* Like the above function but works with strings instead of a table/class. */
 	{
-			str 	= str.tostring()
-		local 	kvArray = split(str, cuts);		//Puts the values into arrays which where before separated by your characters specified by cuts
+				str 	= str.tostring()
+		local 	kvArray = split(str, separators);				//Generates a [key1, value2, key2, ...] array
 		local 	key 	= div.find(param);
 
 		if (key)
-			{return DCheckString(kvArray[key+1], returnInArray)}		//Parameter=Value form [...ParameterIndex,ParameterIndex+1,...] indexed pairs.
-		else 
-			{return DCheckString(default, returnInArray)}
+			return DCheckString(kvArray[key+1], returnInArray)	//[...Parameter@Index, Value@Index+1,...]
+		return DCheckString(defaultValue, returnInArray)
 	}
 
-	/*#########Carry over Data via TimerData Functions###################
+	#  |-- 	Data-Timers 				--|
+	/*
 	Q: How to carry over data from one Script to another when there is a delay? 
-	PROBLEM 1: The SourceObject is not carried over when the message gets delayed via a StandardTimer. => A: Save as a global variable. 
-	PROBLEM 2: That data is LOST when the game is gets closed and reloaded.
+	PROBLEM 1: The SourceObject is not carried over when the message gets delayed via a StandardTimer. Save as a global variable? NO!
+	PROBLEM 2: That data is LOST when the game gets closed and reloaded. 
 
-	This functions allows the sending and retrieving of multiple values via a timer which is save game persistent.
+	These functions allows the sending and retrieving of multiple values via a timer, which is save game persistent.
 	*/
-	function DArrayToString(ar, seperator = "+" )	//Creates a long string out of your array data separated by +
-	{
-		local data = ""
-		local maxIndex = ar.len() - 1
-
-		
-		for( local i = 0; i < maxIndex; i++)
-		{
-			data += ar[i] + seperator		//appends your next indexed value and your divide operator
-		}
-		return data += ar[maxIndex]			//Returns your string
+	
+	function DArrayToString(ar, separator = eSeparator.kTimerSimple ){
+	/* Creates a long string out of your array data separated by "+" 
+		#NOTE Constants are defined in DConfig*.nut					*/
+		local data 		= ""
+		local maxIndex	= ar.len() - 1
+	
+		for( local i = 0; i < maxIndex; i++)		//appends your next indexed value and your divide operator
+			data += ar[i] + separator				
+		return data += ar[maxIndex]					//Returns your string
 	}
 
-	function DSetTimerDataTo(To, name, delay, ...)		//Target to another object. '...' Means it takes an unspecified amount of data -> vargv
-	{
-		local data = DArrayToString(vargv)
-		return SetOneShotTimer(To, name, delay, data)
+	function DSetTimerDataTo(To, name, delay, ...){
+	/* Start and send a Timer with an unspecified amount of data arguments ... (vargv) to another object. */
+		return SetOneShotTimer(To, name, delay, DArrayToString(vargv) )
 	}
 
-	function DSetTimerData(name, delay, ...)		//Target is self
-	{
-		local data = DArrayToString(vargv)
-		return SetOneShotTimer(name, delay, data)
+	function DSetTimerData(name, delay, ...){
+	/* Same as above but to the script object itself. */
+		return SetOneShotTimer(name, delay, DArrayToString(vargv))
 	}
 
-	function DGetTimerData(m, KeyValue = false)		//Get back your data after timeout
-	{	
-		local o = "+"					
-		if (KeyValue){o = "+=" }				//Is your data only separated by + or by Key1=Value1+Key2=....
-		return split(m, o)					//low prio todo: While IMO not necessary add general operator option.
+	function DGetTimerData(data, KeyValue = false, separator = eSeparator.kTimerSimple){
+	/* Retrieves the formerly stored data out of the Timer. the format can be
+		Data1+Data2+Data3+... or Key1=Value1+Key2+Value2+...				*/	
+		if (KeyValue){separator = eSeparator.kTimerKeyValue}
+		return split(data, separator)
 	}
 
-	###### Functions for &=LinkPaths ####
-	function DObjectsInNet(linktype, objset, current=0)
+	#  |--  Functions for &=LinkPaths 	--|
+	function DObjectsInNet(linktype, objset, current = 0)
 	/* Get all objects in a Path witch branches. The set is ordered by distance to the start point.*/
 	{
-		foreach ( l in Link.GetAll(linktype, objset[current]) )
+		foreach ( link in Link.GetAll(linktype, objset[current]) )
 		{
-			local nextobj = LinkDest(l)
-			if (!objset.find(nextobj))					//Checks if next object is already present.
+			local nextobj = LinkDest(link)
+			if ( !objset.find(nextobj) )					//Checks if next object is already present.
 			{
 				objset.append(nextobj)
 			}
 		}
-		if (!objset.len() == current)						//Ends when the current object is the last one in the set. minor todo: could be a parameter, probably faster.
+		if ( !objset.len() == current )						//Ends when the current object is the last one in the set. minor todo: could be a parameter, probably faster.
 			return DObjectsInNet(linktype, objset, current++)		//return enables a Tail Recursion with call stack collapse.
 	}
 
@@ -412,9 +802,9 @@ class DBasics extends SqRootScript
 		}
 	}
 
-	function DObjectsLinkedFromSet(objset, linktypes, onlyfirst=false)	
-	/* Returns the first or all object that are linked via a ~linktype to a set of objects. */
-	//For example returns the Elevator in a TPath (~TPathInit, ~TPathNext), or AI on a control Path.
+	function DObjectsLinkedFromSet(objset, linktypes, onlyfirst = false)	
+	/* Returns the first or all object that are linked via a ~linktype to a set of objects.
+		For example can return the Elevator in a TPath (~TPathInit, ~TPathNext), or AI on a control Path. */
 	{			
 		local foundobjs =[]
 		foreach (curobj in objset)
@@ -435,246 +825,319 @@ class DBasics extends SqRootScript
 			return foundobjs
 	}	
 	
-	
-///////////Conditional Debug Print function/////////////////
-	function DPrint(DbgMessage, DoPrint = false, mode = ePrintTo.kMonolog || ePrintTo.kUI)
+	#  |--  §Conditional_Debug_Print 	--|
+	function DPrint(dbgMessage, DoPrint = false, mode = 3) 	// default mode = ePrintTo.kMonolog || ePrintTo.kUI)
 	{
-		if (DoPrint)
+		if (!DoPrint){
+			// Enabled via user parameter?
+			mode = DGetParam(GetClassName()+"Debug", false)	
+		}
+		if (mode)	//*magic trick*
 		{
 			local s = "DDebug("+GetClassName()+") on "+Object.GetName(Object.Archetype(self))+"("+self+"):\t"
-			if (mode == false)			//Old Version: DBaseTrapDebug: When set as var but not.
-				mode = 3
+			/*if (mode == false)				//Old Version: DBaseTrapDebug enabled via config var.
+				mode = 3*/
 			if (mode & ePrintTo.kIgnoreTimers && message().name == "Timer") 	//ignore timers	
 				return
-			if (mode & ePrintTo.kMonolog)		//Bitewise operation, mode=3 is true for both
-				print(s + DbgMessage)
-			if (mode & ePrintTo.kUI)
-				DarkUI.TextMessage(s + DbgMessage)
+			if (mode & ePrintTo.kMonolog && IsEditor())	//Useless if not in editor.
+				print(s + dbgMessage)
+			if (mode & ePrintTo.kUI)					// TODO: Shock compatible. What is the function???
+				DarkUI.TextMessage(s + dbgMessage)		
 			if (mode & ePrintTo.kLog)
-				Debug.Log(s + DbgMessage)
+				Debug.Log(s + dbgMessage)
+			if (mode & ePrintTo.kError)
+				error(s + dbgMessage)
 		}
 	}
 	
-}
+}						  
 
+
+// ----------------------------------------------------------------
+##		/--		§# §____FRAME_WORK_SCRIPT____§	§#		--\
+//
+// The DBaseTrap is the framework for nearly all other scripts in this file.
+// It handles incoming messages and interprets the general parameters like Count, Delay, Repeat.
+// After all checks have been passed it will call the appropriate activate or deactivate function of the script.
+// The DBaseTrap on 
+// ----------------------------------------------------------------
 
 class DBaseTrap extends DBasics
 {
-#################Counter and Capacitor Checks#################
-/*Script activation Count and Capacitors are handled via Object Data, in this section they are set and controlled.*/
-##############################################################
-function DCapacitorCheck(script, DN, OnOff="", DoDD=false)				//Capacitor Check. General "" or "On/Off" specific
-{
-		local Capa = GetData(script+OnOff+"Capacitor")+1	//NewValue
-		local Threshold = DGetParam(script+OnOff+"Capacitor", 0, DN).tointeger()
-		#
-			DPrint("Stage 3 - "+OnOff+"Capacitor:("+Capa+" of "+Threshold+")", DoDD, DoDD)	
-		#
-		if (Capa == Threshold)	//Reached Threshold?										//DHub compatibility
+	# |-- Message Receiver --| #
+	function OnMessage(){
+	/* The function that gets called when any message is sent to this object.*/
+		DBaseFunction(userparams(), GetClassName())
+	}
+	
+### |-- §Main_Message_Handler§ --| ###
+	function DBaseFunction(DN,script){
+	/* Handles and interprets all incoming messages. 
+		- Are they a valid Activating or Deactivating message? 
+		- Handles special messages like ResetCount, delayed Activation and CapacitorFalloff.
+		- In case of special messages like Frob where the Source object is the Engine as proxy sets the SourceObj to be useable like you expect.
+	*/
+		local bmsg = message()
+		local mssg = bmsg.message
+		local DoDD = DGetParam(script+"Debug",false,DN)
+		#DEBUG POINT 1
+		DPrint("\r\nStage 1 - Received a Message:\t" + mssg , DoDD, DoDD)
+		if (mssg == "ResetCount")			//ResetCount is not script specific! low prio todo: do
+			{if (IsDataSet(script+"Counter")){SetData(script+"Counter",0)}}	
+		
+		if (mssg == "Timer")					//Check for special timers like Capacitor Falloff or DataTimers
 		{
-			SetData(script+OnOff+"Capacitor", 0)				//Reset Capacitor and terminate now unnecessary FalloffTimer
+			local msg = bmsg.name			//Name of the Timer
+
+			if (msg == script+"Falloff") 		//Ending FalloffCapacitor Timer. This is script specific.
+			{
+				local OnOff = bmsg.data		//ON or OFF or ""	//Check between On/Off/""Falloff
+				local dat=GetData(script+OnOff+"Capacitor")-1
+				if (dat>-1)					//low prio TODO: One 'wasted' timer?
+					{
+						SetData(script+OnOff+"Capacitor", dat)	//Reduce Capacitor by 1 and start a new Timer. The Timer(ID) is stored to catch it.
+						SetData(script+OnOff+"FalloffTimer", SetOneShotTimer(script+"Falloff", DGetParam(script+OnOff+"CapacitorFalloff", 0, DN).tofloat(), OnOff) )
+					}
+				else 
+					{
+						ClearData(script+OnOff+"FalloffTimer")	//No more Timer, clear pointer.
+					}
+			}
+			//DELAY AND REPEAT
+			if (msg == script+"Delayed") //Delayed Activation now initiate script.
+			{
+				local ar = DGetTimerData(bmsg.data) 	//Get Stored Data, [ON/OFF, Source, More Repeats to do?, timerdelay]
+				ar[0]= ar[0].tointeger()				//func Off(0), ON(1)
+				SourceObj = ar[1].tointeger()
+				ar[2] = ar[2].tointeger()				// # of repeats left
+				#
+					DPrint("Stage 6 - Delayed ("+ar[0]+") Activation. Original Source: ("+SourceObj+"). "+(ar[2])+" more repeats." ,DoDD,DoDD)
+				#
+				if (ar[2] != 0)							//Are there Repeats left? If yes start new Timer
+				{
+					if (ar[2] == -2) {ar[2]=-1}			//-1 infinite repeats.
+					ar[3]=ar[3].tofloat()				//Delay - start a new timer with savegame persistent data.
+					SetData(script+"DelayTimer", DSetTimerData(script+"Delayed", ar[3], ar[0], SourceObj, ar[2]-1, ar[3]))
+				}
+				else
+				{
+					ClearData(script+"DelayTimer")		//Clean up behind yourself!
+				}
+				if (ar[0]){this.DoOn(DN)}else{this.DoOff(DN)}
+			}
+		}
+		
+	//Getting correct source in case of frob:
+		// TODO: check for stims and send to script stims.
+		switch (bmsg.getclass())	// I think checking the instance is easier than string comparison.
+		{
+			case sFrobMsg :
+				SourceObj = bmsg.Frobber
+				break
+			case sContainerScrMsg :			// Send to the Container when it contains something
+				SourceObj = bmsg.containee
+				break
+			case sContainedScrMsg :
+				SourceObj = bmsg.container
+				break
+			case sSlayMsg :
+				SourceObj = bmsg.culprit	// In case of player this is the weapon not player itself. TODO what about AIs?
+				break						// TLG: Joke in source: "Culprit: Mr. Green kind: With the candlestick damage type."
+			case sAttackMsg :
+				SourceObj = bmsg.weapon
+				break
+			default:
+				SourceObj = bmsg.from
+		}	//TODO: Add stim, room, obb...
+		
+		
+	//Let it fail?
+		local FailChance = DGetParam(script+"FailChance",0,DN)
+		if (FailChance > 0) 
+			{if (FailChance >= Data.RandInt(0,100)){return}}
+
+	######
+
+	//React to the received message? Checks if the script actually has a ON/OFF function and if the message is in the set of specified commands. And Yes a DScript can perform it's ON and OFF action if both accepct the same message.
+		if ("DoOn" in this)
+		{
+			if (DGetParam(script+"On", DGetParam("DefOn","TurnOn", this, kReturnArray),DN, kReturnArray).find(mssg) != null)
+			{
+				#
+					DPrint("Stage 2 - Got DoOn(1) message:\t"+mssg +" from "+SourceObj ,DoDD,DoDD)
+				#
+				DCountCapCheck(script,DN, eScriptTurn.On ,DoDD)
+			}
+		}
+		if ("DoOff" in this)
+		{
+			if (DGetParam(script+"Off", DGetParam("DefOff","TurnOff", this, kReturnArray), DN, kReturnArray).find(mssg) != null)
+			{
+				#
+					DPrint("Stage 2 - Got DoOff(0) message:\t"+mssg +" from "+SourceObj ,DoDD,DoDD)
+				#
+				DCountCapCheck(script,DN, eScriptTurn.Off ,DoDD)
+			}
+		}
+	}
+
+	# |-- 		§Pre_Activation_Checks 		--|
+	/*Script activation Count and Capacitors are handled via Object Data, in this section they are set and controlled.*/
+	# |--	Capacitor Data Interpretation 	--|
+	function DCapacitorCheck(script, DN, OnOff = "")	//Capacitor Check. General "" or "On/Off" specific
+	{
+		local newValue = GetData(script+OnOff+"Capacitor")+1		//NewValue
+		local Threshold = DGetParam(script+OnOff+"Capacitor", 0, DN)
+		##DEBUG POINT
+		DPrint("Stage 3 - "+OnOff+"Capacitor:("+newValue+" of "+Threshold+")")	
+		//Reached Threshold?
+		if (newValue == Threshold)			//DHub compatibility
+		{
+			// Activate
+			SetData(script+OnOff+"Capacitor", 0)		// Reset Capacitor and terminate now unnecessary FalloffTimer
 			if (DGetParam(script+OnOff+"CapacitorFalloff", false, DN))
-				{KillTimer( ClearData(script+OnOff+"FalloffTimer") )}
-			return false	//Don't abort<-false
+				KillTimer(ClearData(script+OnOff+"FalloffTimer"))
+			return false	//Don't abort <- false
 		}
 		else
 		{
-			if (DGetParam(script+OnOff+"CapacitorFalloff",false,DN))
+			// Threshold not reached. Increase Capacitor and start a Falloff timer if wanted.
+			SetData(script+OnOff+"Capacitor", newValue)
+			if (DGetParam(script+OnOff+"CapacitorFalloff", false, DN))
 				{
-					if(IsDataSet(script+OnOff+"FalloffTimer")){KillTimer(GetData(script+OnOff+"FalloffTimer"))}		//resetting timer and killing old ones.
-					SetData(script+OnOff+"FalloffTimer",SetOneShotTimer(script+"Falloff",DGetParam(script+OnOff+"CapacitorFalloff",false,DN).tofloat(),OnOff))
+					// Terminate the old one timer
+					if (IsDataSet(script+OnOff+"FalloffTimer"))
+						KillTimer(GetData(script+OnOff+"FalloffTimer"))
+					// and start a new Timer 							//TODO BUG? shouldn't this be script + OnOff+ Falloff?
+					SetData( script+OnOff+"FalloffTimer", SetOneShotTimer( script+"Falloff", DGetParam( script+OnOff+"CapacitorFalloff", false, DN).tofloat(), OnOff)) 
 				}
-			SetData(script+OnOff+"Capacitor",Capa)
 			return true	//Abort possible
+		}	
+	}
+
+	function DCountCapCheck(script, DN, func, DoDD = false)
+	# |-- 		Is a Capacitor set 		--|
+	/*
+	Does all the checks and delays before the execution of a Script.
+	Checks if a Capacitor is set and if its threshold is reached with the function above. func=1 means a TurnOn
+
+	Strange to look at it with the null statements. But this setup enables that a On/Off capacitor can't interfere with the general one.
+
+	Abuses (null==null)==true, Once abort is false it can't be true anymore.
+	As a little reminder Capacitors should abort until they are full.
+	*/
+	{
+	# |-- 		Is a Capacitor set 		--|
+		local abort = null																		
+		if (IsDataSet(script+"Capacitor")			 )	{if(DCapacitorCheck(script,DN,"",DoDD))				{abort = true}			else{abort=false}}
+		if (IsDataSet(script+"OnCapacitor")  && func == eScriptTurn.On )	{if(DCapacitorCheck(script,DN,"On")) {if (abort==null){abort = true}}	else{abort=false}}
+		if (IsDataSet(script+"OffCapacitor") && func == eScriptTurn.Off)	{if(DCapacitorCheck(script,DN,"Off")){if (abort==null){abort = true}}	else{abort=false}}
+		if (abort) //If abort changed to true.
+		{
+			#DEBUG OUTPUT
+			DPrint("Stage 3X - Not activated as ("+func+")Capacitor threshold is not yet reached.",DoDD,DoDD)
+			return
 		}
 		
-}
-
-function DCountCapCheck(script, DN, func, DoDD = false)
-/*
-Does all the checks and delays before the execution of a Script.
-Checks if a Capacitor is set and if its threshold is reached with the function above. func=1 means a TurnOn
-
-Strange to look at it with the null statements. But this setup enables that a On/Off capacitor can't interfere with the general one.
-
-Abuses (null==null)==true, Once abort is false it can't be true anymore.
-As a little reminder Capacitors should abort until they are full.
-*/
-{
-	//Capacitor check.
-	local abort = null																		
-	if (IsDataSet(script+"Capacitor")			 )	{if(DCapacitorCheck(script,DN,"",DoDD))				{abort = true}			else{abort=false}}
-	if (IsDataSet(script+"OnCapacitor")  && func == 1)	{if(DCapacitorCheck(script,DN,"On",DoDD)) {if (abort==null){abort = true}}	else{abort=false}}
-	if (IsDataSet(script+"OffCapacitor") && func == 0)	{if(DCapacitorCheck(script,DN,"Off",DoDD)){if (abort==null){abort = true}}	else{abort=false}}
-	if (abort) //If abort changed to true.
-	{
-		#
-			DPrint("Stage 3X - Not activated as ("+func+")Capacitor threshold is not yet reached.",DoDD,DoDD)
-		#
-		return
-	}
-	
-	//Is a Counter Set?
-	if (IsDataSet(script+"Counter")) //low prio todo: add DHub compatibility	
-		{
-		local CountOnly = DGetParam(script+"CountOnly",0,DN)	//Count only ONs or OFFs
-		if (CountOnly == 0 || CountOnly+func == 2)				//Disabled or On(param1+1)==On(func1+2), Off(param2+1)==Off(func0+2); 
+	# |-- 		  Is a Count set 		--|
+		if (IsDataSet(script+"Counter")) //low prio todo: add DHub compatibility	
 			{
-			local Count = SetData(script+"Counter",GetData(script+"Counter")+1)
-				#
-					DPrint("Stage 4A - Current Count: "+Count,DoDD,DoDD)
-				#
-			if (Count > DGetParam(script+"Count",0,DN).tointeger())
+			local CountOnly = DGetParam(script+"CountOnly",0,DN)	//Count only ONs or OFFs
+			if (CountOnly == 0 || CountOnly+func == 2)				//Disabled or On(param1+1)==On(func1+2), Off(param2+1)==Off(func0+2); 
+			{
+				local Count = SetData(script+"Counter",GetData(script+"Counter")+1)
+				#DEBUG OUTPUT
+				DPrint("Stage 4A - Current Count: "+Count,DoDD,DoDD)
+				if (Count > DGetParam(script+"Count",0,DN).tointeger())
 				{
-				#
-					DPrint("Stage 4X - Not activated as current Count: "+Count+" is above the threshold of: "+DGetParam(script+"Count",null,DN),DoDD,DoDD)
-				#
-				return
+					#DEBUG OUTPUT
+					DPrint("Stage 4X - Not activated as current Count: "+Count+" is above the threshold of: "+DGetParam(script + "Count"), DoDD, DoDD)
+					return
 				} //Over the Max abort. 
 			}	
 		}
+	# |-- 		    Fail Chance 		--|
+		//Use a Negative Fail chance to increase Counter and Capacitor even if it could fail later.
+		local FailChance = DGetParam(script+"FailChance", 0, DN)
+		if (FailChance < 0) 
+		{
+			if ( FailChance <= Data.RandInt(-100,0) )
+				return
+		}
 
-	//Use a Negative Fail chance to increase Counter and Capacitor even if it could fail later.
-	local FailChance = DGetParam(script+"FailChance",0,DN)
-	if (FailChance < 0) {if (FailChance <= Data.RandInt(-100,0)){return}}
-
-	// All Checks green! Then Go or Delay it?
-	local d = DGetParam(script+"Delay",false,DN).tofloat()
-	if (d)
-	{
-			//Stop old timers if ExlusiveDelay is set.
-			if ( IsDataSet(script+"DelayTimer") && DGetParam(script+"ExclusiveDelay",false,DN) )
+		// All Checks green! Then Go or Delay it?
+		local d = DGetParam(script+"Delay", false, DN)
+	# |-- 				Delay	 		--|
+		if (d)
+		{		
+			local doPerFrame = false
+			// TODO: Add a per n Frame option. with PostMessage
+			## |-- Per Frame Delay --|
+			if (typeof(delay) == "string")
+			{
+				local expr 	= regexp(@"\ *([1-3][0-9]?)\s*Frames?")
+				local res	= expr.search(d)
+				if (!res)
 				{
-					KillTimer(GetData(script+"DelayTimer"))		//TODO: BUG CHECK - exclusive Delay and inf repeat, does it cancel without restart?
+					DPrint("ERROR! : Delay '"+d+"' no valid format.", kDoPrint, ePrintTo.kMonolog || ePrintTo.kUI)
+					return
 				}
+				doPerFrame = d.slice(res.begin, res.end).tointeger()
+			}
+	
+			## Stop old timers if ExlusiveDelay is set.
+			if ( IsDataSet(script+"DelayTimer") && DGetParam(script+"ExclusiveDelay", false, DN) )
+			{
+					KillTimer(GetData(script+"DelayTimer"))	//TODO: BUG CHECK - exclusive Delay and inf repeat, does it cancel without restart?
+			}
 			
-			//Stop Infinite Repeat
+			## Stop Infinite Repeat
 			if (IsDataSet(script+"InfRepeat"))	
 			{
-				if (GetData(script+"InfRepeat") != func) //Inverse Command received => end repeat and clean up. Same func gets ignored -> Activation is solely handled via the repeating DelayTimer.
+				// Inverse Command received => end repeat and clean up.
+				// Same command received will do nothing.
+				if (GetData(script+"InfRepeat") != func)
 				{
+					##DEBUG OUTPUT
+					DPrint("Stage 5X - Infinite Repeat has been stopped.", DoDD, DoDD)
+					ClearData(script+"InfRepeat")
+					if (doPerFrame) //Can't clean the others.
+						return
 					KillTimer(GetData(script+"DelayTimer"))
 					ClearData(script+"DelayTimer")
-					ClearData(script+"InfRepeat")
-					#
-						DPrint("Stage 5X - Infinite Repeat has been stopped.",DoDD,DoDD)
-					#
+					return
 				}
 			}
 			else
-			//Start DelayTimer -> Above timer message handle activation when received.
 			{
-				local r=DGetParam(script+"Repeat",0,DN).tointeger()
-				if (r==-1){SetData(script+"InfRepeat",func)}	//If infinite repeats store if they are ON or OFF.
+				## |-- Start Delay Timer --|
+				// DBaseFunction will handle activation when received.
+				DPrint("Stage 5B - ("+func+") Activation will be executed after a delay of "+ d + (doPerFrame? " ." : " seconds."))
+				if (doPerFrame)
+					{
+						PostMessage(self, "Timer", "perFrame", doPerFrame)
+						return
+					}
+				local repeat = DGetParam(script+"Repeat",0,DN).tointeger()
+				if (repeat == -1){SetData(script+"InfRepeat",func)}	//If infinite repeats store if they are ON or OFF.
 				//Store the Timer inside the ObjectsData and start it with all necessary information inside the timers name.
-				SetData(script+"DelayTimer",DSetTimerData(script+"Delayed",d,func,SourceObj,r,d))
-				#
-					DPrint("Stage 5B - ("+func+") Activation will be executed after a delay of "+d+" seconds.",DoDD,DoDD)
-				#
+				SetData(script+"DelayTimer", DSetTimerData(script+"Delayed", d, func, SourceObj, repeat, d) )
+				##DEBUG OUTPUT
 			}
-	}
-	else	//No Delay. Execute the scripts ON or OFF functions.
-	{
-		#
-			DPrint("Stage 5 - Script will be executed. Source Object was: ("+SourceObj+")" ,DoDD,DoDD)
-		#
-		if (func){this.DoOn(DN)}else{this.DoOff(DN)}
-	}
-
-}
-##########
-
-
-#################################
-function DBaseFunction(DN,script)
-#################################
-{
-##Handle Special Messages
-	local bmsg = message()
-	local mssg = bmsg.message
-	local DoDD=DGetParam(script+"Debug",false,DN)
-	#	
-		DPrint("\r\nStage 1 - Received a Message:\t"+mssg ,DoDD,DoDD)
-	#
-	if (mssg == "ResetCount")			//ResetCount is not script specific! low prio todo: do
-		{if (IsDataSet(script+"Counter")){SetData(script+"Counter",0)}}	
-	
-	if (mssg=="Timer")					//Check for special timers like Capacitor Falloff or DataTimers
-	{
-		local msg = bmsg.name			//Name of the Timer
-
-		if (msg==script+"Falloff") 		//Ending FalloffCapacitor Timer. This is script specific.
-		{
-			local cfo = bmsg.data		//ON or OFF or ""	//Check between On/Off/""Falloff
-			local dat=GetData(script+cfo+"Capacitor")-1
-			if (dat>-1)					//low prio TODO: One 'wasted' timer?
-				{
-				SetData(script+cfo+"Capacitor",dat)	//Reduce Capacitor by 1 and start a new Timer. The Timer(ID) is stored to catch it.
-				SetData(script+cfo+"FalloffTimer",SetOneShotTimer(script+"Falloff",DGetParam(script+cfo+"CapacitorFalloff",0,DN).tofloat(),cfo))}
-			else 
-				{
-				ClearData(script+cfo+"FalloffTimer")	//No more Timer, clear pointer.
-				}
 		}
-		//DELAY AND REPEAT
-		if (msg==script+"Delayed") //Delayed Activation now initiate script.
+		else	//No Delay. Execute the scripts ON or OFF functions.
 		{
-			local ar = DGetTimerData(bmsg.data) 	//Get Stored Data, [ON/OFF, Source, More Repeats to do?, timerdelay]
-			ar[0]= ar[0].tointeger()				//func Off(0), ON(1)
-			SourceObj = ar[1].tointeger()
-			ar[2] = ar[2].tointeger()				// # of repeats left
-			#
-				DPrint("Stage 6 - Delayed ("+ar[0]+") Activation. Original Source: ("+SourceObj+"). "+(ar[2])+" more repeats." ,DoDD,DoDD)
-			#
-			if (ar[2]!=0)							//Are there Repeats left? If yes start new Timer
-			{
-				if (ar[2] == -2) {ar[2]=-1}			//-1 infinite repeats.
-				ar[3]=ar[3].tofloat()				//Delay - start a new timer with savegame persistent data.
-				SetData(script+"DelayTimer",DSetTimerData(script+"Delayed",ar[3],ar[0],SourceObj,ar[2]-1,ar[3]))
-			}
-			else
-			{
-				ClearData(script+"DelayTimer")		//Clean up behind yourself!
-			}
-			if (ar[0]){this.DoOn(DN)}else{this.DoOff(DN)}
+			## |-- Normal Activation --|
+			##DEBUG POINT
+			DPrint("Stage 5 - Script will be executed. Source Object was: ("+SourceObj+")" , DoDD, DoDD)
+			if (func){this.DoOn(DN)}else{this.DoOff(DN)}
 		}
+
 	}
-	
-//Getting correct source in case of frob:
-	if (typeof bmsg == "sFrobMsg")
-		{SourceObj=bmsg.Frobber}
-	else{SourceObj = bmsg.from}	//TODO: Add stim, room, obb...
+	##########
+
 
 	
-//Let it fail?
-	local FailChance = DGetParam(script+"FailChance",0,DN)
-	if (FailChance > 0) 
-		{if (FailChance >= Data.RandInt(0,100)){return}}
-
-######
-
-//React to the received message? Checks if the script actually has a ON/OFF function and if the message is in the set of specified commands. And Yes a DScript can perform it's ON and OFF action if both accepct the same message.
-	if ("DoOn" in this)
-	{
-		if (DGetParam(script+"On",DGetParam("DefOn","TurnOn",this,1),DN,1).find(mssg)!=null)
-		{
-			#
-				DPrint("Stage 2 - Got DoOn(1) message:\t"+mssg +" from "+SourceObj ,DoDD,DoDD)
-			#
-			DCountCapCheck(script,DN,1,DoDD)
-		}
-	}
-	if ("DoOff" in this)
-	{
-		if (DGetParam(script+"Off",DGetParam("DefOff","TurnOff",this,1),DN,1).find(mssg)!=null)
-		{
-			#
-				DPrint("Stage 2 - Got DoOff(0) message:\t"+mssg +" from "+SourceObj ,DoDD,DoDD)
-			#
-			DCountCapCheck(script,DN,0,DoDD)
-		}
-	}
-}
 
 ###############  OLD  #############################
 //class DBaseTrap extends DFramework
@@ -686,21 +1149,17 @@ If no parameter is set the scripts normally respond to TurnOn and TurnOff, if yo
 
 In the constructor() function it handles the necessary ObjectData needed for Counters and Capacitors.
 */
-	SourceObj=0		//if a message is delayed the source object is lost, it will be stored inside the timer and then when the timer triggers it will be made available again.
-	constructor()	//Setting up save game persistent data.
+	SourceObj = 0		// if a message is delayed the source object is lost, it will be stored inside the timer and then when the timer triggers it will be made available again.
+	constructor()	// Setting up save game persistent data.
 	{
-		if (!IsEditor()){return}	//Initial data is set in the Editor. NOTE! possible TODO: Counter, Capacitor objects will not work when created in game!
-		local DN = userparams();
+		if (!IsEditor())		// Initial data is set in the Editor. NOTE! possible TODO: Counter, Capacitor objects will not work when created in game!
+			return			
+		local DN 	 = userparams()
 		local script = GetClassName()
-		if (DGetParam(script+"Count",0,DN)){SetData(script+"Counter",0)}else{ClearData(script+"Counter")} //Automatic clean up.
-		if (DGetParam(script+"Capacitor",1,DN) != 1){SetData(script+"Capacitor",0)}else{ClearData(script+"Capacitor")}
-		if (DGetParam(script+"OnCapacitor",1,DN) != 1){SetData(script+"OnCapacitor",0)}else{ClearData(script+"OnCapacitor")}
-		if (DGetParam(script+"OffCapacitor",1,DN) != 1){SetData(script+"OffCapacitor",0)}else{ClearData(script+"OffCapacitor")}
-	}
-
-	function OnMessage()	//Message receiving.
-	{
-		DBaseFunction(userparams(),GetClassName())
+		if (DGetParam(script+"Count",		0,DN)	)	{SetData(script+"Counter",		0)}	else {ClearData(script+"Counter")} //Automatic clean up.
+		if (DGetParam(script+"Capacitor",	1,DN) > 1)	{SetData(script+"Capacitor",	0)}	else {ClearData(script+"Capacitor")}
+		if (DGetParam(script+"OnCapacitor",	1,DN) > 1)	{SetData(script+"OnCapacitor",	0)}	else {ClearData(script+"OnCapacitor")}
+		if (DGetParam(script+"OffCapacitor",1,DN) > 1)	{SetData(script+"OffCapacitor",	0)}	else {ClearData(script+"OffCapacitor")}
 	}
 //}
 }
@@ -733,112 +1192,121 @@ class DSpy extends DBasics
 /*Prints the whole data of a received message to the Monolog only.*/
 {
 
+static enumlist =
+{
 //Message.data names that reference the table they are coming from.
 //if there is a conflict like for ActionType a subtable is used.
 //Squirrel note: I think directly storing the reference is more efficient than storing the string and getting the reference later in the script.
-static numlist =
-{
-	Type	= getconsttable().eTweqType,
-	Op		= getconsttable().eTweqOperation,
-	Dir		= getconsttable().eTweqDirection,
-	ObjType	= getconsttable().eObjType,
-	TransitionType	= getconsttable().eRoomChange,
-	SrcLoc	= getconsttable().eFrobLoc,
-	DstLoc	= getconsttable().eFrobLoc,
-	ActionType = {sDoorMsg = getconsttable().eDoorAction, sBodyMsg = getconsttable().eBodyAction}
-	PrevActionType = getconsttable().eDoorAction,
-	event	= getconsttable().eContainsEvent,
-	level	= getconsttable().eAIScriptAlertLevel
-	oldLevel= getconsttable().eAIScriptAlertLevel
-	mode	= getconsttable().eAIMode
-	previous_mode	= getconsttable().eAIMode
-	action	= getconsttable().eAIAction
-	result	= getconsttable().eAIActionResult
-	collType	= getconsttable().ePhysCollisionType
-	contactType	= getconsttable().ePhysContactType //bitwise
+
 	flags		= getconsttable().eScrMsgFlags
+	collType	= getconsttable().ePhysCollisionType
+	contactType	= getconsttable().ePhysContactType
+	Type		= getconsttable().eTweqType
+	Op			= getconsttable().eTweqOperation
+	Dir			= getconsttable().eTweqDirection
+	SrcLoc		= getconsttable().eFrobLoc
+	DstLoc		= getconsttable().eFrobLoc
+	event		= getconsttable().eContainsEvent
+	ObjType		= getconsttable().eObjType				// Room message
+	level		= getconsttable().eAIScriptAlertLevel
+	oldLevel	= getconsttable().eAIScriptAlertLevel
+	mode		= getconsttable().eAIMode
+	action		= getconsttable().eAIAction
+	result		= getconsttable().eAIActionResult
+	previous_mode	= getconsttable().eAIMode
+	TransitionType	= getconsttable().eRoomChange
+	PrevActionType	= getconsttable().eDoorAction
+	ActionType 	= {sDoorMsg = getconsttable().eDoorAction, sBodyMsg = getconsttable().eBodyAction}
+	##Custom additions
+	suspending	= {nobits = 3, Resume 	= 0, Pause   = 1} 				// DarkGameModeChange, bool values
+	resuming	= {nobits = 3, Pause  	= 0, Resume =  1}
+	Abort		= {nobits = 3, Executed = 0, Aborted = 1}				// FrobBegin/End if loosing focus.
+	starting	= {nobits = 3, Terminating = 0, InitOrResume = 1}		// Sim
 	
 	
 	##unsupported ReportMessage
 	//Flags		= [ "HotRegion", "Selection", "Hilight", "AllObj", "Concrete", "Abstract", "ToFile", "ToMono", "ToScreen" ] //bitwise //for ReportMessage not really squirrel compatible.
 	//WarnLevel = { "Errors only", "Warnings too", "Info", "Dump Everything possible" }
-	//Types = { "Header", "Per Obj", "All Obj", "WorldDB", "Rooms", "AIPath", "Script", "Debug", "Models", "Game" }
+	//Types 	= { "Header", "Per Obj", "All Obj", "WorldDB", "Rooms", "AIPath", "Script", "Debug", "Models", "Game" }
 }
 
-//Data that represents objects
-static isobject = ["from", "to", "targetObject", "FromObjId", "ToObjId", "MoveObjId", "waypoint","moving_terrain", "SrcObjId",
-					"DstObjId", "Frobber", "culprit", "containee", "container", "combiner", "weapon", "patrolObj", "target",
-					"collObj", "contactObj", "transObj", "stimulus"]
+//Data names that represents objects
+static isObject = [
+	"from", "to", "targetObject", "FromObjId", "ToObjId", "MoveObjId", "waypoint","moving_terrain", "SrcObjId","DstObjId", "Frobber", 
+	"culprit", "containee", "container", "combiner", "weapon", "patrolObj", "target", "collObj", "contactObj", "transObj", "stimulus","kind"
+]
 
-//	= getconsttable().
+//Register Object to all Phys Messages
+	function OnBeginScript()
+	{
+		Physics.SubscribeMsg(self,1023)
+	}
 
+	function OnEndScript()
+	{
+		Physics.UnsubscribeMsg(self,1023)	//I'm not sure why they always clean them up, but I keep it that way.
+	}
 
 	function InterpretConstants(dataname, datavalue)
 	{
-		if (datavalue == null)		//eyecandy
-			return "--NULL--"
-		if (!(dataname in numlist))	//no constant
-			{ 
-			if (isobject.find(dataname)!=null) //interpret as ObjID
-				{	
-				if (!(message().message == "PhysFellAsleep" || message().message == "PhysWokeUp" && dataname != "to"))
-					return datavalue + " (" +(datavalue>0?Object.GetName(Object.Archetype(datavalue)):Object.GetName(datavalue)) +")"
-				else
-					return datavalue + " This is probably no ObjID for 'PhysFellAsleep' and 'PhysWakeUp'."
+		// eyecandy for null values
+		if ( datavalue == null )
+			return "--NULL--\t |"
+			
+		// If it is not a constant
+		if ( !(dataname in enumlist) ) { 
+			// Does it represent an ObjID?
+			if (isObject.find(dataname) != null)
+			{	
+				if (["PhysFellAsleep", "PhysWokeUp", "PhysMadePhysical", "PhysMadeNonPhysical"].find(message().message) == null || dataname == "to" )
+					{
+					local name = datavalue < 0 ? Object.GetName(datavalue) : ( Property.PossessedSimple(datavalue, "SymName") ? "' "+Object.GetName(datavalue)+" '" : Object.GetName(Object.Archetype(datavalue)))
+					return datavalue + "("+ name +")" + ((name.len() <= 6 )? "\t\t |" : " |")
 				}
-			else
-				return datavalue
+				else
+					return datavalue + ((datavalue < 100000)? "\t\t" : "\t") + " | This is probably no ObjID."
 			}
+			else // Nothing special leave it unchanged.
+				return datavalue + "\t |"
+		}
 		
-		local bitwise = true
-		local ret = null
-		local table = numlist[dataname]
+		// Add descriptive names to constant values.
+		local bitwise  = true
+		local retvalue = null
+		local table = enumlist[dataname]
 		
 		//Handle conflicts in same data name
 		if (dataname == "ActionType")
 			table = table[typeof(message())]
 		
-		foreach (name, constant in table)
-			{
-				if (constant == 3)		//expect for ePhysScriptMsgType (which are not used in message data) a 3 value means it's not a bitflag enum.
-					bitwise=false
-				if (constant == datavalue)
-					ret = datavalue + " ("+name+")"
-				else	//should not happen
-					ret = datavalue+" should be constant!"
-			}
+		foreach (constname, constant in table)
+		{
+			if (constant == 3 || constant == 0)		//expect for ePhysScriptMsgType (which are not used in message data) a 3 value means it's not a bitflag enum.
+				bitwise = false
+			if (constant == datavalue){
+				retvalue = datavalue + ((datavalue < 100000)? "\t\t" : "\t") + " | ("+constname+")"
+				}
+		}
 		//
 		if (!bitwise)
-			return ret
-		else
-			{
+			return retvalue
+		//else
 			//add a name for eacht bit
-				ret = datavalue + " Bits: "
-				foreach (name, constant in table)
-				{
-					if (constant & datavalue)
-						ret+=name+"("+constant+") | "
-				}
-				return ret
-			}
+		retvalue = datavalue + " Bits: "
+		foreach (constname, constant in table)
+		{
+			if (constant & datavalue)
+				retvalue += constname+"("+constant+") | "
+		}
+		return retvalue
 	}
 
-	function OnBeginScript()
-	{
-		Physics.SubscribeMsg(self,1023)	// ALL
-	}
-
-	function OnEndScript()
-	{
-		Physics.UnsubscribeMsg(self,1023)//I'm not sure why they always clean them up, but I keep it that way.
-	}
-
+## Message Handler ##
 	function OnMessage()
 	{	
-		local ignore = DGetParam("DSpyIgnore",2) 
-		local bmsg=message()
-		local mssg=bmsg.message
-		Reply("DSpy replies from " + self)
+		local ignore= DGetParam("DSpyIgnore", 6) 
+		local bmsg 	= message()
+		local mssg 	= bmsg.message
 		if (ignore)
 		{
 			if (typeof(ignore)=="integer")
@@ -847,21 +1315,23 @@ static isobject = ["from", "to", "targetObject", "FromObjId", "ToObjId", "MoveOb
 				if (ignore & 1)
 					ignoreset.append("Timer")
 				if (ignore & 2)
-					ignoreset.extend(["BeginScript","Sim","DarkGameModeChange"])
+					ignoreset.extend(["BeginScript", "Sim", "DarkGameModeChange"])
 				if (ignore & 4)
-					ignoreset.extend(["PhysFellAsleep", "PhysWokeUp", "PhysMadePhysical", "PhysMadeNonPhysical", "PhysCollision", "PhysContactCreate", "PhysContactDestroy", "PhysEnter", "PhysExit"])
-				ignore=ignoreset
-			}
-			else
-				ignore=split(ignore,",")
+					ignoreset.extend(["PhysFellAsleep", "PhysWokeUp", "PhysMadePhysical", "PhysMadeNonPhysical"])
+				if (ignore & 8)
+					ignoreset.extend(["PhysCollision", "PhysContactCreate", "PhysContactDestroy", "PhysEnter", "PhysExit"])
+				ignore = ignoreset
+			} else
+				ignore = split(ignore, ",")
+				
 			//Check if the message should be ignored.
-			if (ignore.find(mssg)!=null)
+			if (ignore.find(mssg) != null)
 				return
 		}
 		
-		DPrint("Message received: "+mssg + "(" + typeof(bmsg) + ")\n Data included:", kDoPrint, DGetParam("DSpyMode",ePrintTo.kMonolog))
-		foreach (k,v in bmsg.__getTable)
-			Debug.MPrint("\t" + k + ( (k.len()>7)?"\t: " : "\t\t: " ) + InterpretConstants( k, bmsg[k]))
+		DPrint("\n Message received: "+mssg + "(" + typeof(bmsg) + ")\n Data included:", kDoPrint, DGetParam("DSpyMode", ePrintTo.kMonolog) )
+		foreach (dataname, v in bmsg.__getTable)		//the v are functions!
+			Debug.MPrint("\t" + dataname + (/*Add an extra Tabulator:*/ (dataname.len() > 7)? "\t: \t" : "\t\t: \t" ) + InterpretConstants(dataname, bmsg[dataname]))
 		print("\n")
 	}
 	
@@ -874,7 +1344,7 @@ class DAdvancedGeo extends DBaseTrap
 	function Max(...) //there is really no basic squirrel function declared?
 	{
 		if (typeof vargv[0] == "array")
-			vargv=vargv[0]
+			vargv = vargv[0]
 		local Max = vargv[0]
 		foreach (item in vargv)
 		{
@@ -892,40 +1362,40 @@ class DAdvancedGeo extends DBaseTrap
 
 	DPolarCoordinates
 	<distance, theta, phi>
-	theta: 	below  pi/2 (90Â°) means below the object, above above
+	theta: 	below  pi/2 (90°) means below the object, above above
 
 	phi: Negative Values mean east, positive west.
-	Absolute values above 90Â° mean south, below north:
+	Absolute values above 90° mean south, below north:
 
 
 	Native return Values:	
 	Theta							Phi
-	Above180Â°						N0Â°			
+	Above180°						N0°			
 	/						(0,90) 	| (0,-90)	
-	X---90Â° 				W++++90Â°X-- -90Â°--E
+	X---90° 				W++++90°X-- -90°--E
 	\						(90,180)| (-90,-180)
-	Below0Â°						180Â°S-180Â°	
+	Below0°						180°S-180°	
 
 	DRelativeAngles
 	Corrected Values:
 	Theta							Phi
-	Above90Â°						N180Â°			
+	Above90°						N180°			
 	/								|	
-	X---0Â° 				  W--270Â°---X---90Â°--E
+	X---0° 				  W--270°---X---90°--E
 	\								|	
-	Below-90Â°						S0Â°	
+	Below-90°						S0°	
 
 
 	Camera.GetFacing()/Facing of the player object: The Y pitch values are a little bit different, the Z(heading) is like the corrected values:
 		Y							Z
-	Above270Â°						N180Â°			
+	Above270°						N180°			
 	/							 	|	
-	X---0Â°/360Â° 			W--270Â°-X--90Â°--E
+	X---0°/360° 			W--270°-X--90°--E
 	\								| 	
-	Below90Â°						S0Â°
+	Below90°						S0°
 	*/	
 
-	function DVectorBetween(from,to,UseCamera=true)
+	function DVectorBetween(from, to, UseCamera = true)
 	/*Returns the Vector between the two objects.
 	If UseCamera=True it will use the camera position instead of the player object.
 	DVectorBetween(player,player,true) will get you the distance to the camera.*/
@@ -940,29 +1410,26 @@ class DAdvancedGeo extends DBaseTrap
 		return Object.Position(to)-Object.Position(from)
 	}
 
-	function DPolarCoordinates(from,to,UseCamera=true,PiValues=false)
+	function DPolarCoordinates(from, to, UseCamera = true)
 	/*Returns the SphericalCoordinates in the ReturnVector (r,\theta ,\phi )
 	The geometry in Thief is a little bit rotated so this theoretically correct formulas still needs to be adjusted.
 	*/
 	{
-		local v = DVectorBetween(from,to,UseCamera)
+		local v = DVectorBetween(from, to , UseCamera)
 		local r = v.Length()
-		if (!PiValues)
-			return vector(r,acos(v.z/r)/DtR,atan2(v.y,v.x)/DtR) //NOTE it is atan2(Y,X) in squirrel and C++
-		else
-			return vector(r,acos(v.z/r),atan2(v.y,v.x))
+
+		return vector(r, acos(v.z/r)/kDegToRad, atan2(v.y,v.x)/kDegToRad) // Squirrel note: it is atan2(Y,X) in squirrel.
 	}
 
-	function DRelativeAngles(from,to,UseCamera=true)
+	function DRelativeAngles(from, to, UseCamera = true)
 	{
-		//Uses the standard DPolarCoordinates, and transforms the values to be more DromEd like, we want Z(Heading)=0Â° to be south and Y(Pitch)=0Â° horizontal.
+		//Uses the standard DPolarCoordinates, and transforms the values to be more DromEd like, we want Z(Heading)=0° to be south and Y(Pitch)=0° horizontal.
 		//Returns the relative XYZ facing values with x=0.
-		local v=DPolarCoordinates(from,to,UseCamera)
-		local xyz_v = vector(0,v.y-90,v.z)
-		return xyz_v
+		local v = DPolarCoordinates(from, to, UseCamera)
+		return vector(0,v.y-90,v.z)
 	}
 	
-	function DGetModelDims(obj, scale=false, ofModel=null)
+	function DGetModelDims(obj, scale = false, ofModel = false)
 	/*Returns the size of the objects model, equal to the DWH values in the DromEd Window
 
 	By default this will return the the size of the Shape->Model no matter the physics or scaling the object.
@@ -975,98 +1442,60 @@ class DAdvancedGeo extends DBaseTrap
 	//Workaround: We need an archetype with PhysModel OBB but no PhysDims and change its model to the objects model.
 	//after creating it we can get its PhysDims which will match the model bounds.
 	//I'm abusing the Sign Archetype here marker here, declared as a constant.
-	
-		if(typeof(ofModel)=="string")					//Use Model instead?
-			local model=ofModel
-		else
-			local model=Property.Get(obj,"ModelName")	
+		
+		local model = ofModel
+		if (!model)					//Use Model instead?
+			model = Property.Get(obj,"ModelName")	
 
-		local backup = Property.Get(kDummyArchtype,"ModelName")
+		local backup = Property.Get(kDummyArchetype,"ModelName")
 		
 		//Set and create dummy
-		Property.Add(kDummyArchtype,"ModelName")
-		Property.SetSimple(kDummyArchtype,"ModelName",model)
-		local dummy = Object.Create(kDummyArchtype)
-		local PhysDims = Property.Get(dummy,"PhysDims","Size")
+		Property.Add(kDummyArchetype,"ModelName")
+		Property.SetSimple(kDummyArchetype,"ModelName",model)
+		local dummy 	= Object.Create(kDummyArchetype)
+		local PhysDims	= Property.Get(dummy,"PhysDims","Size")
 		if (scale)
-			PhysDims = PhysDims * Property.Get(obj,"Scale")
+			PhysDims = PhysDims * Property.Get(obj, "Scale")
 		
 		//Cleanup
 		Object.Destroy(dummy)
 		if(backup)
-			Property.SetSimple(kDummyArchtype,"ModelName",backup)
+			Property.SetSimple(kDummyArchetype,"ModelName",backup)
 		else 													//if there was none
-			Property.Remove(kDummyArchtype,"ModelName")
+			Property.Remove(kDummyArchetype,"ModelName")
 		
 		return PhysDims
 	}
 
-	function DScaleToMatch(obj,MaxSize=0.25)
+	function DScaleToMatch(obj, MaxSize = 0.25)
 	{
 		local Dim = DGetModelDims(obj)
 		local vmax = Max(Dim.x,Dim.y,Dim.z)
 		Property.SetSimple(obj,"Scale",vector(MaxSize/vmax))
+		print("Scaled down")
 	}
 	
 }
 
-class DTweqDevice extends DBaseTrap
-{
-DefOn="FrobWorldEnd"
 
-	constructor()
-	{	
-		//Start reverse joints in reverse position.
-		local DN=userparams()
-		local script = GetClassName()
-		local objset = DGetParam(script+"Target",self,DN,true)
-		local joints = split(DGetParam(script+"Joints","2",DN).tostring(),"[,]")
-		
-		foreach (obj in objset)
-		{
-			if (Property.Possessed(obj,"JointPos"))		//is added by Tweq Scripts at OnBeginScript
-				{continue}
-			foreach (j in joints)
-			{
-				if (j[0]=='-')
-					{
-						Property.Set(obj,"JointPos","Joint "+j.slice(1),Property.Get(obj,"CfgTweqJoints","    rate-low-high"+j.slice(1)).z)
-					}
-			}
-		}
-	}
+	if ( IsEditor() == 1){
+	NewDarkStuff <- 
+	[	null,vector,string,object,sLink,linkset,int_ref,float_ref,SqRootScript,sScrMsg,sScrTimerMsg,sTweqMsg,sSoundDoneMsg,sSchemaDoneMsg,sSimMsg,sRoomMsg,sQuestMsg,sMovingTerrainMsg,sWaypointMsg,sMediumTransMsg,sFrobMsg,sDoorMsg,sDiffScrMsg,sDamageScrMsg,sSlayMsg,sContainerScrMsg,sContainedScrMsg,sCombineScrMsg,sContainMsg,sBodyMsg,sAttackMsg,sAISignalMsg,sAIPatrolPointMsg,sAIAlertnessMsg,sAIHighAlertMsg,sAIModeChangeMsg,sAIObjActResultMsg,sPhysMsg,sStimMsg,sReportMsg,IVersionScriptService,IEngineScriptService,IObjectScriptService,IPropertyScriptService,IPhysicsScriptService,ILinkScriptService,ILinkToolsScriptService,IActReactScriptService,IDataScriptService,IAIScriptService,ISoundScriptService,IAnimTextureScriptService,IPGroupScriptService,ICameraScriptService,ILightScriptService,IDoorScriptService,IDamageScriptService,IContainerScriptService,IQuestScriptService,IPuppetScriptService,ILockedScriptService,IKeyScriptService,INetworkingScriptService,ICDScriptService,IDebugScriptService
+	]
 
-	function DoOn(DN)
+	if (GetDarkGame() != 1)
 	{
-		local script=GetClassName()
-		local objset = DGetParam(script+"Target",self,DN,true)
-		local joints = split(DGetParam(script+"Joints","2",DN).tostring(),"[,]")
-		local control = DGetParam(script+"Control",false,DN)+1
-		
-		foreach (obj in objset)
-		{
-			local primjoin=Property.Get(obj,"CfgTweqJoints","Primary Joint")
-			local current=Property.Get(obj,"StTweqJoints","Joint"+primjoin+"AnimS")
-			foreach (j in joints)
-			{
-				if (j[0]=='-')
-				{
-					current = current^2 //XOR reverses the reverse
-					j=j.slice(1)
-				}
-				Property.Set(obj,"StTweqJoints","Joint"+j+"AnimS",current|1)	//is always On.
-			}
-			if (control!=false)
-				ActReact.React("tweq_control", 0, obj, obj, control , eTweqDo.kTweqDoContinue, TWEQ_AS_ONOFF)
-		}
+		NewThiefOnly <- [
+			null, IDarkGameScriptService,IDarkUIScriptService,IPickLockScriptService,IDrkInvScriptService,IDrkPowerupsScriptService,IPlayerLimbsScriptService,IWeaponScriptService,IBowScriptService,IDarkOverlayScriptService,IDarkOverlayHandler,sDarkGameModeScrMsg,sPickStateScrMsg]
+		NewShockOnly <- []
 	}
-}
 
-
-class DFileExtractor extends DBaseTrap
-{
-
-
+	if (GetDarkGame() == 1)
+	{
+		NewShockOnly <- [
+			null, sYorNMsg, sKeypadMsg,IShockGameScriptService,IShockObjScriptService,IShockWeaponScriptService,IShockPsiScriptService,IShockAIScriptService,IShockOverlayScriptService,IDarkOverlayHandler,IShockOverlayHandler]
+		NewThiefOnly <- []
+	}
 }
 
 
@@ -1075,7 +1504,12 @@ class DFileExtractor extends DBaseTrap
 //This is just a script for testing purposes. ignore
 class DLowerTrap extends DBaseTrap								
 {
-	DefOn = "TurnOn"	//Default On message that this script is waiting for but differing from the standard TurnOn
+	DefOn = "TurnOn"
+	
+	// These are all squirrel class objects added by NewDark
+
+	
+	
 	/*	local rp=vector()
 		local rf=vector() //difference between the facing values
 		Object.CalcRelTransform("Player",2,rp,rf,0,0) */
@@ -1086,118 +1520,83 @@ class DLowerTrap extends DBaseTrap
 		foreach (k,t in getconsttable())
 		{
 			if (typeof t =="table")			//is enumerations
-				{print("\n====="+k)
+			{
+				print("\n====="+k)
 				foreach (c,v in t)
-					print("\t"+c+"  :   "+v)}
+					print("\t"+c+")")
+			}
 			else
 				print(k+"\t= "+t)
 		}
 	}
 
-	function BlobGetValue(blob, pos, length, linebreak=true)
-	/*Gets the next bits of data behind the pos in a blob. By default stops at a linebreak.*/
+	function DumpTable(table, isSubTable = false)
 	{
-		local ret = []
-		for (local i=pos;i<pos+length;i++)
+		foreach (key, value in table)
+		{
+			print((((!isSubTable)? "\t\t" : "" )  + "key: " + key +"  val: "+ value))
+			if (typeof(value) == "table" || typeof(value) == "class")
 			{
-				if (linebreak && blob[i]==10) // '\n'=10 end.
-					return ret
-				ret.append(blob[i])
+				print("\n"+key + " Subtable:")
+				DumpTable(value)
+			
 			}
-		return ret
-	}
-	
-	
-	function BlobLookForString(blob, str)
-	/* Looks for a string inside of a blob (8 bit is assumed).
-		If found returns an array with the beginning and end position for the pointer.
-		Logs an error if string was not found.
-	*/
-	{
-		local index = 0
-		local len=str.len()
-		local endat = blob.len()
-		do
-		{
-			if (blob[index] == str[0])
-			{
-				index++
-				for (local i=1;i<=len-1;i++,index++)
-				{
-					if (!(blob[index] == str[i]))
-						break
-					if (i==len-1)
-						return [index-len+1,index]
-				}	
-			}
-		index++
-		}while(index<endat)
-		
-		// not found
-		DPrint("ERROR: '"+str+"' not found in data.",kDoPrint, ePrintTo.kMonolog || ePrintTo.kLog)
-		return null
-	}
-	
-	function CharToStrings(array)	//works for blobs as well
-	{
-		local out=""
-		foreach (c in array)
-			{//print(c)
-			out+=c.tochar()}
-		
-		return out
-	}
-	
-	constructor()
-	{
-		print("Playerid is "+test)
-		local myfile = "taglist_vals.txt"
-		try 
-		{
-			myfile = file(myfile, "r")
 		}
-		catch(exception)
-		{
-			DPrint("ERROR!!!: "+myfile+" not found. Necessary file for this script.",true,9)
-			return
-		}
-		
-		myfile.seek(kDLoadOffset)
-		local myblob=myfile.readblob(kDLoadBlobSize)
-		local pos = BlobLookForString(myblob, kDLoadName)
-		
-		assert(pos)
-		local value = BlobGetValue(myblob, pos[1]+3, kDLoadDataLength)
-
-		
-		print(CharToStrings(value))
-
 	}
 	
-		function OnPhysCollision()
-		{
+	function OnPhysCollision()
+	{
 		if((Object.InheritsFrom(message().collObj,"Avatar")))
-			{
+		{
 			SetProperty("PhysAttr","Flags",1)
 		//	Reply(ePhysMessageResult.kPM_StatusQuo)
-			}
+		}
 		else
 			{Reply(ePhysMessageResult.kPM_NonPhys)}
+	}
+
+	function OnPhysEnter()
+	{
+		//Physics.UnsubscribeMsg(self,1023)
+		SetProperty("PhysAttr","Flags",0)
+	}
+	
+	function OnCreate()
+	{
+		print("CREATED" + self )
+		Debug.Log("CREATED" + self)
+	}
+
+
+	function OnMessage()
+	{
+		base.OnMessage()
+	}
+	
+
+	constructor()
+	{
+		// IScriptService
+		
+		return	
+		local table = getroottable()
+		local isSubTable = false
+		foreach (key, value in table)
+		{
+			local found = key[0] != 'D' || (typeof(value) != "class" )
+		
+			if (found)
+				continue
+			print((((isSubTable)? "\t\t" : "\t" )  + "key: " + key +"  val: "+ value))
 		}
 
-		function OnPhysEnter()
-		{
-			//Physics.UnsubscribeMsg(self,1023)
-			SetProperty("PhysAttr","Flags",0)
-		}
-	
-		
+	}
 		
 	function DFunc()	//General catching for testing.
 	{
 		local value = "pimp"
 		print(time() +" "+ GetTime())
-		print("POST\n=====================")
+		print("POST\n====== 22 ===============")
 		//local value = SendMessage(405,"ReportMessage")
 		print("Return of SEND=" + value+" ("+ typeof(value)+") @" + self )
 	}
@@ -1241,9 +1640,9 @@ SQUIRREL> 0.000000, 0.000000, 2.600000
 class DRelayTrap extends DBaseTrap
 ##############################################
 /* 
-A relay with all the DBaseTrap features. Reacts to the messages specified by DRelayTrapOn/Off and it will relay the message specified with DRelayTrapTOn. Respectively the on TurnOff to be sent messages can be specified with DRelayTrapTOff. By default these are "TurnOn" and "TurnOff".
-NEW: With the + operator you can define multiple On, TOn, Off and TOff messages!
-With DRelayTrap[On/Off]Target (NEW: Also [On/Off]TDest works as an alternative) you can specify where to sent the message(s) to. Default are ControlDevice linked objects. If a DRelayTrapOnTarget is specified then it will take priority over DRelayTrapTarget.
+A relay with all the DBaseTrap features. Reacts to the messageS specified by DRelayTrapOn/Off and it will relay the messageS specified with DRelayTrapTOn. Respectively the on TurnOff to be sent messages can be specified with DRelayTrapTOff. By default these are "TurnOn" and "TurnOff".
+NWith the + operator you can define multiple On, TOn, Off and TOff messages!
+With DRelayTrap[On/Off]Target (Also [On/Off]TDest works as an alternative) you can specify where to sent the message(s) to. Default are ControlDevice linked objects. If a DRelayTrapOnTarget is specified then it will take priority over DRelayTrapTarget.
 
 As a TOn, TOff message you can also send a Stim to do this, first enter the intensity surrounded by square brackets, followed by the stim name. For example: [ScriptName]TOn="[5.00]WaterStim".
 
@@ -1260,49 +1659,49 @@ ________________
 SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages functions. As an example see DStdButton.
 #################################################### */
 {
-	function DSendMessage(t,msg)	//Send a message or a Stim to the target.
+	function DSendMessage(t,msg)			//Send a message or a Stim to the target.
 	{
-		if (msg[0]!='[')			//Test if normal or "[Intensity]Stimulus" format.
+		if (msg[0] != '[')					//Test if normal or "[Intensity]Stimulus" format.
 			{SendMessage(t,msg)}
 		else							
 		{
 			local ar=split(msg,"[]")
 			ar.remove(0)
-			if (!GetDarkGame())			//T1/G compability; different versions one which allows to set the source.
+			if (!GetDarkGame())				//T1/G compability; different versions one which allows to set the source.
 				{ActReact.Stimulate(t,ar[1],ar[0].tofloat(),self)}
 			else
 				{ActReact.Stimulate(t,ar[1],ar[0].tofloat())}
 		}
 	}
 
-	function DRelayMessages(OnOff,DN) //Sents each message to each target
+	function DRelayMessages(OnOff,DN) 		//Sends each message to each target
 	{
-	local script = GetClassName()
-		foreach (msg in DGetParam(script+"T"+OnOff,"Turn"+OnOff,DN,1)) //Determins the messages to be sent, TurnOn/Off is default.
+		local script = GetClassName()
+		foreach (msg in DGetParam(script+"T"+OnOff,"Turn"+OnOff, DN, kReturnArray)) //Determines the messages to be sent, TurnOn/Off is default.
 		{
-			foreach (t in DGetParam(script+OnOff+"Target",DGetParam(script+OnOff+"TDest",DGetParam(script+"Target",DGetParam(script+"TDest","&ControlDevice",DN,1),DN,1),DN,1),DN,1)) //Priority Order: [ScriptName] Tartget > TDest > Default: &ControlDevice
+			//Priority Order: [On/Off]Target > [On/Off]TDest > Target > TDest > Default: &ControlDevice
+			foreach (t in DGetParam(script+OnOff+"Target", 
+							DGetParam(script+OnOff+"TDest", 
+							DGetParam(script+"Target", 
+							DGetParam(script+"TDest",
+							"&ControlDevice", DN, kReturnArray), DN, kReturnArray), DN,kReturnArray), DN, kReturnArray)) 
 			{
 				DSendMessage(t,msg)
 			}
 		}
 	}
 
-
 	function DoOn(DN)
 	{
 		if (DGetParam("DRelayTrapToQVar",false,DN))	//If specified will store the ObejctsID into the specified QVar
-			{
-				Quest.Set(DGetParam("DRelayTrapToQVar",null,DN),SourceObj,eQuestDataType.kQuestDataUnknown)
-			}
+			Quest.Set(DGetParam("DRelayTrapToQVar",null,DN), SourceObj, eQuestDataType.kQuestDataUnknown)
 		DRelayMessages("On",DN)
 	}
 
 	function DoOff(DN)
 	{
 		if (DGetParam("DRelayTrapToQVar",false,DN))
-		{
-			Quest.Set(DGetParam("DRelayTrapToQVar",null,DN),SourceObj,eQuestDataType.kQuestDataUnknown)
-		}
+			Quest.Set(DGetParam("DRelayTrapToQVar",null,DN), SourceObj, eQuestDataType.kQuestDataUnknown)
 		DRelayMessages("Off",DN)
 	}
 
@@ -1368,10 +1767,10 @@ class DHub extends DBaseTrap   //NOT A BASE SCRIPT
 
 //Storing the default values in an array which form an artificial DesignNote.
 //		0			1		2			3			4     5		6		7		8			9		10		11	12	  13	14	  15	16	 17			18		19
-DefDN=["Relay","TurnOn","Target","&ControlDevice","Count",0,"Capacitor",1,"CapacitorFalloff",0,"FailChance",0,"Delay",0,"DelayMax",0,"Repeat",0,"ExclusiveDelay",0]
-SourceObj=null
-DefOn=null
-i=null
+DefDN		= ["Relay","TurnOn","Target","&ControlDevice","Count",FALSE,"Capacitor",1,"CapacitorFalloff",FALSE,"FailChance",FALSE,"Delay",FALSE,"DelayMax",FALSE,"Repeat",FALSE,"ExclusiveDelay",FALSE]
+SourceObj	= null
+DefOn		= null
+i			= null
 
 constructor() 		//Initializing Script Data
 	{
@@ -1479,14 +1878,14 @@ function OnMessage()	//Similar to the base functions in the first part.
 	//End special message check.	
 	DefOn="null" //Reset so a Timer won't activate it	
 
-	if (msg=="Timer")
+	if (msg == "Timer")
 	{
 		local msgn = bmsg.name
-		if (endswith(msgn,"Falloff")||endswith(msgn,"Delayed"))
+		if (endswith(msgn, "Falloff") || endswith(msgn, "Delayed"))
 		{
-				msgn= msgn.slice(0,-7)		//Both words have 7 characters. TODO: Is the next line correct, DelayedDelayed??
-			if (endswith(msgn,"Delayed"))
-				{SourceObj=split(bmsg.data,"+")[1].tointeger()}
+			msgn = msgn.slice(0,-7)		//Both words have 7 characters. TODO: Is the next line correct, DelayedDelayed??
+			if (endswith(msgn, "Delayed"))
+				SourceObj = split(bmsg.data, eSeparator.kTimerSimple)[1].tointeger()
 
 			command = DGetParam(msgn,false,lhub)	//Check if the found command is specified.
 			if (command)
@@ -1494,13 +1893,13 @@ function OnMessage()	//Similar to the base functions in the first part.
 				local SubDN ={}
 				local CArray = split(command,";=")
 				l = CArray.len()
-				for (local v=0;v<20;v+=2)					//Setting default parameter.
+				for (local v = 0; v <20; v+=2)					//Setting default parameter.
 				{
-					SubDN[msgn+DefDN[v]]<-DefDN[v+1]
+					SubDN[msgn + DefDN[v]] <- DefDN[v+1]
 				}
-				for (local v=0;v<l;v=v+2)
+				for (local v = 0; v<l; v = v+2)
 				{
-					SubDN[msgn+CArray[v]]=CArray[v+1]
+					SubDN[msgn + CArray[v]] = CArray[v+1]
 				}
 				DBaseFunction(SubDN,msgn)
 			}
@@ -1511,9 +1910,9 @@ function OnMessage()	//Similar to the base functions in the first part.
 	if (command!=null)
 	{
 		i=1
-		local SubDN ={}
-		local CArray=split(command,";=")
-		local FailChance=0
+		local SubDN 	= {}
+		local CArray	= split(command, ";=")
+		local FailChance= 0
 
 		msg2=msg
 		DefOn=msg2
@@ -1591,6 +1990,8 @@ function OnMessage()	//Similar to the base functions in the first part.
 ## END of HUB
 ################################
 
+### /-- § --\
+
 #########################################
 class SafeDevice extends SqRootScript
 /*
@@ -1623,70 +2024,238 @@ NOTE: As this is a DRelayTrap script as well it can be activated via TurnOn; but
 ######################################### */
 	{
 ###StdController
-DefOn="DIOn"		//A successful Button Push will sent a DIOn to itself and then trigger underlying DBase&DRelayTrap features
-DefOff="DIOff"
+DefOn  = "DIOn"		//A successful Button Push will sent a DIOn to itself and then trigger underlying DBase&DRelayTrap features
+DefOff = "DIOff"
 
 	function OnBeginScript()		
-	   {
-		  if(Property.Possessed(self,"CfgTweqJoints"))					// Standard procedure to have other property as well.
+	{
+		if(Property.Possessed(self,"CfgTweqJoints"))					// Standard procedure to have other property as well.
 			Property.Add(self,"JointPos");
 		Physics.SubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);	//Remember that Buttons can be activated by walking against them. Activating the OnPhysCollision() below. TODO: Make this optional.
-	   }
+	}
 
 	function OnEndScript()
-	   {
-		  Physics.UnsubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);//I'm not sure why they always clean them up, but I keep it that way.
-	   }
-	   
+	{
+		Physics.UnsubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);//I'm not sure why they always clean them up, but I keep it that way.
+	}
+		
 	function ButtonPush()
-	   {
-			//Play Sound when locked and standard Event Activate sound. TODO: Check for sounds but should be fine.
-			if (Property.Get(self,"Locked"))
-			{
-				Sound.PlaySchemaAtObject(self,DGetParam("DStdButtonLockSound","noluck"),self)
-				return
-			}
-			Sound.PlayEnvSchema(self,"Event Activate",self,null,eEnvSoundLoc.kEnvSoundAtObjLoc)
-			ActReact.React("tweq_control",1.0,self,0,eTweqType.kTweqTypeJoints,eTweqDo.kTweqDoActivate)
-			DarkGame.FoundObject(self);		//Marks Secret found if there is one associated with the button press. TODO: T1 comability?
-			
-			local trapflags=0
-			local on = true
-			if(Property.Possessed(self,"TrapFlags"))
-				trapflags=Property.Get(self,"TrapFlags");
+	{
+		//Play Sound when locked and standard Event Activate sound. TODO: Check for sounds but should be fine.
+		if (Property.Get(self,"Locked"))
+		{
+			Sound.PlaySchemaAtObject(self,DGetParam("DStdButtonLockSound","noluck"),self)
+			return
+		}
+		Sound.PlayEnvSchema(self,"Event Activate",self,null,eEnvSoundLoc.kEnvSoundAtObjLoc)
+		ActReact.React("tweq_control",1.0,self,0,eTweqType.kTweqTypeJoints,eTweqDo.kTweqDoActivate)
+		DarkGame.FoundObject(self);		//Marks Secret found if there is one associated with the button press. TODO: T1 comability?
+		
+		local trapflags = 0
+		local 		 on = true
+		if(Property.Possessed(self,"TrapFlags"))
+			trapflags = Property.Get(self, "TrapFlags");
 
-			//NOTE: TrapControlFlags are set as bits.
-			if((on && !(trapflags & TRAPF_NOON)) ||
-				(!on && !(trapflags & TRAPF_NOOFF)))
-			 {
-				if(trapflags & TRAPF_INVERT)
-				   on=!on;
-				//Link.BroadcastOnAllLinks(self,on?"TurnOn":"TurnOff","ControlDevice");
-				SendMessage(self,on?"DIOn":"DIOff")
-			 }
-			 if(trapflags & TRAPF_ONCE)
-				Property.SetSimple(self,"Locked",true);
-	   }
-		  
+		//NOTE: TrapControlFlags are set as bits.
+		if(trapflags & TRAPF_ONCE)
+			Property.SetSimple(self,"Locked",true);
+				
+		if((on && !(trapflags & TRAPF_NOON))
+			|| (!on && !(trapflags & TRAPF_NOOFF))){
+			if(trapflags & TRAPF_INVERT)
+				on = !on;
+			//Link.BroadcastOnAllLinks(self,on?"TurnOn":"TurnOff","ControlDevice");
+		if (on)
+			DoOn(userparams())
+		else
+			DoOff(userparams())
+		//on?"DIOn":"DIOff")	// TODO frobber get's lost. => call!
+		}
+	}
+	  
 
-	function  OnPhysCollision()
-	   {
+	function OnPhysCollision()
+		{
 		  if(message().collSubmod==4)	//Collision with the button part.
 		  {
 			if(! (Object.InheritsFrom(message().collObj,"Avatar")
 				  || Object.InheritsFrom(message().collObj,"Creature"))) //TODO: This is the standard function but I wanna look at it again.
 			{
-			   ButtonPush();
+				ButtonPush();
 			}
 		  }
-	   }
+		}
 	
 	function OnFrobWorldEnd()
-	   {
-		  ButtonPush();
-	   }
+	{
+	  ButtonPush();
+	}
 }
 
+
+## |-- §DTweqDevice --| ##
+class DTweqDevice extends DBaseTrap
+{
+	DefOn = "FrobWorldEnd"
+	# constructor --|
+	constructor(){
+
+		//Start reverse joints in reverse position.
+		local DN = userparams()
+		local script = GetClassName()
+		// Don't adjust point pos.
+		if ( DGetParam(script+"NoFix",false,DN) )
+			return
+		local objset = DGetParam(script+"Target",self,DN,kReturnArray)
+		local joints = split(DGetParam(script+"Joints","1,2,3,4,5,6",DN).tostring(),"[,]")
+		local control = 		DGetParam(script+"Control", false, DN)
+
+
+		if ( control && control != 3)
+			return
+		// will set the Tweq start position if Reverse		
+		foreach (obj in objset)
+		{
+			if (!Property.Possessed(obj,"CfgTweqJoints"))
+			{
+				#DEBUG WARNING
+				DPrint("WARNING: Object " + obj +" has no Tweq->Joints property")
+				continue
+			}
+			Property.Add(obj, "JointPos")	// is also set by tweq on begin script.
+			foreach (j in joints)
+			{
+				// rate-low-high(1) has no number.
+				if (j[0] == '-')
+					Property.Set(obj, "JointPos", "Joint "+j.slice(1), Property.Get(obj,"CfgTweqJoints","    rate-low-high"+(j=="1"?"":j.slice(1))).z)
+				else
+					Property.Set(obj, "JointPos", "Joint "+j		 , Property.Get(obj,"CfgTweqJoints","    rate-low-high"+(j=="1"?"":j)).y) //TODO check this for rotating.
+			}
+		}
+		
+	}
+	# DoOn --|
+	function DoOn(DN)
+	{
+		local script  = 		GetClassName()
+		local objset  = 		DGetParam(script+"Target", self, DN, kReturnArray)
+		local joints  = split( 	DGetParam(script+"Joints","1,2,3,4,5,6",DN).tostring(), "[,]" )
+		local control = 		DGetParam(script+"Control", false, DN)
+		
+		foreach (obj in objset)
+		{
+			local primjoin = Property.Get(obj,"CfgTweqJoints","Primary Joint")
+			local current  = Property.Get(obj,"StTweqJoints","Joint"+primjoin+"AnimS")
+			foreach (j in joints)
+			{
+				if (j[0] == '-')
+				{
+					current = current^2 //XOR reverses the reverse
+					j = j.slice(1)
+				}
+				Property.Set(obj, "StTweqJoints", "Joint"+j+"AnimS", current|1)	//is always On.
+			}
+			if (control != false)
+				ActReact.React("tweq_control", 1, obj, obj, control , eTweqDo.kTweqDoContinue, TWEQ_AS_ONOFF)
+				/* Control Values: enum eTweqType
+					kTweqTypeScale	= 0
+					kTweqTypeRotate	= 1
+					kTweqTypeJoints	= 2
+					kTweqTypeModels	= 3
+					kTweqTypeDelete	= 4
+					kTweqTypeEmitter= 5
+					kTweqTypeFlicker= 6
+					kTweqTypeLock	= 7
+					kTweqTypeAll	= 8
+					kTweqTypeNull	= 9 */			
+		}
+	}
+}
+### /-- §_READ_FILE_SCRIPTS_§ --\ ###
+class DFileExtractor extends DRelayTrap
+{
+	function BlobGetValue(blob, pos, length, linebreak = true)
+	/*Gets the next bits of data behind the pos in a blob. By default stops at a linebreak.*/
+	{
+		local rv = []
+		for (local i = pos; i < pos+length; i++)
+		{
+			if (linebreak && blob[i] == 10) // '\n'=10 end.
+				return rv
+			rv.append(blob[i])
+		}
+		return rv
+	}
+	
+	function BlobLookForString(blob, str)
+	/* Looks for a string inside of a blob (8 bit is assumed).
+		If found returns an array with the beginning and end position for the pointer.
+		Logs an error if string was not found.
+		Can also be used to find 
+	*/
+	{
+		local index = 0
+		local len 	= str.len()
+		local endat = blob.len()
+		do
+		{
+			if (blob[index] == str[0])
+			{
+				index++
+				for (local i = 1; i <= len-1; i++, index++)	//check if next value in blob matches the next char in str.
+				{
+					if ( !(blob[index] == str[i]) )
+						break
+					if (i == len-1)
+						return [index-len+1, index]
+				}	
+			}
+		index++
+		}while(index < endat)
+		
+		// not found
+		DPrint("ERROR: '"+str+"' not found in data.", kDoPrint, ePrintTo.kMonolog || ePrintTo.kLog)
+		return null
+	}
+	
+	function CharsToString(array)	//works for blobs as well
+	{
+		local str = ""
+		foreach (c in array)
+			str += c.tochar()
+		
+		return str
+	}
+	
+	function LoadStringFromFile(myfile = eDLoad.kFile, LoadString = eDLoad.kKeyName)
+	{
+		try 
+		{
+			myfile = file(myfile, "r")	//Squirrel Note: Read only :(
+		}
+		catch(exception)
+		{
+			DPrint("ERROR!!!: "+myfile+" not found. Necessary file for this script.", kDoPrint, ePrintTo.kMonolog || ePrintTo.kLog)
+			return
+		}
+		
+		// Load from file
+		myfile.seek(kDLoadOffset)								// skip first n bytes
+		local myblob = myfile.readblob(kDLoadBlobSize)			// from that point on extract a blob
+		myfile.close()
+		
+		// Data analysis
+		local strpos = BlobLookForString(myblob, LoadString)
+		//assert(strpos)
+		local value = BlobGetValue(myblob, strpos[1]+3, kDLoadDataLength)
+		#
+			DPrint("DPersistent(Pre)Load successful. Loaded raw value:"+value)
+		#
+		print(CharsToString(value))
+
+	}
+
+}
 
 ####################################################################
 class DArmAttachment extends DBaseTrap
@@ -1794,7 +2363,7 @@ Alternatively if just a special set of objects should trigger a TurnOn then thes
 		// returns 0 if nothing was hit, 1 for terrain, 2 for an object, 3 for mesh object (ie. character)
 		// for return types 2 and 3 the hit object will be returned in 'hit_object'
 	*/
-
+		local script = GetClassName()
 		local from = DGetParam("DHitScanTrapFrom",self,DN)	
 		local to = DGetParam("DHitScanTrapTo",self,DN)
 		local triggers = DGetParam("DHitScanTrapTriggers",null,DN,1) //important TODO: I wrongly documented Trigger in the thread, instead of triggers. Sorry.
@@ -1881,11 +2450,11 @@ Each parameter can target multiple objects also more than one special effect can
 						
 						
 					//Checking if a SFX is already present or if it should be updated.
-					foreach (l in Link.GetAll("ScriptParams",from))
+					foreach (link in Link.GetAll("ScriptParams",from))
 						{
-						if (LinkDest(l) == to)
+						if (LinkDest(link) == to)
 							{
-							local data = split(LinkTools.LinkGetData(l,""),"+")		//See below. SFX Type and created SFX ObjID is saved
+							local data = split(LinkTools.LinkGetData(link,""),"+")		//See below. SFX Type and created SFX ObjID is saved
 							if (data[1].tointeger() == sfx)
 								{
 								o = data[2].tointeger()
@@ -1915,9 +2484,9 @@ Each parameter can target multiple objects also more than one special effect can
 							Property.Set(o,"PGLaunchInfo","Max time",d/vmax)}
 						//Gets the new facing vector. Trignometry is cool! 
 						if (h.y < 0)
-							facing = vector(0,asin(v.z/d)/DtR+180,acos(-h.x)/DtR)
+							facing = vector(0,asin(v.z/d)/kDegToRad+180,acos(-h.x)/kDegToRad)
 						else
-							facing = vector(0,asin(-v.z/d)/DtR,acos(h.x)/DtR)
+							facing = vector(0,asin(-v.z/d)/kDegToRad,acos(h.x)/kDegToRad)
 					}
 					else	//Scaling Type 0 (Default): Increases the Bounding box and the amount of particles, instead. 
 					{
@@ -1946,16 +2515,16 @@ Each parameter can target multiple objects also more than one special effect can
 							}
 						
 						if (h.y < 0)
-							facing = vector(0,asin(v.z/d)/DtR,acos(-h.x)/DtR)
+							facing = vector(0,asin(v.z/d)/kDegToRad,acos(-h.x)/kDegToRad)
 						else
-							facing = vector(0,asin(v.z/d)/DtR,acos(h.x)/DtR+180)
+							facing = vector(0,asin(v.z/d)/kDegToRad,acos(h.x)/kDegToRad+180)
 					}
 					
 					//low priority TODO if (attach), just another way of doing it.
 						// {
-						// local l = Link.Create("DetailAttachement",o,from)
-						//LinkTools.LinkSetData(l, "rel rot", vector(facing.z-Object.Facing(from).z,facing.y-Object.Facing(from).y,0))
-						//LinkTools.LinkSetData(l, "rel pos", vfrom)
+						// local link = Link.Create("DetailAttachement",o,from)
+						//LinkTools.LinkSetData(link, "rel rot", vector(facing.z-Object.Facing(from).z,facing.y-Object.Facing(from).y,0))
+						//LinkTools.LinkSetData(link, "rel pos", vfrom)
 						// }
 					// else
 					
@@ -1971,13 +2540,13 @@ Each parameter can target multiple objects also more than one special effect can
 	{
 		foreach (from in DGetParam("DRayFrom",self,DN,1))
 		{
-			foreach (l in Link.GetAll("ScriptParams",from))
+			foreach (link in Link.GetAll("ScriptParams",from))
 				{
-					local data = split(LinkTools.LinkGetData(l,""),"+")
+					local data = split(LinkTools.LinkGetData(link,""),"+")
 					if (data[0] == "DRay")
 					{
 						//DEBUG print("destroy:  "+data[2]+"   "+Object.Destroy(data[2].tointeger()))
-						Link.Destroy(l)
+						Link.Destroy(link)
 					}
 				}
 		}
@@ -2033,8 +2602,8 @@ Use DWatchMeTarget to specify another object, archetype or metaproperty. (see no
 
 On TurnOff will remove any(!) AIWatchObj links to this object. You maybe want to set DWatchMeOff="Null".
 
-â€¢Further (if set) copies!! the AI->Utility->Watch links default property of the archetype (or the closest ancestors with this property) and sets the Step 1 - Argument 1 to the Object ID of this object.
-â€¢Alternatively if no ancestor has this property the property of the script object will be used and NO arguments will be changed. (So it will behave like the normal T1/PublicScripts WatchMe or NVWatchMeTrap scripts)
+€¢Further (if set) copies!! the AI->Utility->Watch links default property of the archetype (or the closest ancestors with this property) and sets the Step 1 - Argument 1 to the Object ID of this object.
+€¢Alternatively if no ancestor has this property the property of the script object will be used and NO arguments will be changed. (So it will behave like the normal T1/PublicScripts WatchMe or NVWatchMeTrap scripts)
 TODO: If the object has a custom one it should take priority.
 
 ------------------------------
@@ -2067,8 +2636,8 @@ DefOn ="BeginScript" 		//By default reacts to BeginScript instead of TurnOn
 
 	function DoOff(DN)
 	{
-		foreach (l in Link.GetAll("~AIWatchObj",self)) //Destroys all AIWatchObj links.
-			{Link.Destroy(l)}
+		foreach (link in Link.GetAll("~AIWatchObj",self)) //Destroys all AIWatchObj links.
+			{Link.Destroy(link)}
 	}
 
 
@@ -2132,8 +2701,8 @@ oldfacing=0
  
  	function CreateHudObj(ObjType)
 	{
-		local obj = Object.Create(ObjType)	//Create Selected item
-		Physics.DeregisterModel(obj)		//We want no physical interaction with anything.
+		local obj = Object.Create(ObjType)			//Create Selected item
+		Physics.DeregisterModel(obj)				//We want no physical interaction with anything.
 		local link=Link.Create("DetailAttachement",obj,PlayerID())
 		
 		LinkTools.LinkSetData(link,"Type",3)		//attach to camera
@@ -2152,27 +2721,27 @@ oldfacing=0
 	}
 
 
-	function OnTimer()	//Update the position, sadly not per frame.
-	{		
-		if (IsDataSet("Active")&&message().name=="HudUpdate") //TODO: I'll make a handler for all hud objects.
+	function OnUpdateHud()
+	{
+	if (IsDataSet("Active")) 				//TODO: I'll make a handler for all hud objects.
 		{
-				if (Camera.GetFacing().y != oldfacing) 	//Don't update? Not necessary but should be m
-				{							
-					LinkTools.LinkSetData(GetData("CompassLink"), "rel rot", GetRotation())
-					oldfacing=Camera.GetFacing().y
-					//Get Position:
-					//First will calculate the absolute targeted world position of the object.
-					//Then calculates the ralativ vector between the player to that point.
-					//Lastly adjust it by the relativ camera offset.
-					//I think this might be doable with skipping WorldToObj and CalcRel to (0,0,0)
-					local v = vector()
-					local Player = ::PlayerID()
-					Object.CalcRelTransform(Player, Player, v, vector(), 4, 0)
-					LinkTools.LinkSetData(GetData("CompassLink"), "rel pos", Object.WorldToObject(Player,Camera.CameraToWorld(loc_offset))+v)
-				} 
-				//Trying to do it once per frame: 1/FPS
-				//But no matter how fast it still jiggles... :/ Would need a way to do this per frame update or a not infinite while.
-		}		SetOneShotTimer("HudUpdate",1/60)
+		//if (Camera.GetFacing().y != oldfacing) 	//Don't update? Not necessary but should be m
+		//{							
+				LinkTools.LinkSetData(GetData("CompassLink"), "rel rot", GetRotation())
+				oldfacing = Camera.GetFacing().y
+				//Get Position:
+				//First will calculate the absolute targeted world position of the object.
+				//Then calculates the ralativ vector between the player to that point.
+				//Lastly adjust it by the relativ camera offset.
+				//I think this might be doable with skipping WorldToObj and CalcRel to (0,0,0)
+				local v = vector()
+				local Player = ::PlayerID()
+				Object.CalcRelTransform(Player, Player, v, vector(), 4, 0)
+				LinkTools.LinkSetData(GetData("CompassLink"), "rel pos", Object.WorldToObject(Player,Camera.CameraToWorld(loc_offset))+v)
+		//}
+		// Post Message is per frame but dang it still wobbles :( - but walking is stable :)
+		PostMessage(self,"UpdateHud")
+		}
 	}
 
 ########	
@@ -2183,8 +2752,10 @@ oldfacing=0
 		if (IsDataSet("Active"))
 			{return this.DoOff(DN)}
 		SetData("Active",true)
-		CreateHudObj(DarkUI.InvItem())
-		SetOneShotTimer("Compass",0.1)
+		
+		if (GetClassName() != "DHudCompass")	//base.DoOn from child.
+			CreateHudObj(DarkUI.InvItem())
+		PostMessage(self,"UpdateHud")
 	}
 
 	function DoOff(DN)
@@ -2199,7 +2770,7 @@ class DHudObject extends DHudCompass
 Similar to DHudCompass attaches the [DHudObject]{Object}; by default the selected inventory item; to the camera with the default {Offset} <0.75,0,-0.4.
 The objects facing will be constant toward the camera. With {Rotation} chose an offset.
 NOTE: Z-Rotation does not work intuitively as it is in combination with pitch.
-Use X,Y 180Â° Rotation to imitate a Z 180Â° rotation.
+Use X,Y 180° Rotation to imitate a Z 180° rotation.
 
 */#######################################
 {
@@ -2220,14 +2791,12 @@ Use X,Y 180Â° Rotation to imitate a Z 180Â° rotation.
 ########
 	function DoOn(DN)
 	{		
-		if (IsDataSet("Active"))
-			{return this.DoOff(DN)}
-		SetData("Active",true)
-	
-		local script=GetClassName()
+		local script = GetClassName()
 		local obj = CreateHudObj(DGetParam(script+"Object",DarkUI.InvItem()))
 		DScaleToMatch(obj,DGetParam(script+"MaxSize",0.25,DN))
-		SetOneShotTimer("HudObjectTimer",0.1)
+		PostMessage(self,"UpdateHud")
+		
+		base.DoOn(DN)
 	}
 }
 #######################################
@@ -2247,9 +2816,9 @@ On TurnOff will clear the Script 4 slot. Warning: This is not script specific BU
 TODO: Make this optional, dump warning
 
 NOTE:
-â€¢ It will try to add the Script in Slot 4. It will check if it is empty or else if the Archetype has it already, else you will get an error and should use a Metaproperty.
-â€¢ It is possible to only change the DesignNote with this script and so change the behavior of other scripts BUT this only works for NON-squirrel scripts, these require a reload(TODO: confirm) or even a restart first!
-â€¢ Using Capacitor or Count for will not work for newly added DScripts. As these are created and kept clean in the Editor.
+€¢ It will try to add the Script in Slot 4. It will check if it is empty or else if the Archetype has it already, else you will get an error and should use a Metaproperty.
+€¢ It is possible to only change the DesignNote with this script and so change the behavior of other scripts BUT this only works for NON-squirrel scripts, these require a reload(TODO: confirm) or even a restart first!
+€¢ Using Capacitor or Count for will not work for newly added DScripts. As these are created and kept clean in the Editor.
 #########################################*/
 {
 
@@ -2313,10 +2882,10 @@ DefOn="+Contained+Create+Combine"
 	function GetObjOnPlayer(type)
 	{
 	//We want to find the object that is already inside the inventory, were the stack is kept - if there is one, else the return will be this object
-		foreach ( l in Link.GetAll("Contains","player"))	//Crawling through the inventory looking for a match.
+		foreach ( link in Link.GetAll("Contains","player"))	//Crawling through the inventory looking for a match.
 		{
-			if (Object.Archetype(LinkDest(l)) == type)
-				return LinkDest(l)
+			if (Object.Archetype(LinkDest(link)) == type)
+				return LinkDest(link)
 		}
 	}
 
@@ -2378,7 +2947,7 @@ class DTPBase extends DBaseTrap
 
 	function DTeleportation(who, where)
 	{	
-		if (Property.Possessed(who, "AI_Patrol"))							//If we are teleporting an AI that is patrolling, we start a new patrol path. Sadly a short delay is neccessary here
+		if (Property.Possessed(who, "AI_Patrol"))							//If we are teleporting an AI that is patrolling, we start a new patrol path. Sadly a short delay is necessary here
 		{
 			Property.SetSimple(who,"AI_Patrol",0);
 			Link.Destroy(Link.GetOne("AICurrentPatrol",who));
@@ -2456,7 +3025,7 @@ If any of the DTp_ parameters is specified and not 0 these have priority.
 }
 
 #########################################
-class DTrapTeleporter extends DTPBase
+class kDegToRadapTeleporter extends DTPBase
 #########################################
 /*Target default: &Control Device
 
@@ -2466,13 +3035,13 @@ By setting DTeleportStatic=0 in the Editor->Design Note they will be affected by
 
 Design Note Example, which would move the closest Zombie to this object.
 DTeleportStatic=0
-DTrapTeleporterTarget=^Zombie types 
+kDegToRadapTeleporterTarget=^Zombie types 
 #########################################*/
 {
 	function DoOn(DN)
 	{
 		local dest = Object.Position(self)
-		local target = DGetParam("DTrapTeleporterTarget","&ControlDevice",DN,1)
+		local target = DGetParam("kDegToRadapTeleporterTarget","&ControlDevice",DN,1)
 		foreach (t in target)
 		{
 			DTeleportation(t,dest);
@@ -2797,15 +3366,13 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 							}
 						}
 					if (modes | 8)
-						{	
+						{		
+							//Setting Team	
+							Property.SetSimple(t,"AI_Team",0)
 							
-						//Setting Team	
-						Property.SetSimple(t,"AI_Team",0)
-						
-						//Forget the player when he goes out of range.	
-						if(DGetParam("DImUndercoverForgetMe",false,DN))
-							local l = Link.Create("AIWatchObj",t,self)
-					
+							//Forget the player when he goes out of range.	
+							if(DGetParam("DImUndercoverForgetMe",false,DN))
+								Link.Create("AIWatchObj", t, self)
 						}
 				}
 				else //Use Custom Metas only.
@@ -2871,13 +3438,11 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 						Object.RemoveMetaProperty(t,"M-DUndercover"+i)
 				}
 				
-			local l = Link.GetOne("AIAwareness",t,"Player")					//Remove or keep AIAwarenessLinks if visible.
-			if (l)
+			local link = Link.GetOne("AIAwareness",t,"Player")					//Remove or keep AIAwarenessLinks if visible.
+			if (link)
 				{
-				if (!((LinkTools.LinkGetData(l,"Flags") & 137)==137))		//Can see player? testing the three flags Seen, 
-					{
-					Link.Destroy(l)
-					}
+					if ( !((LinkTools.LinkGetData(link, "Flags") & 137) == 137) )	//Can see player? testing the three flags Seen, 
+						Link.Destroy(link)
 				}
 			
 			SendMessage(t,"EndIgnore")		//Reseting Team 
@@ -2889,16 +3454,16 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 
 	
 #########################################
-enum eDrunkData
-{
-	Strength,
-	Interval,
-	Length,
-	FadeInTime,
-	FadeOutTime,
-	Mode,
-	CurrentFade
-}
+	enum eDrunkData
+	{
+		Strength,
+		Interval,
+		Length,
+		FadeInTime,
+		FadeOutTime,
+		Mode,
+		CurrentFade
+	}
 #########################################
 class DDrunkPlayerTrap extends DBaseTrap
 #########################################
@@ -2908,10 +3473,10 @@ Multiple Ons from the same source will reset the timer and will do a FadeIn agai
 Optional parameters:
 DDrunkPlayerTrapStrength        regulates the strength basically every number can be used I would suggest something between 0 and 2                default=1
 DDrunkPlayerTrapInterval        a second regulator how often the effect is applied. With a lower interval higher strength becomes more acceptable.         default[seconds]=0.2 
-DDrunkPlayerTrapLength         How long the effect will last in seconds. Use 0 for until TurnOff is received                                    default[seconds]=0    
-DDrunkPlayerTrapFadeIn        Fades in the effect over the given time at the end the full strength is used.                                default[seconds]=0
-DDrunkPlayerTrapFadeOut        Only works if Length is set! Will gradually make the effect weaker over the last given seconds.                    default[seconds]=0
-DDrunkPlayerTrapMode            The effect is made up by 1) shaking the camera and 2) Pushing the player.(left/right/forward).                     default=3
+DDrunkPlayerTrapLength         How long the effect will last in seconds. Use 0 for until TurnOff is received                                    default[seconds] = 0    
+DDrunkPlayerTrapFadeIn        Fades in the effect over the given time at the end the full strength is used.                                default[seconds] = 0
+DDrunkPlayerTrapFadeOut        Only works if Length is set! Will gradually make the effect weaker over the last given seconds.                    default[seconds] = 0
+DDrunkPlayerTrapMode            The effect is made up by 1) shaking the camera and 2) Pushing the player.(left/right/forward).                     default = 3
 
 By setting Mode to 1 or 2 you can use one effect only. Especially for Mode=2 higher Strength values can be used.
 
@@ -2924,46 +3489,70 @@ Tried to make a Wave Like movement but have jet so succeed. SO it is more like a
 
 	function DoOn(DN)
 	{
-		if (IsDataSet("DrunkTimer")){KillTimer(GetData("DrunkTimer"))}		//To prevent double activation. IsDataSet returned false so I had to use this....
+		if (IsDataSet("DrunkTimer"))
+			KillTimer(GetData("DrunkTimer"))
 
 		//strenghth 0-2 advised
-
-		local l = DGetParam("DDrunkPlayerTrapInterval",0.2,DN)
+		local l = DGetParam("DDrunkPlayerTrapInterval", 0.2, DN)
 		DrkInv.AddSpeedControl("DDrunk", 0.8, 1); //Makes the Player slower
 		//Saving all the Parameter Data in the Timer to make it SaveGame compatible.
-		SetData("DrunkTimer",DSetTimerData("DrunkTimer",l,DGetParam("DDrunkPlayerTrapStrength",1,DN),l,DGetParam("DDrunkPlayerTrapLength",0,DN),DGetParam("DDrunkPlayerTrapFadeIn",0,DN),DGetParam("DDrunkPlayerTrapFadeOut",0,DN),DGetParam("DDrunkPlayerTrapMode",3,DN),0))
-		//																		str=0				interval=1				length=2									fade=3								fadeout=4										mode=5			curfad=6
+		SetData("DrunkTimer", DSetTimerData("DrunkTimer",
+											l,											// Delay for the timer
+											DGetParam("DDrunkPlayerTrapStrength",1,DN),	// [0] = Strength
+											l,											// [1] = Interval
+											DGetParam("DDrunkPlayerTrapLength",	0,DN),	// [2] = Length
+											DGetParam("DDrunkPlayerTrapFadeIn",	0,DN),	// [3] = FadeInTime
+											DGetParam("DDrunkPlayerTrapFadeOut",0,DN),	// [4] = FadeOutTime
+											DGetParam("DDrunkPlayerTrapMode",	3,DN),	// [5] = Modes
+											0))											// [6] = CurrentFrame
 	}
 
 	function OnTimer()
 	{
-		local mn=message()
-		if (mn.name=="DrunkTimer")
+		local mn = message()
+		if (mn.name == "DrunkTimer")
 		{
-			// And this function looks kinda drunk too, I know. Basically here the TimerData is retrieved, check the indexes a few lines above.
-			local mnA=DGetTimerData(mn.data)
-			for(local i=0;i<=4;i++)
-				{mnA[i]=mnA[i].tofloat()}
-			mnA[eDrunkData.Mode]=mnA[eDrunkData.Mode].tointeger()
-			mnA[eDrunkData.CurrentFade]=mnA[eDrunkData.CurrentFade].tointeger()
-			mnA[eDrunkData.CurrentFade] += 1
-			if (mnA[eDrunkData.Length] <= 0 || mnA[eDrunkData.CurrentFade]<mnA[eDrunkData.Length]/mnA[eDrunkData.Interval])						//Continue, FadeOut or end?
-				{SetData("DrunkTimer",DSetTimerData("DrunkTimer",mnA[eDrunkData.Interval],mnA[eDrunkData.Strength],mnA[eDrunkData.Interval],mnA[eDrunkData.Length],mnA[eDrunkData.Length],mnA[eDrunkData.FadeInTime],mnA[eDrunkData.Mode],mnA[eDrunkData.CurrentFade]))}
-			else {DoOff()}
+			// And this function looks kinda drunk too, I know...
+			// Retrieve the data
+			local mnA = DGetTimerData(mn.data)
+			for (local i = 0; i <= 4; i++)
+			mnA[i]						= mnA[i].tofloat()
+			mnA[eDrunkData.Mode]		= mnA[eDrunkData.Mode].tointeger()
+			mnA[eDrunkData.CurrentFade]	= mnA[eDrunkData.CurrentFade].tointeger() + 1
+			local strengthCurrent = mnA[eDrunkData.Strength]
+			
+			// Check if we should continue.
+			if (mnA[eDrunkData.Length] <= 0 || ( mnA[eDrunkData.CurrentFade] < mnA[eDrunkData.Length] / mnA[eDrunkData.Interval] ))
+			{
+				// Continue. Start a new Timer.
+				SetData("DrunkTimer", DSetTimerData("DrunkTimer", mnA[eDrunkData.Interval], mnA[eDrunkData.Strength], mnA[eDrunkData.Interval], mnA[eDrunkData.Length], mnA[eDrunkData.Length], mnA[eDrunkData.FadeInTime], mnA[eDrunkData.Mode], mnA[eDrunkData.CurrentFade]))
+			}
+			else 
+				DoOff()
 
-			local lstr = mnA[eDrunkData.Strength]
-			if (mnA[eDrunkData.CurrentFade] < mnA[eDrunkData.Length]/mnA[eDrunkData.Interval])
-				{lstr=mnA[eDrunkData.CurrentFade]/mnA[eDrunkData.Length]*mnA[eDrunkData.Interval]}		//fade in, effects grow stronger
+			// Do FadeIn? Reduce the Strength effect and increase it slowly.
+			if (mnA[eDrunkData.CurrentFade] < ( mnA[eDrunkData.Length] / mnA[eDrunkData.Interval] ))
+				strengthCurrent = mnA[eDrunkData.CurrentFade] / mnA[eDrunkData.Length] * mnA[eDrunkData.Interval]
+
 			if (mnA[eDrunkData.Length] > 0)
-				{if (mnA[eDrunkData.CurrentFade] > (mnA[eDrunkData.Length]-mnA[eDrunkData.FadeInTime])/mnA[eDrunkData.Interval])					//fade out, effects get weaker
-					{lstr= (mnA[eDrunkData.Length]/mnA[eDrunkData.Interval]-mnA[eDrunkData.CurrentFade])/(mnA[eDrunkData.FadeInTime]/mnA[eDrunkData.Interval])}
-				}			
-			local seed=Data.RandInt(-1,1)*90							//-1,0,+1
-			local ofacing = (Camera.GetFacing().z+seed)*DtR
-			local orthv = vector(cos(ofacing),sin(ofacing),0)		//Calculates the orthogonal vector, so relative left/right(forward) on the screen.
+			{	//Do FadeOut
+				if (mnA[eDrunkData.CurrentFade] > (mnA[eDrunkData.Length] - mnA[eDrunkData.FadeInTime]) / mnA[eDrunkData.Interval])
+					{
+						strengthCurrent= (mnA[eDrunkData.Length]/mnA[eDrunkData.Interval]-mnA[eDrunkData.CurrentFade])/(mnA[eDrunkData.FadeInTime]/mnA[eDrunkData.Interval])
+					}
+			}			
+			local seed 		= Data.RandInt(-1,1) * 70				// Sway in one direction
+			local ofacing 	= (Camera.GetFacing().z + seed) * kDegToRad
+			local orthv 	= vector(cos(ofacing), sin(ofacing), 0)	//Calculates the orthogonal vector, so relative left/right(forward) on the screen.
+			// low prio TODO: Make the movement swaying with sinus??
 			//Rotate and push the player.
-			if (1 & mnA[eDrunkData.Mode]){Property.Set("player","PhysState","Rot Velocity",vector(Data.RandFltNeg1to1()*lstr,Data.RandFltNeg1to1()*lstr,4*lstr*Data.RandFltNeg1to1()))}
-			if (2 & mnA[eDrunkData.Mode]){Physics.SetVelocity("player",orthv*(2*lstr))}
+			if (1 & mnA[eDrunkData.Mode])	//Rotate
+				{
+				Property.Set("player","PhysState","Rot Velocity",
+						vector(Data.RandFltNeg1to1()*strengthCurrent, Data.RandFltNeg1to1()*strengthCurrent, 4*strengthCurrent*Data.RandFltNeg1to1() ))
+				}
+			if (2 & mnA[eDrunkData.Mode])	// Push forward
+				Physics.SetVelocity("player", orthv * (2*strengthCurrent) )
 		}
 	}
 
@@ -2978,7 +3567,7 @@ Tried to make a Wave Like movement but have jet so succeed. SO it is more like a
 /*
 class DImportObj extends DBaseTrap HAS BEEN MOVED
 ####################################################
-This script can import Objects into your Object Hirarchy. Yes. Check out the DSCreatorScripts for more information.
+This script can import Objects into your Object Hierarchy. Yes. Check out the DSCreatorScripts for more information.
 
 Script has been moved to the CreatorScripts in the past and continued there. 
 Very bad I have kept this active here. 
@@ -2991,7 +3580,7 @@ local file = DGetParam("DImportObjFile","ImportObj.txt")
 local omax = Data.GetString(file, "OAmount", string def = "", string relpath = "obj");
 local i = 1
 
-for (i=1,i <= omax,i++)
+for (i = 1 , i <= omax, i++)
 	{
 	local data = Data.GetString(file, "Obj"+i, string def = "", string relpath = "obj")
 	data=split(data,"=;")
