@@ -1,8 +1,8 @@
-##		--/					 	§HEADER							--/
+##		--/					 	Â§HEADER							--/
 
 #include DScript.nut?
 
-##		/--		§#		§_File_&_Blob_Library__§		§#		--\
+##		/--		Â§#		Â§_File_&_Blob_Library__Â§		Â§#		--\
 //
 //	This file contains tools to interact with files (read only) and blobs.
 //	Ultimately enabling the extraction of data/parameters from files. 
@@ -12,10 +12,9 @@
 
 class dfile
 {
-/* More interestingly is the dblob class, but as most actions which work for blobs also work for files, this is the upper class.
+/* More interestingly is the dblob class, but as most actions which work for blobs also work for files, this is the upper class but it the end they are codependant.
 
 */
-
 myblob = null								// As we will work more with the derived dblob class
 
 	constructor(filename, path = ""){
@@ -33,8 +32,6 @@ myblob = null								// As we will work more with the derived dblob class
 	}
 
 //	|-- Blob & File functions --|
-
-	// also possible with dblob.myblob.len()
 	function len()
 		return myblob.len()
 		
@@ -50,9 +47,13 @@ myblob = null								// As we will work more with the derived dblob class
 	function getParam(param, separator = '"'){
 	/* There it is the extract a parameter function. Yay :)
 		First scans until it finds the parameter, then looks for the next separator and the next behind it. Then returns the slice between these two. */
-	// This function could be improved by directly writing every bit to a second blob while searching. But pretty slim it is.
+	// This function could be improved by directly writing every bit to a second blob while searching. But as compact as it could be.
+	#NOTE IMPORTANT! Slicing over line breaks might not work. Depending on what linebreak type is used in the file.
+	#					For windows (CR LF) it does add +1 additional character per line! On Unix (LF) it works correctly.
+	#					see: https://en.wikipedia.org/wiki/Newline
+	#					Problem is that while it appears as one character, the pointer skips it, adding +2 to the position
 		return slice(
-				find(separator, find(param)) +1 , 
+				find(separator, find(param)) +1 ,
 				find(separator, tell()))
 	}
 
@@ -114,7 +115,7 @@ myblob = null								// As we will work more with the derived dblob class
 		return typeof myblob
 		
 	function toblob()						// Child Labor!!!
-		return (myblob.seek(0), ::dblob(myblob).toblob())	// as dblob(file) does not return the seeker let's do it here.
+		return (myblob.seek(0), ::dblob(myblob).toblob())	// as dblob(file) does not reset the seeker let's do it here.
 		
 	function _tostring()
 		return ::dblob(myblob).tostring()
@@ -124,6 +125,8 @@ myblob = null								// As we will work more with the derived dblob class
 			myblob.seek(key)
 			return myblob.readn('c')
 		}
+		if (key == "myfile")
+			return myblob
 		throw null
 	}
 	
