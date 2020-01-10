@@ -1,4 +1,4 @@
-##		--/					 Â§HEADER					--/
+##		--/					 §HEADER					--/
 
 #include DConfigDefault.nut
 // This file IS NECESSARY for DScript.nut to compile.
@@ -11,7 +11,8 @@
 //	Use them to your liking. 
 // --------------------------------------------------------------------------
 
-##		/--		Â§#		Â§_INTRODUCTION__Â§		Â§#		--\
+
+##		/--		§#		§_INTRODUCTION__§		§#		--\
 //////////////////////////////////////////////////////////////////// 
 //					 	
 const DScriptVersion = 0.57 	// This is not a stable release!
@@ -23,14 +24,14 @@ const DScriptVersion = 0.57 	// This is not a stable release!
 // #NOTE: All Squirrel scripts get combined together so you can use these scripts in here via extends in other .nut files as well.
 //			Only restriction is that their file name must come later in the alphabet.
 //
-// ----------------------------------------------------------------
+// --------------------------------------------------------------------------
 //
 // This file has been designed to be used with an updated 'userDefineLang_Squirrel OSM.xml' file
 //  -> 'userDefineLang_Squirrel DScript.xml', making a new file so you can easily go back.
 //  To highlight code, special functions and constants and especially the use of custom fold points.
 //  An advanced text editor like notepad++ is recommended and necessary to use them. Like DromEd this file uses ANSI characters.
 //
-//		/--		Â§#		Â§_DEMO_CATEGORY_Â§		Â§#		--\
+//		/--		§#		§_DEMO_CATEGORY_§		§#		--\
 //			<-- fold it on the left
 //		|--			#		Paragraph		#			--|
 //			To fold the code into meaningful paragraphs.
@@ -76,7 +77,7 @@ The real scripts currently start at around line > 1000
 /////////////////////////////////////////////////////////////////
 
 // ----------------------------------------------------------------
-##		/--		Â§#		Â§___CONSTANTS___Â§		Â§#		--\
+##		/--		§#		§___CONSTANTS___§		§#		--\
 // Adjustable Constants are in the DConfig*.nut files.
 // ----------------------------------------------------------------
 
@@ -122,7 +123,7 @@ print("IDs: "+ PlayerID() +" \tID2="+ PlayerID2 +" n: "+ SqRootScript.ObjID("Pla
 
 // -----------------------------------------------------------------
 
-##		/--		Â§#	  	  Â§VERSION_CHECKÂ§		Â§#		--\
+##		/--		§#	  	  §VERSION_CHECK§		§#		--\
 /* If a FanMission author defines a dRequiredVersion in a separate DConfig file this test will check if the 
 	current DScriptVersion of this file is sufficient or outdated and will display a ingame and monolog message to them. */
 
@@ -134,7 +135,7 @@ if (dRequiredVersion > DScriptVersion){
 }
 
 
-##		/--		Â§#	  Â§HELLO_&_HELP_DISPLAYÂ§	Â§#		--\
+##		/--		§#	  §HELLO_&_HELP_DISPLAY§	§#		--\
 ##		|--			#	   General_Help		#			--|
 
 if (!Engine.ConfigIsDefined("dsnohello") && dHelloMessage && IsEditor() && DScriptVersion > 0.6)	// will be enabled in Version 0.6 onward.
@@ -168,7 +169,7 @@ if (Engine.ConfigIsDefined("dhelp")) 		//TODO: Setup attributes.
 }
 
 ##		|-- ------------------------------------------- /--
-##		/--		Â§# Â§______BASE_FUNCTIONS_____Â§  Â§#		--\
+##		/--		§# §______BASE_FUNCTIONS_____§  §#		--\
 //
 // 				String and Parameter analysis
 //
@@ -183,7 +184,7 @@ if (Engine.ConfigIsDefined("dhelp")) 		//TODO: Setup attributes.
 
 	function DivideAtNext(str, char, include = false){
 	/* Divides a string, array or dblob at the next found 'char' and returns an array with the part before and the part after it.
-		If the character is not found the array will be spitted into the complete and an empty string/blob.
+		If the character is not found the array will be spitted into the complete and an empty string.
 		By default the character will be completely sliced out, with include = true it will be included in the second part.*/
 		local i = 0
 		for (i; i < str.len(); i++)
@@ -195,209 +196,6 @@ if (Engine.ConfigIsDefined("dhelp")) 		//TODO: Setup attributes.
 			return [str.slice(0,i)	, ""]
 		return [	str.slice(0,i)	, str.slice( include ? i : i+1 )]
 	}
-
-
-
-class dblob
-{
-/* this is a custom blob like class, that makes the transition of strings in and out
-	of a blob easy.
-	
-	It combines blob functions like seek, writec with string operations like slice, +
-
- // |-- Interaction with other data types --|
- // dblob("string")				-> stores the string as blob of 8bit characters.
- // dblob(blob)	 				-> stores an actual blob in a dblob.
- // dblob("A") + dblob("B") 	-> dblob('AB') 		combined
- // dblob("A") + "string" 		-> "Astring"
- // dblob("A") * "string" 		-> dblob('Astring')
- //	dblob("A") + blob			-> dblob('A'blob)	a real blob gets appened.
- // dblob(dblob("2"))			-> dblob('2')		no nesting by mistake.
- // dblob(integer)				-> dblob(integer.tocharacter())) this at the moment will only write a single 8-bit character to the blob. While all values are accepted only -127 to 127 makes sense.
- // |-- Get and set parts of the blob --|
- // dblob("ABCDE")[1] 			-> 'A'
- // dblob("ABCDE")[2] = x		-> dblob("AxCDE")
- // dblob("ABCDE")[-2] = x		-> dblob("ABCxE")
- // dblob("ABCDE")[2] = "xyz"	-> dblob("AxyzE")
- // dblob("ABCDE")[-2] = "xyz"	-> dblob("ABCxyz")
- 
- Included functions:
- dblob("A").tostring() 			-> "A"
- dblob(blob).tostring			-> Same as above but turns an actual blob into a string of characters.
- dblob.myblob or dblob.toblob() = returns the stored blob
- 
- Blob like
- dblob.tell, len, writec		equal to dblob.myblob.tell, len, writen(*, 'c'); with writec expecting a string, array, blob to iterate.
- 
- String like
- .slice(begin, end),				// TODO test
-	 dblob("ABCDE").slice(1) 		-> dblob("BCDE")
- 	 dblob("ABCDE").slice(1,2) 		-> dblob("B")
-	 dblob("ABCDE").slice(1,-2) 	-> dblob("BC")
-	 dblob("ABCDE").slice(-1,-2) 	-> dblob("")		// Start must be < end, error?
-	 dblob("ABCDE").slice(-3,-2) 	-> dblob("CD")
- */
-
-myblob = null
-
-	constructor(str){
-		switch (typeof str)
-		{
-			case "string":
-				myblob = ::blob()
-				writec(str)
-				break
-			case "blob" :
-				if (str instanceof ::blob){
-					myblob = str
-				} else if (str instanceof dblob)
-					myblob = str.myblob
-				  else throw "Can only combine real blobs and dblobs."
-				break
-			case "float" :
-				str.tointeger()
-			case "integer" :
-				myblob = ::blob()
-				myblob.writen(str, 'c') // 'c' 8 bit signed integer (char)
-				break
-			default :
-				throw "Trying to construct a dblob with invalid parameter."
-		}
-	}
-	
-
-//	|-- String like functions --|
-	
-	function slice(start, end = 0){
-	/* returns a copy containing only the elements from start to the end point.
-		if start is negative it begin at the end of the stream; also if end is negative it will take that value from the end of the stream..*/
-		myblob.seek( abs(start), start < 0? 'e' : 'b')
-		return dblob( myblob.readblob(end <= 0? myblob.len() - myblob.tell() + end : end - myblob.tell()))
-	}
-	
-	function find(str, start = 0)
-	{
-		myblob.seek( abs(start), (start < 0)? 'e' : 'b')	// pointer to start or end.
-		local rv 	= false
-		if (typeof str == integer){
-			while (true){
-				if (myblob.readn('c') == str){
-					local p = myblob.tell()
-					return [p-1, p]
-				}
-				if (myblob.eos())		//end of stream.
-					return null
-			}
-		} else {
-			local strlen = str.len()
-			while (!rv){
-				local first = find(str[0])
-				if (first)
-					first = first[0]
-				else
-					return null			// eos.
-				
-				foreach (c in str.slice(1))
-				{
-					if (c != myblob.readn('c')){
-							myblob.seek(first+1)	//return the position of first found.
-							break
-					}
-					if (myblob.tell() == first + strlen){
-						local p = myblob.tell()
-						return [p - strlen, p]
-					}
-				}	
-			}
-		}
-		return rv
-	}
-	
-//	|-- Blob like function --|
-	function writec(str)
-		foreach (char in str)
-				myblob.writen(char,'c')
-	
-	// also possible with dblob.myblob.len()
-	function len()
-		return myblob.len()
-		
-	function tell()
-		return myblob.tell()
-	
-	function seek(offset, origin = 'b')
-		myblob.seek(offset, origin)
-	
-//	|-- Metamethods -- |
-		
-	function _typeof()
-		return "blob"
-
-	function toblob()
-		return myblob
-		
-	function _tostring(){
-		local str = ""
-		foreach (c in myblob)
-			str += c.tochar()
-		return str
-	}		
-		
-	function _add(other){
-		myblob.seek(0,'e')
-		myblob.writeblob(other instanceof ::blob ? other : other.myblob)	// distinguis between blob and dblob.
-		return this
-	}	
-	
-	function _mul(other){
-		myblob.seek(0,'e')
-		writec(other)
-		return this
-	}
-	
-	function _set(key, value){
-		if (typeof key == "integer"){
-			if (typeof value == "integer")
-				myblob[key] = value
-			else {
-				myblob.seek(key, key < 0? 'e' : 'b')
-				writec(value)
-			}
-		}
-	}
-	
-	function _get(key){
-		if (typeof key == "integer") {
-			return myblob[key]
-		}
-		throw null
-	}
-	
-	/* function _newslot(key, value)		// If you know you you are doing
-		throw "Can't add new slots." */
-	
-	function _nexti(previdx) {
-		if (myblob.len() == 0) {
-			return null;
-		} else if (previdx == null) {
-			return 0;
-		} else if (previdx == myblob.len()-1) {
-			return null;
-		} else {
-			return previdx + 1;
-		}
-	}
-	
-}
-
-b <- dblob("ADCDEFG")
-
-print(b.tell())
-
-print(c <- dblob("ABC#EFG"))
-
-print(DivideAtNext(c,'#')[0] + "_" + DivideAtNext(c,'#')[1])
-
 
 class DBasics extends SqRootScript
 {
@@ -465,7 +263,7 @@ static sSharedSet = null
 		return param
 	}
 	
-	## |-- 	Â§Main_Analysis_Function		--|
+	## |-- 	§Main_Analysis_Function		--|
 	function DCheckString(str, returnInArray = false)		
 	/* 
 	Analysis of a given string parameter depending on its prefixed parameter.
@@ -581,11 +379,11 @@ static sSharedSet = null
 				break
 			
 			# Use a config variable
-				case 'Â§': // Paragraph sign. #NOTE: Finally it happens, the ASCII ISO, ANSI, Unicode trouble.
-							# First squirrel uses signed character values from -127 to 127. While references mostly display 0 - 255
-							# 'Â§' is equal to -89 (167) but there are several very different standards for these additional 128 characters.
+				case '§': // Paragraph sign. #NOTE: Finally it happens, the ASCII ISO, ANSI, Unicode trouble.
+							# First squirrel uses signed character values from -128 to 127. While references mostly display 0 - 255
+							# '§' is equal to -89 (167) but there are several very different standards for these additional 128 characters.
 							#NOTE: DON'T TRUST THE MONOLOG.
-							# DromEd uses ANSI with modern characters like Â€(128) in contrary the Windows Terminal uses 850 OEM where 128 represents Ã‡ and Â§ is displayed as Âº!
+							# DromEd uses ANSI with modern characters like ?(128) in contrary the Windows Terminal uses 850 OEM where 128 represents Ç and § is displayed as º!
 				local ref = string()
 				#DEBUG WARNING
 				if(!Engine.ConfigGetRaw(str.slice(1), ref))
@@ -908,7 +706,7 @@ static sSharedSet = null
 			return foundobjs
 	}	
 	
-	#  |--  Â§Conditional_Debug_Print 	--|
+	#  |--  §Conditional_Debug_Print 	--|
 	function DPrint(dbgMessage, DoPrint = false, mode = 3) 	// default mode = ePrintTo.kMonolog || ePrintTo.kUI)
 	{
 		if (!DoPrint){
@@ -937,7 +735,7 @@ static sSharedSet = null
 
 
 // ----------------------------------------------------------------
-##		/--		Â§# Â§____FRAME_WORK_SCRIPT____Â§	Â§#		--\
+##		/--		§# §____FRAME_WORK_SCRIPT____§	§#		--\
 //
 // The DBaseTrap is the framework for nearly all other scripts in this file.
 // It handles incoming messages and interprets the general parameters like Count, Delay, Repeat.
@@ -953,7 +751,15 @@ class DBaseTrap extends DBasics
 		DBaseFunction(userparams(), GetClassName())
 	}
 	
-### |-- Â§Main_Message_HandlerÂ§ --| ###
+	// These are the function that will get called when all activation checks pass.
+	function DoOn(DN){
+		// Overload me.
+	}
+	function DoOff(DN){
+		// Overload me.
+	}
+	
+### |-- §Main_Message_Handler§ --| ###
 	function DBaseFunction(DN,script){
 	/* Handles and interprets all incoming messages. 
 		- Are they a valid Activating or Deactivating message? 
@@ -1042,8 +848,6 @@ class DBaseTrap extends DBasics
 	######
 
 	//React to the received message? Checks if the script actually has a ON/OFF function and if the message is in the set of specified commands. And Yes a DScript can perform it's ON and OFF action if both accepct the same message.
-		if ("DoOn" in this)
-		{
 			if (DGetParam(script+"On", DGetParam("DefOn","TurnOn", this, kReturnArray),DN, kReturnArray).find(mssg) != null)
 			{
 				#
@@ -1051,9 +855,6 @@ class DBaseTrap extends DBasics
 				#
 				DCountCapCheck(script,DN, eScriptTurn.On ,DoDD)
 			}
-		}
-		if ("DoOff" in this)
-		{
 			if (DGetParam(script+"Off", DGetParam("DefOff","TurnOff", this, kReturnArray), DN, kReturnArray).find(mssg) != null)
 			{
 				#
@@ -1061,18 +862,17 @@ class DBaseTrap extends DBasics
 				#
 				DCountCapCheck(script,DN, eScriptTurn.Off ,DoDD)
 			}
-		}
 	}
 
-	# |-- 		Â§Pre_Activation_Checks 		--|
+	# |-- 		§Pre_Activation_Checks 		--|
 	/*Script activation Count and Capacitors are handled via Object Data, in this section they are set and controlled.*/
 	# |--	Capacitor Data Interpretation 	--|
 	function DCapacitorCheck(script, DN, OnOff = "")	//Capacitor Check. General "" or "On/Off" specific
 	{
-		local newValue = GetData(script+OnOff+"Capacitor")+1		//NewValue
-		local Threshold = DGetParam(script+OnOff+"Capacitor", 0, DN)
-		##DEBUG POINT
-		DPrint("Stage 3 - "+OnOff+"Capacitor:("+newValue+" of "+Threshold+")")	
+		local newValue  =   GetData(script+OnOff+"Capacitor")+1	//NewValue
+		local threshold = DGetParam(script+OnOff+"Capacitor", 0, DN)
+		##DEBUG POINT 3
+		DPrint("Stage 3 - "+OnOff+"Capacitor:("+newValue+" of "+Threshold+")")
 		//Reached Threshold?
 		if (newValue == Threshold)			//DHub compatibility
 		{
@@ -1087,19 +887,19 @@ class DBaseTrap extends DBasics
 			// Threshold not reached. Increase Capacitor and start a Falloff timer if wanted.
 			SetData(script+OnOff+"Capacitor", newValue)
 			if (DGetParam(script+OnOff+"CapacitorFalloff", false, DN))
-				{
-					// Terminate the old one timer
-					if (IsDataSet(script+OnOff+"FalloffTimer"))
-						KillTimer(GetData(script+OnOff+"FalloffTimer"))
-					// and start a new Timer 							//TODO BUG? shouldn't this be script + OnOff+ Falloff?
-					SetData( script+OnOff+"FalloffTimer", SetOneShotTimer( script+"Falloff", DGetParam( script+OnOff+"CapacitorFalloff", false, DN).tofloat(), OnOff)) 
-				}
+			{
+				// Terminate the old one timer...
+				if (IsDataSet(script+OnOff+"FalloffTimer"))
+					KillTimer(GetData(script+OnOff+"FalloffTimer"))
+				// ...and start a new Timer 							//TODO BUG? shouldn't this be script + OnOff+ Falloff?
+				SetData( script+OnOff+"FalloffTimer", SetOneShotTimer( script+"Falloff", DGetParam( script+OnOff+"CapacitorFalloff", false, DN).tofloat(), OnOff)) 
+			}
 			return true	//Abort possible
 		}	
 	}
 
-	function DCountCapCheck(script, DN, func, DoDD = false)
 	# |-- 		Is a Capacitor set 		--|
+	function DCountCapCheck(script, DN, func, DoDD = false)
 	/*
 	Does all the checks and delays before the execution of a Script.
 	Checks if a Capacitor is set and if its threshold is reached with the function above. func=1 means a TurnOn
@@ -1153,7 +953,7 @@ class DBaseTrap extends DBasics
 	# |-- 				Delay	 		--|
 		if (d)
 		{		
-			local doPerFrame = false
+			local doPerNFrames = false
 			// TODO: Add a per n Frame option. with PostMessage
 			## |-- Per Frame Delay --|
 			if (typeof(delay) == "string")
@@ -1165,7 +965,7 @@ class DBaseTrap extends DBasics
 					DPrint("ERROR! : Delay '"+d+"' no valid format.", kDoPrint, ePrintTo.kMonolog || ePrintTo.kUI)
 					return
 				}
-				doPerFrame = d.slice(res.begin, res.end).tointeger()
+				doPerNFrames = d.slice(res.begin, res.end).tointeger()
 			}
 	
 			## Stop old timers if ExlusiveDelay is set.
@@ -1181,10 +981,10 @@ class DBaseTrap extends DBasics
 				// Same command received will do nothing.
 				if (GetData(script+"InfRepeat") != func)
 				{
-					##DEBUG OUTPUT
+					#DEBUG POINT
 					DPrint("Stage 5X - Infinite Repeat has been stopped.", DoDD, DoDD)
 					ClearData(script+"InfRepeat")
-					if (doPerFrame) //Can't clean the others.
+					if (doPerNFrames) // Can't clean the others.
 						return
 					KillTimer(GetData(script+"DelayTimer"))
 					ClearData(script+"DelayTimer")
@@ -1195,23 +995,24 @@ class DBaseTrap extends DBasics
 			{
 				## |-- Start Delay Timer --|
 				// DBaseFunction will handle activation when received.
-				DPrint("Stage 5B - ("+func+") Activation will be executed after a delay of "+ d + (doPerFrame? " ." : " seconds."))
-				if (doPerFrame)
+				#DEBUG POINT
+				DPrint("Stage 5B - ("+func+") Activation will be executed after a delay of "+ d + (doPerNFrames? " ." : " seconds."))
+				if (doPerNFrames)
 					{
-						PostMessage(self, "Timer", "perFrame", doPerFrame)
+						PostMessage(self, "Timer", "perFrame", doPerNFrames)
 						return
 					}
-				local repeat = DGetParam(script+"Repeat",0,DN).tointeger()
-				if (repeat == -1){SetData(script+"InfRepeat",func)}	//If infinite repeats store if they are ON or OFF.
-				//Store the Timer inside the ObjectsData and start it with all necessary information inside the timers name.
+				local repeat = DGetParam(script+"Repeat", 0, DN).tointeger()
+				if (repeat == -1)
+					SetData(script+"InfRepeat", func)	//If infinite repeats store if they are ON or OFF.
+				// Store the Timer inside the ObjectsData and start it with all necessary information inside the timers name.
 				SetData(script+"DelayTimer", DSetTimerData(script+"Delayed", d, func, SourceObj, repeat, d) )
-				##DEBUG OUTPUT
 			}
 		}
 		else	//No Delay. Execute the scripts ON or OFF functions.
 		{
 			## |-- Normal Activation --|
-			##DEBUG POINT
+			#DEBUG POINT
 			DPrint("Stage 5 - Script will be executed. Source Object was: ("+SourceObj+")" , DoDD, DoDD)
 			if (func){this.DoOn(DN)}else{this.DoOff(DN)}
 		}
@@ -1445,37 +1246,37 @@ class DAdvancedGeo extends DBaseTrap
 
 	DPolarCoordinates
 	<distance, theta, phi>
-	theta: 	below  pi/2 (90Â°) means below the object, above above
+	theta: 	below  pi/2 (90°) means below the object, above above
 
 	phi: Negative Values mean east, positive west.
-	Absolute values above 90Â° mean south, below north:
+	Absolute values above 90° mean south, below north:
 
 
 	Native return Values:	
 	Theta							Phi
-	Above180Â°						N0Â°			
+	Above180°						N0°			
 	/						(0,90) 	| (0,-90)	
-	X---90Â° 				W++++90Â°X-- -90Â°--E
+	X---90° 				W++++90°X-- -90°--E
 	\						(90,180)| (-90,-180)
-	Below0Â°						180Â°S-180Â°	
+	Below0°						180°S-180°	
 
 	DRelativeAngles
 	Corrected Values:
 	Theta							Phi
-	Above90Â°						N180Â°			
+	Above90°						N180°			
 	/								|	
-	X---0Â° 				  W--270Â°---X---90Â°--E
+	X---0° 				  W--270°---X---90°--E
 	\								|	
-	Below-90Â°						S0Â°	
+	Below-90°						S0°	
 
 
 	Camera.GetFacing()/Facing of the player object: The Y pitch values are a little bit different, the Z(heading) is like the corrected values:
 		Y							Z
-	Above270Â°						N180Â°			
+	Above270°						N180°			
 	/							 	|	
-	X---0Â°/360Â° 			W--270Â°-X--90Â°--E
+	X---0°/360° 			W--270°-X--90°--E
 	\								| 	
-	Below90Â°						S0Â°
+	Below90°						S0°
 	*/	
 
 	function DVectorBetween(from, to, UseCamera = true)
@@ -1506,7 +1307,7 @@ class DAdvancedGeo extends DBaseTrap
 
 	function DRelativeAngles(from, to, UseCamera = true)
 	{
-		//Uses the standard DPolarCoordinates, and transforms the values to be more DromEd like, we want Z(Heading)=0Â° to be south and Y(Pitch)=0Â° horizontal.
+		//Uses the standard DPolarCoordinates, and transforms the values to be more DromEd like, we want Z(Heading)=0° to be south and Y(Pitch)=0° horizontal.
 		//Returns the relative XYZ facing values with x=0.
 		local v = DPolarCoordinates(from, to, UseCamera)
 		return vector(0,v.y-90,v.z)
@@ -2073,7 +1874,7 @@ function OnMessage()	//Similar to the base functions in the first part.
 ## END of HUB
 ################################
 
-### /-- Â§ --\
+### /-- § --\
 
 #########################################
 class SafeDevice extends SqRootScript
@@ -2176,7 +1977,7 @@ DefOff = "DIOff"
 }
 
 
-## |-- Â§DTweqDevice --| ##
+## |-- §DTweqDevice --| ##
 class DTweqDevice extends DBaseTrap
 {
 	DefOn = "FrobWorldEnd"
@@ -2254,7 +2055,7 @@ class DTweqDevice extends DBaseTrap
 		}
 	}
 }
-### /-- Â§_READ_FILE_SCRIPTS_Â§ --\ ###
+### /-- §_READ_FILE_SCRIPTS_§ --\ ###
 class DFileExtractor extends DRelayTrap
 {
 	function BlobGetValue(blob, pos, length, linebreak = true)
@@ -2685,8 +2486,8 @@ Use DWatchMeTarget to specify another object, archetype or metaproperty. (see no
 
 On TurnOff will remove any(!) AIWatchObj links to this object. You maybe want to set DWatchMeOff="Null".
 
-Â€Â¢Further (if set) copies!! the AI->Utility->Watch links default property of the archetype (or the closest ancestors with this property) and sets the Step 1 - Argument 1 to the Object ID of this object.
-Â€Â¢Alternatively if no ancestor has this property the property of the script object will be used and NO arguments will be changed. (So it will behave like the normal T1/PublicScripts WatchMe or NVWatchMeTrap scripts)
+?¢Further (if set) copies!! the AI->Utility->Watch links default property of the archetype (or the closest ancestors with this property) and sets the Step 1 - Argument 1 to the Object ID of this object.
+?¢Alternatively if no ancestor has this property the property of the script object will be used and NO arguments will be changed. (So it will behave like the normal T1/PublicScripts WatchMe or NVWatchMeTrap scripts)
 TODO: If the object has a custom one it should take priority.
 
 ------------------------------
@@ -2853,7 +2654,7 @@ class DHudObject extends DHudCompass
 Similar to DHudCompass attaches the [DHudObject]{Object}; by default the selected inventory item; to the camera with the default {Offset} <0.75,0,-0.4.
 The objects facing will be constant toward the camera. With {Rotation} chose an offset.
 NOTE: Z-Rotation does not work intuitively as it is in combination with pitch.
-Use X,Y 180Â° Rotation to imitate a Z 180Â° rotation.
+Use X,Y 180° Rotation to imitate a Z 180° rotation.
 
 */#######################################
 {
@@ -2899,9 +2700,9 @@ On TurnOff will clear the Script 4 slot. Warning: This is not script specific BU
 TODO: Make this optional, dump warning
 
 NOTE:
-Â€Â¢ It will try to add the Script in Slot 4. It will check if it is empty or else if the Archetype has it already, else you will get an error and should use a Metaproperty.
-Â€Â¢ It is possible to only change the DesignNote with this script and so change the behavior of other scripts BUT this only works for NON-squirrel scripts, these require a reload(TODO: confirm) or even a restart first!
-Â€Â¢ Using Capacitor or Count for will not work for newly added DScripts. As these are created and kept clean in the Editor.
+?¢ It will try to add the Script in Slot 4. It will check if it is empty or else if the Archetype has it already, else you will get an error and should use a Metaproperty.
+?¢ It is possible to only change the DesignNote with this script and so change the behavior of other scripts BUT this only works for NON-squirrel scripts, these require a reload(TODO: confirm) or even a restart first!
+?¢ Using Capacitor or Count for will not work for newly added DScripts. As these are created and kept clean in the Editor.
 #########################################*/
 {
 
@@ -3771,14 +3572,14 @@ DefOn="test" //Set def on at construction and DBaseFunction remove that check.
 	{
 		print("-------------------------------------\nStart Test: For Function 1")
 		local i=0
-		local DN=userparams()
 		local start=time()
 		local end=start+1
+		local db = dblob("ABABCD")
 		while (time()==start){} 		//sinc to .0 second.
 		while (time()==end)				//Time interval is exactly 1 second.
 			{
 #################Insert the test function here#######################
-				SendMessage(2,"TurnOn")
+					db[db.len()] = "xyz"
 #####################################################################				
 				i++						//Checks how often this action can be perfomed within that 1 second.
 			}
@@ -3786,10 +3587,11 @@ DefOn="test" //Set def on at construction and DBaseFunction remove that check.
 		
 #####################################################################
 //set true if you want to compare it to a second function
-		if (false)
+		if (true)
 #####################################################################
 		{
 			print("Start Test: For 2nd Function")
+			local db2 = dblob("ABABCD")
 			local j=0
 			local start2=time()
 			local end2=start2+1
@@ -3797,7 +3599,7 @@ DefOn="test" //Set def on at construction and DBaseFunction remove that check.
 			while (time()==end2)			//Time interval is exactly 1 second.
 			{
 ################# Insert compare function here#######################
-				DefOn=ObjID("Player")
+					db *= "xyz"
 #####################################################################
 				j++
 			}
@@ -3824,4 +3626,9 @@ DefOn="test" //Set def on at construction and DBaseFunction remove that check.
 	{
 	}
 
+}
+
+if (false){
+	DPerformanceTest.DoTest()
+	DPerformanceTest.DoTest()
 }
