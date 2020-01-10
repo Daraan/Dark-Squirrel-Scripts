@@ -1,4 +1,4 @@
-##		--/					 §HEADER					--/
+##		--/					 Â§HEADER					--/
 
 #include DConfigDefault.nut
 // This file IS NECESSARY for DScript.nut to compile.
@@ -12,7 +12,7 @@
 // --------------------------------------------------------------------------
 
 
-##		/--		§#		§_INTRODUCTION__§		§#		--\
+##		/--		Â§#		Â§_INTRODUCTION__Â§		Â§#		--\
 //////////////////////////////////////////////////////////////////// 
 //					 	
 const DScriptVersion = 0.57 	// This is not a stable release!
@@ -31,7 +31,7 @@ const DScriptVersion = 0.57 	// This is not a stable release!
 //  To highlight code, special functions and constants and especially the use of custom fold points.
 //  An advanced text editor like notepad++ is recommended and necessary to use them. Like DromEd this file uses ANSI characters.
 //
-//		/--		§#		§_DEMO_CATEGORY_§		§#		--\
+//		/--		Â§#		Â§_DEMO_CATEGORY_Â§		Â§#		--\
 //			<-- fold it on the left
 //		|--			#		Paragraph		#			--|
 //			To fold the code into meaningful paragraphs.
@@ -77,7 +77,7 @@ The real scripts currently start at around line > 1000
 /////////////////////////////////////////////////////////////////
 
 // ----------------------------------------------------------------
-##		/--		§#		§___CONSTANTS___§		§#		--\
+##		/--		Â§#		Â§___CONSTANTS___Â§		Â§#		--\
 // Adjustable Constants are in the DConfig*.nut files.
 // ----------------------------------------------------------------
 
@@ -123,7 +123,7 @@ print("IDs: "+ PlayerID() +" \tID2="+ PlayerID2 +" n: "+ SqRootScript.ObjID("Pla
 
 // -----------------------------------------------------------------
 
-##		/--		§#	  	  §VERSION_CHECK§		§#		--\
+##		/--		Â§#	  	  Â§VERSION_CHECKÂ§		Â§#		--\
 /* If a FanMission author defines a dRequiredVersion in a separate DConfig file this test will check if the 
 	current DScriptVersion of this file is sufficient or outdated and will display a ingame and monolog message to them. */
 
@@ -135,7 +135,7 @@ if (dRequiredVersion > DScriptVersion){
 }
 
 
-##		/--		§#	  §HELLO_&_HELP_DISPLAY§	§#		--\
+##		/--		Â§#	  Â§HELLO_&_HELP_DISPLAYÂ§	Â§#		--\
 ##		|--			#	   General_Help		#			--|
 
 if (!Engine.ConfigIsDefined("dsnohello") && dHelloMessage && IsEditor() && DScriptVersion > 0.6)	// will be enabled in Version 0.6 onward.
@@ -169,7 +169,7 @@ if (Engine.ConfigIsDefined("dhelp")) 		//TODO: Setup attributes.
 }
 
 ##		|-- ------------------------------------------- /--
-##		/--		§# §______BASE_FUNCTIONS_____§  §#		--\
+##		/--		Â§# Â§______BASE_FUNCTIONS_____Â§  Â§#		--\
 //
 // 				String and Parameter analysis
 //
@@ -263,7 +263,7 @@ static sSharedSet = null
 		return param
 	}
 	
-	## |-- 	§Main_Analysis_Function		--|
+	## |-- 	Â§Main_Analysis_Function		--|
 	function DCheckString(str, returnInArray = false)		
 	/* 
 	Analysis of a given string parameter depending on its prefixed parameter.
@@ -379,11 +379,11 @@ static sSharedSet = null
 				break
 			
 			# Use a config variable
-				case '§': // Paragraph sign. #NOTE: Finally it happens, the ASCII ISO, ANSI, Unicode trouble.
+				case 'Â§': // Paragraph sign. #NOTE: Finally it happens, the ASCII ISO, ANSI, Unicode trouble.
 							# First squirrel uses signed character values from -128 to 127. While references mostly display 0 - 255
-							# '§' is equal to -89 (167) but there are several very different standards for these additional 128 characters.
+							# 'Â§' is equal to -89 (167) but there are several very different standards for these additional 128 characters.
 							#NOTE: DON'T TRUST THE MONOLOG.
-							# DromEd uses ANSI with modern characters like ?(128) in contrary the Windows Terminal uses 850 OEM where 128 represents Ç and § is displayed as º!
+							# DromEd uses ANSI with modern characters like ?(128) in contrary the Windows Terminal uses 850 OEM where 128 represents Ã‡ and Â§ is displayed as Âº!
 				local ref = string()
 				#DEBUG WARNING
 				if(!Engine.ConfigGetRaw(str.slice(1), ref))
@@ -706,7 +706,7 @@ static sSharedSet = null
 			return foundobjs
 	}	
 	
-	#  |--  §Conditional_Debug_Print 	--|
+	#  |--  Â§Conditional_Debug_Print 	--|
 	function DPrint(dbgMessage, DoPrint = false, mode = 3) 	// default mode = ePrintTo.kMonolog || ePrintTo.kUI)
 	{
 		if (!DoPrint){
@@ -735,7 +735,7 @@ static sSharedSet = null
 
 
 // ----------------------------------------------------------------
-##		/--		§# §____FRAME_WORK_SCRIPT____§	§#		--\
+##		/--		Â§# Â§____FRAME_WORK_SCRIPT____Â§	Â§#		--\
 //
 // The DBaseTrap is the framework for nearly all other scripts in this file.
 // It handles incoming messages and interprets the general parameters like Count, Delay, Repeat.
@@ -759,7 +759,7 @@ class DBaseTrap extends DBasics
 		// Overload me.
 	}
 	
-### |-- §Main_Message_Handler§ --| ###
+### |-- Â§Main_Message_HandlerÂ§ --| ###
 	function DBaseFunction(DN,script){
 	/* Handles and interprets all incoming messages. 
 		- Are they a valid Activating or Deactivating message? 
@@ -864,7 +864,7 @@ class DBaseTrap extends DBasics
 			}
 	}
 
-	# |-- 		§Pre_Activation_Checks 		--|
+	# |-- 		Â§Pre_Activation_Checks 		--|
 	/*Script activation Count and Capacitors are handled via Object Data, in this section they are set and controlled.*/
 	# |--	Capacitor Data Interpretation 	--|
 	function DCapacitorCheck(script, DN, OnOff = "")	//Capacitor Check. General "" or "On/Off" specific
@@ -1246,37 +1246,37 @@ class DAdvancedGeo extends DBaseTrap
 
 	DPolarCoordinates
 	<distance, theta, phi>
-	theta: 	below  pi/2 (90°) means below the object, above above
+	theta: 	below  pi/2 (90Â°) means below the object, above above
 
 	phi: Negative Values mean east, positive west.
-	Absolute values above 90° mean south, below north:
+	Absolute values above 90Â° mean south, below north:
 
 
 	Native return Values:	
 	Theta							Phi
-	Above180°						N0°			
+	Above180Â°						N0Â°			
 	/						(0,90) 	| (0,-90)	
-	X---90° 				W++++90°X-- -90°--E
+	X---90Â° 				W++++90Â°X-- -90Â°--E
 	\						(90,180)| (-90,-180)
-	Below0°						180°S-180°	
+	Below0Â°						180Â°S-180Â°	
 
 	DRelativeAngles
 	Corrected Values:
 	Theta							Phi
-	Above90°						N180°			
+	Above90Â°						N180Â°			
 	/								|	
-	X---0° 				  W--270°---X---90°--E
+	X---0Â° 				  W--270Â°---X---90Â°--E
 	\								|	
-	Below-90°						S0°	
+	Below-90Â°						S0Â°	
 
 
 	Camera.GetFacing()/Facing of the player object: The Y pitch values are a little bit different, the Z(heading) is like the corrected values:
 		Y							Z
-	Above270°						N180°			
+	Above270Â°						N180Â°			
 	/							 	|	
-	X---0°/360° 			W--270°-X--90°--E
+	X---0Â°/360Â° 			W--270Â°-X--90Â°--E
 	\								| 	
-	Below90°						S0°
+	Below90Â°						S0Â°
 	*/	
 
 	function DVectorBetween(from, to, UseCamera = true)
@@ -1307,7 +1307,7 @@ class DAdvancedGeo extends DBaseTrap
 
 	function DRelativeAngles(from, to, UseCamera = true)
 	{
-		//Uses the standard DPolarCoordinates, and transforms the values to be more DromEd like, we want Z(Heading)=0° to be south and Y(Pitch)=0° horizontal.
+		//Uses the standard DPolarCoordinates, and transforms the values to be more DromEd like, we want Z(Heading)=0Â° to be south and Y(Pitch)=0Â° horizontal.
 		//Returns the relative XYZ facing values with x=0.
 		local v = DPolarCoordinates(from, to, UseCamera)
 		return vector(0,v.y-90,v.z)
@@ -1874,7 +1874,7 @@ function OnMessage()	//Similar to the base functions in the first part.
 ## END of HUB
 ################################
 
-### /-- § --\
+### /-- Â§ --\
 
 #########################################
 class SafeDevice extends SqRootScript
@@ -1977,7 +1977,7 @@ DefOff = "DIOff"
 }
 
 
-## |-- §DTweqDevice --| ##
+## |-- Â§DTweqDevice --| ##
 class DTweqDevice extends DBaseTrap
 {
 	DefOn = "FrobWorldEnd"
@@ -2055,7 +2055,7 @@ class DTweqDevice extends DBaseTrap
 		}
 	}
 }
-### /-- §_READ_FILE_SCRIPTS_§ --\ ###
+### /-- Â§_READ_FILE_SCRIPTS_Â§ --\ ###
 class DFileExtractor extends DRelayTrap
 {
 	function BlobGetValue(blob, pos, length, linebreak = true)
@@ -2486,8 +2486,8 @@ Use DWatchMeTarget to specify another object, archetype or metaproperty. (see no
 
 On TurnOff will remove any(!) AIWatchObj links to this object. You maybe want to set DWatchMeOff="Null".
 
-?¢Further (if set) copies!! the AI->Utility->Watch links default property of the archetype (or the closest ancestors with this property) and sets the Step 1 - Argument 1 to the Object ID of this object.
-?¢Alternatively if no ancestor has this property the property of the script object will be used and NO arguments will be changed. (So it will behave like the normal T1/PublicScripts WatchMe or NVWatchMeTrap scripts)
+?Â¢Further (if set) copies!! the AI->Utility->Watch links default property of the archetype (or the closest ancestors with this property) and sets the Step 1 - Argument 1 to the Object ID of this object.
+?Â¢Alternatively if no ancestor has this property the property of the script object will be used and NO arguments will be changed. (So it will behave like the normal T1/PublicScripts WatchMe or NVWatchMeTrap scripts)
 TODO: If the object has a custom one it should take priority.
 
 ------------------------------
@@ -2654,7 +2654,7 @@ class DHudObject extends DHudCompass
 Similar to DHudCompass attaches the [DHudObject]{Object}; by default the selected inventory item; to the camera with the default {Offset} <0.75,0,-0.4.
 The objects facing will be constant toward the camera. With {Rotation} chose an offset.
 NOTE: Z-Rotation does not work intuitively as it is in combination with pitch.
-Use X,Y 180° Rotation to imitate a Z 180° rotation.
+Use X,Y 180Â° Rotation to imitate a Z 180Â° rotation.
 
 */#######################################
 {
@@ -2700,9 +2700,9 @@ On TurnOff will clear the Script 4 slot. Warning: This is not script specific BU
 TODO: Make this optional, dump warning
 
 NOTE:
-?¢ It will try to add the Script in Slot 4. It will check if it is empty or else if the Archetype has it already, else you will get an error and should use a Metaproperty.
-?¢ It is possible to only change the DesignNote with this script and so change the behavior of other scripts BUT this only works for NON-squirrel scripts, these require a reload(TODO: confirm) or even a restart first!
-?¢ Using Capacitor or Count for will not work for newly added DScripts. As these are created and kept clean in the Editor.
+?Â¢ It will try to add the Script in Slot 4. It will check if it is empty or else if the Archetype has it already, else you will get an error and should use a Metaproperty.
+?Â¢ It is possible to only change the DesignNote with this script and so change the behavior of other scripts BUT this only works for NON-squirrel scripts, these require a reload(TODO: confirm) or even a restart first!
+?Â¢ Using Capacitor or Count for will not work for newly added DScripts. As these are created and kept clean in the Editor.
 #########################################*/
 {
 
