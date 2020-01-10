@@ -1,5 +1,5 @@
 /*#########################################
-			DSEditorScripts v0.1b - Still looking for a better name
+			DScript ModdingTools v0.1b - Still looking for a better name
 			It is important that the file is alphabetically behind DScript -> must be compiled after.
 ###########################################
 
