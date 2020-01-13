@@ -1,5 +1,5 @@
 /*#########################################
-DScript Version 0.4a
+DScript Version 0.42a
 Use at your liking. 
 All Squirrel scripts get combined together so you can use the scripts in here via extends in other .nut files as well.
 
@@ -346,10 +346,66 @@ function DBaseFunction(DN,script) //this got turned into a global function so DH
 		
 		}
 	
-//Getting correct source in case of frob:
-	if (typeof bmsg == "sFrobMsg")
-		{SourceObj=bmsg.Frobber}
-	else{SourceObj = bmsg.from}	
+//Gets the correct [source] for most non standard messages.
+	switch (bmsg.getclass())	// I think checking the instance is easier than string comparison.
+		{
+			case sFrobMsg :
+				SourceObj = bmsg.Frobber
+				break
+			case sPhysMsg :
+				if (bmsg.collType){
+					SourceObj = bmsg.collObj		#NOTE can be a real object OR a texture
+					break
+				}
+				if (bmsg.contactType){
+					SourceObj = bmsg.contactType	// ContactCreate
+					break
+				}
+				// "PhysFellAsleep", "PhysWokeUp", "PhysMadePhysical", "PhysMadeNonPhysical" "PhysEnter", "PhysExit" left.
+				SourceObj = bmsg.transObj	// For first two it's 0. TODO: test nonphysikal
+				break
+			case sContainerScrMsg :			// Send to the Container when it contains something
+				SourceObj = bmsg.containee
+				break
+			case sContainedScrMsg :
+				SourceObj = bmsg.container
+				break
+			case sDamageScrMsg :
+			case sSlayMsg :
+				SourceObj = bmsg.culprit	// In case of player this is the weapon not player itself. TODO what about AIs?
+				break						// TLG: Joke in source: "Culprit: Mr. Green kind: With the candlestick damage type."
+			case sAttackMsg :
+				SourceObj = bmsg.weapon
+				break
+			case sStimMsg :
+				SourceObj = sLink(bmsg.source).From()	#NOTE Source / Sensor links go From the sending object To the StimArchetype. Good to know ;)
+				break
+			case sMovingTerrainMsg :
+				SourceObj = bmsg.waypoint
+				break
+			case sWaypointMsg :
+				SourceObj = bmsg.moving_terrain
+				break
+			case sRoomMsg:
+					// "ObjRoomTransit" is sent to the object. All other messages from API-reference are sent to the room.
+					if (bmsg.TransitionType == eRoomChange.kRoomTransit) {
+						// As there are two options lets check for possible links which define priority by the user.
+						foreach (link in ["Route", "~Population"]){
+							foreach (room in [bmsg.ToObjId, bmsg.FromObjId]){
+								if (Link.AnyExist(link, self, room)){
+									SourceObj = room
+									break
+								}
+							}
+						}
+						SourceObj = bmsg.ToObjId						// no link found return ToObjRoom
+					}
+					else 	// No Transit message means self is a room and we use the object as source.
+						SourceObj = bmsg.MoveObjId
+				break
+			default:
+				SourceObj = bmsg.from
+		}	//TODO: Add stim, room, obb...
 ###
 	
 //Let it fail?
