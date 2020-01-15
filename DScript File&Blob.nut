@@ -1,35 +1,91 @@
-##		--/					 	Â§HEADER							--/
+##		--/					 HEADER						--/
 
-#include DScript.nut?
+#include DScript.nut // File & Blob Library is standalone.
 
-##		/--		Â§#		Â§_File_&_Blob_Library__Â§		Â§#		--\
+
+##		/--		§		§File_&_Blob_Library§		§		--\
 //
 //	This file contains tools to interact with files (read only) and blobs.
 //	Ultimately enabling the extraction of data/parameters from files. 
 //
-
-
+//#NOTE IMPORTANT! Getting parameters over line breaks might not work. Depending on what linebreak type is used in the file.
+	#					For windows (CR LF) it does add +1 additional character per line! On Unix (LF) it works correctly.
+	#					see: https://en.wikipedia.org/wiki/Newline
+	#					Problem the pointer skips it, adding +2 to the position.
 
 class dfile
 {
-/* More interestingly is the dblob class, but as most actions which work for blobs also work for files, this is the upper class but it the end they are codependant.
-
-*/
+/* More interestingly is the dblob class, but as most actions which work for blobs also work for files, this is the upper class but it the end they are codependant.*/
 myblob = null								// As we will work more with the derived dblob class
 
 	constructor(filename, path = ""){
 		switch (typeof filename)
 		{
 			case "string":
-				myblob = ::file(path+filename, "r")
-				break
+				try {
+					myblob = ::file(path+filename, "r")
+					break
+				} catch(notfound) {
+					DPrint("ERROR!!!: "+myfile+" not found. Necessary file for this script.", kDoPrint, ePrintTo.kMonolog || ePrintTo.kLog || ePrintTo.kUI)
+					return
+				}
 			case "file" :
 				myblob = filename
 				break
 			default :
-				throw "Trying to construct a dfile with invalid parameters."
+				throw "Trying to construct with invalid parameters."
 		}
 	}
+
+// |-- Special functions --|
+
+	function getParam(param, def = "", separator = '"', offset = 0){
+	/* There it is the extract a parameter function. Yay :)
+		First scans until it finds the parameter, then looks for the next separator and the next behind it. Then returns the slice between these two.*/
+	#NOTE IMPORTANT: dfile and dblob.getParam work differently when there are linebreaks! 
+	#					dfile will give +1 character per linebreak on windows CR LF linebreaks. Unix LF is fine.
+		local rv = ""
+		if (find(param, offset)>=0){					// Check if present
+			if (find(separator)){						// Search for next separator
+				local rv = ""
+				while(true){
+					local c = readNext(separator)
+					if (c)
+						rv += c.tochar()
+					else
+						return rv
+				}
+			}
+		}
+		#DEBUG
+		// DPrint(param + " or seperator " + separator + "not found.")
+		return def
+	}
+
+	function getParam2(param, def = "", start = 1, length = 1, offset = 0){
+		if (find(param, offset)>=0){ 			// Check if present and move pointer behind pattern
+			myblob.seek(start, 'c')				// move start forward
+			local rv = ""
+			for (local i = 0; i < length; i++){	// read next length characters
+				local c = readNext('\n')
+				if (c)
+					rv += c.tochar()
+				else break						// breaks at EOS and linebreaks.
+			}
+			return rv
+		}
+		#DEBUG
+		// DPrint(param + " or seperator " + separator + "not found.")
+		return def
+	}
+
+	/*
+	function getParamOld(param, seperator = '"', offset = 0){
+	// Old slim version. Throws if not found. New ones should be faster as well, as it writes 
+		return slice(
+				find(separator, find(param, offset)) +1 ,
+				find(separator, myblob.tell())) 	}*/
+
 
 //	|-- Blob & File functions --|
 	function len()
@@ -40,69 +96,64 @@ myblob = null								// As we will work more with the derived dblob class
 	
 	function seek(offset, origin = 'b')
 		myblob.seek(offset, origin)
-
-
-// |-- Special functions --|
-
-	function getParam(param, separator = '"'){
-	/* There it is the extract a parameter function. Yay :)
-		First scans until it finds the parameter, then looks for the next separator and the next behind it. Then returns the slice between these two. */
-	// This function could be improved by directly writing every bit to a second blob while searching. But as compact as it could be.
-	#NOTE IMPORTANT! Slicing over line breaks might not work. Depending on what linebreak type is used in the file.
-	#					For windows (CR LF) it does add +1 additional character per line! On Unix (LF) it works correctly.
-	#					see: https://en.wikipedia.org/wiki/Newline
-	#					Problem is that while it appears as one character, the pointer skips it, adding +2 to the position
-		return slice(
-				find(separator, find(param)) +1 ,
-				find(separator, tell()))
+	
+	function readNext(separator = null){
+		if (myblob.eos())
+			return null
+		local c = myblob.readn('c')
+		if (c == '\\'){				// escape character
+			myblob.seek(1,'c')		// skip the next
+			c = myblob.readn('c')	// and get the next
+		}
+		if (c == separator)
+			return false
+		return c
 	}
 
 //	|-- String like functions --|
-	
-	
 	function slice(start, end = 0){
 	/* returns a copy containing only the elements from start to the end point.
-		if start is negative it begin at the end of the stream; also if end is negative it will take that value from the end of the stream..*/
+		If start is negative it begins at the end of the stream; same for a negative end value it will take that value from the end of the stream.*/
 		myblob.seek( start, start < 0? 'e' : 'b')
 		if (end <= 0)
-			end = myblob.len() + end	// get absolute position
-		end = end - myblob.tell()		// end must be a length.
-		if (end < 0){					// string slice would throw an error now, we slice backwards here.
+			end = myblob.len() + end			// get absolute position
+		print("end at " + end)
+		end = end - myblob.tell()				// end must be a length. So absolute position - current position
+		if (end < 0){							// string slice would throw an error now. We slice backwards here.
 			return slice(start + end, start)
 		} 
-		
 		return dblob( myblob.readblob( end ))
 	}
 	
-	function find(str, start = 0)					// TODO add escape, if char == \ skip next, if not special wanted.
-	{
+	function find(pattern, start = 0){
+		if (pattern == "")
+			throw "Can't find \"\"."
 		myblob.seek( start, (start < 0)? 'e' : 'b')	// pointer to start or end.
-		if (typeof str == "integer"){
+		if (typeof pattern == "integer"){
 			while (true){
-				print((myblob.seek(-1,'c'), myblob.readn('c'))+":"+tell() + (myblob.seek(-1,'c'), myblob.readn('c')==str))
-				if (myblob.readn('c') == str){
-					return myblob.tell() - 1
-				}
-				if (myblob.eos()){					//end of stream.
-					return null}
+				local c = readNext()
+				if (c == pattern)
+					return myblob.tell() - 1		// Start Position is 1 before.
+				if (!c)
+					return null						// EOS
 			}
 		} else {
-			local strlen = str.len()
+			local length = pattern.len()
+			if (length == 1)				// If the string has only length 1 we are done.
+				return find(pattern[0], myblob.tell())
 			while (true){
-				local first = find(str[0], myblob.tell())
+				local first = find(pattern[0], myblob.tell())
 				if (first == null)
-					return null					// eos.
-				if (strlen == 1)				// if string has only length 1 we are done.
-					return first
-					
-				foreach (c in str.slice(1))		// check if the next characters in the streams match. TODO this might be easier in a higher bit test.
+					return null						// eos.
+
+				foreach (c in pattern.slice(1))		// check if the next characters match. TODO this might be easier in a higher bit test.
 				{
 					if (c != myblob.readn('c')){
-						myblob.seek(first + 1)	//return the position of first found.
+						myblob.seek(first + 1)		// return the position of first found.
 						break
 					}
-					if (c == str[-1]){
-						return myblob.tell()-strlen
+					if (c == pattern[-1]){			// If c is the last character in the string we are done.
+						return first
 					}
 				}	
 			}
@@ -116,7 +167,10 @@ myblob = null								// As we will work more with the derived dblob class
 		
 	function toblob()						// Child Labor!!!
 		return (myblob.seek(0), ::dblob(myblob).toblob())	// as dblob(file) does not reset the seeker let's do it here.
-		
+	
+	function todblob()
+		return (myblob.seek(0), ::dblob(myblob))
+	
 	function _tostring()
 		return ::dblob(myblob).tostring()
 		
@@ -141,10 +195,8 @@ myblob = null								// As we will work more with the derived dblob class
 			return previdx + 1;
 		}
 	}
-	
 
 }
-
 
 
 class dblob extends dfile
@@ -158,39 +210,42 @@ class dblob extends dfile
 /*
 
  |-- Interaction with other data types
- dblob("string")				-> stores the string as blob of 8bit characters.
- dblob(blob)	 				-> stores an actual blob in a dblob.
- dblob("A") + dblob("B") 	-> dblob('AB') 		combined
+ dblob("string")			-> stores the string as blob of 8bit characters.
+ dblob(blob)	 			-> stores an actual blob directly.
  dblob("A") + "string" 		-> "Astring"
- dblob("A") * "string" 		-> dblob('Astring')
  dblob("A") + blob			-> dblob('A'blob)	a real blob gets appened.
- dblob(dblob("2"))			-> dblob('2')		no nesting by mistake.
- dblob(integer)				-> dblob(integer.tochar())) this at the moment will only write a single 8-bit character to the blob.
+ dblob("A") + dblob("B") 	-> dblob('AB') 		combined
+ dblob("A") * "string" 		-> dblob('Astring')	combined. This method is much faster!
+ dblob(dblob("2"))			-> dblob('2')		no nesting.
+ dblob(integer)				-> dblob(integer.tochar()) this at the moment will only write a single 8-bit character to the blob.
 														only values between -128 and 127 make sense.
-  
+ 
+ dblob(fi|le)				-> dblob('|le')		Pointer position in file matters.
+ dblob.open(fi|le, path)	-> dblob('|file')	File as a whole.
+ 
  |--  Get and set parts of the blob 
   dblob("ABCDE")[1] 			-> 'A'
   dblob("ABCDE")[2]  = "x"		-> dblob('AxCDE')
   dblob("ABCDE")[-2] = 'x'		-> dblob('ABCxE')
-  dblob("ABCDE")[2]  = "xyz"	-> dblob('AxyzE')
-  dblob("ABCDE")[-2] = "xyz"	-> dblob('ABCxyz')	if inserted string exeeds the 
+  dblob("ABCDE")[2]  = "xyz"	-> dblob('AxyzE')	this sets [3] and [4] as well.
+  dblob("ABCDE")[-2] = "xyz"	-> dblob('ABCxyz')	blob will grow.
 
  Included functions:
- dblob("A").tostring() 			-> "A"
- dblob(blob).tostring()			-> Same as above but turns an actual blob into a string of characters.
- dblob.myblob or dblob.toblob() = returns the stored blob
- 
+
  Blob like
  dblob.tell, len, writec		equal to dblob.myblob.tell, len, writen(*, 'c'); with writec expecting a string, array, blob to iterate.
+ dblob.myblob or dblob.toblob() -> returns the stored blob
  
- String like
- dblob.slice(begin, end),
-	this works exactly like you would expect from dblob.tostring().find
-	 
- |-- Opening a file --|
+ --- String like ---
  
- dblob.open(filename, path) returns a copy 
-
+ dblob("A").tostring() 			-> "A"
+ dblob(blob).tostring()			-> Same as above but use it to turn an actual blob into a string of characters.
+ 
+ 
+ dblob.find(pattern, startposition = 0)					Both behave like the string.find and .slice functions.
+ dblob.slice(begin, end = )					
+ dblob.getParam(pattern, separator = '"' , offset = 0)	Looks for the pattern/parameter name and returns the part that it finds between the 
+															next two occurrences of the separator.
 */
 
 
@@ -199,13 +254,16 @@ class dblob extends dfile
 		switch (typeof str)
 		{
 			case "string":
-				myblob = ::blob()
+				myblob = ::blob(str.len())
 				writec(str)
 				break
 			case "file" :
 				// str.seek(0) let's not seek to make custom position possible.
-				myblob = str.readblob(str.len())
-				str.close
+				if (str instanceof dfile)
+					myblob = str.myblob.readblob(str.len())
+				else
+					myblob = str.readblob(str.len())
+				str.close()
 				break
 			case "blob" :
 					if (str instanceof dblob)
@@ -223,13 +281,14 @@ class dblob extends dfile
 				throw "Trying to construct a dblob with invalid parameter."
 		}
 	}
-	
-	function open(filename, path = "")
-	{
-		local tfile = ::file(path+filename, "r")
-		myblob = tfile.readblob(tfile.len())
-		tfile.close()
-		return dblob(myblob)
+
+	function open(filename, path = ""){
+		try
+			return deblob(::file(path+filename, "r"))
+		catch(notfound){
+			DPrint("ERROR!!!: "+myfile+" not found. Necessary file for this script.", kDoPrint, ePrintTo.kMonolog || ePrintTo.kLog || ePrintTo.kUI)
+			return
+		}
 	}
 
 //	|-- Blob like function --|
@@ -238,7 +297,6 @@ class dblob extends dfile
 				myblob.writen(char,'c')
 	
 //	|-- Metamethods -- |
-	
 	function toblob()
 		return myblob
 	
@@ -251,7 +309,7 @@ class dblob extends dfile
 		
 	function _add(other){
 		myblob.seek(0,'e')
-		myblob.writeblob(other instanceof ::blob ? other : other.myblob)	// distinguish between blob and dblob.
+		myblob.writeblob(other instanceof ::blob? other : other.myblob)	// distinguish between blob and dblob.
 		return this
 	}	
 	
@@ -278,15 +336,5 @@ class dblob extends dfile
 		}
 		throw null
 	}
+	
 }
-
-d <- dfile("taglist_vals.txt")
-c<-d.getParam("ISSION")
-s<-escape(c.tostring())
-
-print(c+"'")
-
-d.seek(43)
-d.myblob.readn('c')
-print("we are at+"+d.tell())
-
