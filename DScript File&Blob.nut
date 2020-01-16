@@ -127,7 +127,7 @@ myblob = null								// As we will work more with the derived dblob class
 	
 	function find(pattern, start = 0){
 		if (pattern == "")
-			throw "Can't find \"\"."
+			return 0
 		myblob.seek( start, (start < 0)? 'e' : 'b')	// pointer to start or end.
 		if (typeof pattern == "integer"){
 			while (true){
