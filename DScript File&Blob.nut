@@ -63,7 +63,7 @@ myblob = null								// As we will work more with the derived dblob class
 	}
 
 	function getParam2(param, def = "", start = 1, length = 1, offset = 0){
-		if (find(param, offset)>=0){ 			// Check if present and move pointer behind pattern
+		if (find(param, offset) >= 0){ 			// Check if present and move pointer behind pattern
 			myblob.seek(start, 'c')				// move start forward
 			local rv = ""
 			for (local i = 0; i < length; i++){	// read next length characters

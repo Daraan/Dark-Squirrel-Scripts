@@ -37,10 +37,15 @@ const dRequiredVersion	= 0
 /*	Depending on the Object Hierarchy of an FM these values might need to be adjusted. */
 
 
-if (GetDarkGame() != 1)
-	const kDummyArchetype	= -1527 	// Sign(-1521) - needs to be an archetype with Physics->Model->Type:OBB and without Physics->Model->Dimension.
-else										// TODO: T1/G? compatible?. Should be.
-	const kDummyArchetype	= -44		// TODO: NOTE: Not Shock compatible!
+
+
+getconsttable().MissionConstants <-{
+	/* if you want to access non integer values via $QVar you can specify them here. 
+	 to get special characters like $ into the QVar name use this Syntax:
+	 "MyVar$" : 6
+	 NoSpecialChars	= "uselikethis" */
+}
+
 
 
 enum eAlarmSignals						// SignalAI sub messages to end ignoring the player for UndercoverScripts
@@ -59,6 +64,13 @@ enum eDLoad								// For DPersistentLoad
 	kKeyName		= "Env Zone 63"		// Data field where DPersistentLoad will look for its data.
 	kDataLength		= 63				// bytes to read after kKeyName. Choosing another kKeyName can enable up to 255 bytes to be read.
 }
+
+// |-- Potential conflict risk --|
+
+if (GetDarkGame() != 1)
+	const kDummyArchetype	= -1527 	// Sign(-1521) - needs to be an archetype with Physics->Model->Type:OBB and without Physics->Model->Dimension.
+else										// TODO: T1/G? compatible?. Should be.
+	const kDummyArchetype	= -44		// TODO: NOTE: Not Shock compatible!
 
 const kResetCountMsg	= "ResetCount"	// By default it is the same as the one for NVScript. If in any case you want an individual one.
 

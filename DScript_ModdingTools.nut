@@ -446,6 +446,9 @@ DefOn="test" //Set def on at construction and DBaseFunction remove that check.
 			//Set via Constructor -> faster calls.
 	function DoTest()
 	{
+################# Insert necessary Variables here#######################
+		local s = "QV$AR"
+#####################################################################	
 		print("-------------------------------------\nStart Test: For Function 1")
 		local i=0
 		local start=time()
@@ -455,7 +458,7 @@ DefOn="test" //Set def on at construction and DBaseFunction remove that check.
 		while (time()==end)				//Time interval is exactly 1 second.
 			{
 #################Insert the test function here#######################
-					db[db.len()] = "xyz"
+					DivideAtNext2(s,"$")
 #####################################################################				
 				i++						//Checks how often this action can be perfomed within that 1 second.
 			}
@@ -463,7 +466,7 @@ DefOn="test" //Set def on at construction and DBaseFunction remove that check.
 		
 #####################################################################
 //set true if you want to compare it to a second function
-		if (true)
+		if (false)
 #####################################################################
 		{
 			print("Start Test: For 2nd Function")
@@ -475,7 +478,7 @@ DefOn="test" //Set def on at construction and DBaseFunction remove that check.
 			while (time()==end2)			//Time interval is exactly 1 second.
 			{
 ################# Insert compare function here#######################
-					db *= "xyz"
+					DivideAtNext2(s,"$")
 #####################################################################
 				j++
 			}
@@ -503,7 +506,8 @@ DefOn="test" //Set def on at construction and DBaseFunction remove that check.
 	}
 
 }
-
+# |-- Start Test --|
+# this is outside of the class, to enable test on script_reload.
 if (false){
 	DPerformanceTest.DoTest()
 	DPerformanceTest.DoTest()
@@ -513,11 +517,13 @@ if (false){
 ###################### TEST AREA###################
 
 
-print("Do")
+
 /*DrkInv.CapabilityControl(0,2)
 DrkInv.CapabilityControl(3,2)
 DrkInv.CapabilityControl(1,2)
 DrkInv.CapabilityControl(2,2)
 DrkInv.CapabilityControl(4,2)*/
+s<-"$QVAR$"
 
-
+foreach (k,v in getconsttable().MissionConstants)
+	print(k+v)

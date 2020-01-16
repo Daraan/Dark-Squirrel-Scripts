@@ -86,28 +86,30 @@ const kDegToRad			 = 0.01745	// DegToRad PI/180
 
 ##		|--			#	For Readability		#			--|
 					
-const kReturnArray 	= true		// DGetParam and DCheckString
 
-const kDoPrint		= true		// DPrint guarantee error prints outside of DebugMode. Sometimes this has been replaced directly by the error condition.
-const kDebugOnly	= false		// Used rarely but to point it out.
+const kDoPrint			= true		// DPrint guarantee error prints outside of DebugMode. Sometimes this has been replaced directly by the error condition.
+const kDebugOnly		= false		// Used rarely but to point it out.
+enum ePrintTo						// DPrint mode options. used bitwise.
+{
+	kMonolog 			= 1			// Editor monolog.txt
+	kUI	 				= 2			// Ingame Interface Message. TODO: Not Shock compatible. What is the function???
+	kIgnoreTimers 		= 4			// Ignore Timer message.
+	kLog				= 8			// Editor.log and Game.log file, very serious reports only.
+	kError				= 16		// Force a Squirrel Error. (code will still continue) //TODO yes?
+}
 
+// Used during string analysis
+const kReturnArray 		= true		// DGetParam and DCheckString
 const kGetFirstChar 	= 0			// semi Magic numbers in string analysis.
 const kRemoveFirstChar	= 1
 
-enum ePrintTo					// DPrint mode options. used bitwise.
-{
-	kMonolog 		= 1			// Editor monolog.txt
-	kUI	 			= 2			// Ingame Interface Message. TODO: Not Shock compatible. What is the function???
-	kIgnoreTimers 	= 4			// Ignore Timer message.
-	kLog			= 8			// Editor.log and Game.log file, very serious reports only.
-	kError			= 16		// Force a Squirrel Error. (code will still continue) //TODO yes?
-}
 
+const kInfiteRepeat		= -1		
 
-enum eScriptTurn				// Used by the DBaseTrap checks
+enum eScriptTurn					// Used by the DBaseTrap checks
 {
-	Off
-	On
+	Off								// = 0
+	On								// = 1
 }
 
 
@@ -361,18 +363,43 @@ static sSharedSet = null
 			
 			# Use a Quest Variable as Parameter, can be on ObjID but also strings, vectors,... depending on the situation
 			case '$':
-				objset.append(Quest.Get(str.slice(kRemoveFirstChar)))
-				break
-			
+				local another = str.find("$",1)
+				str = str.slice(kRemoveFirstChar)
+				if (another){
+					local ar = DivideAtNext(str,"$")
+					str = ar[0] + (Quest.Exists("DebugDifficulty") ? Quest.Get("DebugDifficulty") : Quest.Get("difficulty")) + ar[1]
+				}
+				if (Quest.Exists(str)){
+					objset.append(Quest.Get(str))
+					break
+				}
+				if (Quest.BinExists(str)){
+					objset.append(Quest.Get(str))		// TODO stoped here.
+					break
+				}
+				
+				# 
 			# Use a config variable
-				case '§': // Paragraph sign. #NOTE: Finally it happens, the ASCII ISO, ANSI, Unicode trouble.
-							# First squirrel uses signed character values from -128 to 127. While references mostly display 0 - 255
-							# '§' is equal to -89 (167) but there are several very different standards for these additional 128 characters.
-							#NOTE: DON'T TRUST THE MONOLOG.
-							# DromEd uses ANSI with modern characters like ?(128) in contrary the Windows Terminal uses 850 OEM where 128 represents Ç and § is displayed as º!
+			case '§': // Paragraph sign. 
+						#NOTE IMPORTANT this file needs to be saved with ANSI encoding!
+				// replace with difficulty?
+				local another = str.find("§",1)
+				str = str.slice(kRemoveFirstChar)
+				if (another){
+					local ar = DivideAtNext(str,"§")
+					str = ar[0] + (Quest.Exists("DebugDifficulty") ? Quest.Get("DebugDifficulty") : Quest.Get("difficulty")) + ar[1]
+				}			
+				
 				local ref = string()
+				if (Engine.ConfigGetRaw(str, ref))
+					str = ref.tostring
+				else {
+					if (str in getconsttable().MissionConstants)
+					{}
+				}
+				
 				#DEBUG WARNING: ref is set here, if it does not exist will print this:
-				DPrint("Warning: Config variable " + str + "not set. Returning 0.", !Engine.ConfigGetRaw(str.slice(kRemoveFirstChar), ref), ePrintTo.kMonolog || ePrintTo.kUI || ePrintTo.kLog)
+				DPrint("Warning: Config variable " + str + "not set. Returning 0.", kDoPrint, ePrintTo.kMonolog || ePrintTo.kUI || ePrintTo.kLog)
 				objset = DCheckString(ref.tostring(), kReturnArray)
 				break
 				
@@ -636,12 +663,10 @@ static sSharedSet = null
 	}
 
 	#  |--  Functions for &=LinkPaths 	--|
-	
-	
 	function FindClosestObjectInSet(anchor, objset){
 	/* Want to use this function use with array.reduce but without the Squirrel 3.2 Update which allows passing the anchor, nah */
 		local apos 	  = Object.Position(anchor)
-		local minDist = 8000
+		local minDist = 8000		// random big value
 		local retObj  = null
 		foreach (obj in objset)
 		{
@@ -708,21 +733,17 @@ static sSharedSet = null
 			return foundobjs
 	}	
 	
-	
+//	|-- String manipulation --|
 	function DivideAtNext(str, char, include = false){
-	/* Divides a string, array or dblob at the next found 'char' and returns an array with the part before and the part after it.
-		If the character is not found the array will be spitted into the complete and an empty string.
+	/* Divides a string, array or dblob at the next found char. #NOTE for dblobs and arrays it can be 'char' for strings it must be"char".
+		Returns an array with the part before and the part after it.
+		If the character is not found the array will be spitted into the complete part and an empty string.
 		By default the character will be completely sliced out, with include = true it will be included in the second part.*/
-		local i = 0
-		for (i; i < str.len(); i++){
-			if (str[i] == char)
-				break
-		}
-		if (i == str.len())
-			return [str.slice(0,i)	, ""]
-		return [	str.slice(0,i)	, str.slice( include ? i : i+1 )]
+		local i = str.find(char)
+		if (i == null)
+			return [str, ""]
+		return [str.slice(0,i)	, str.slice( include ? i : i+1 )]
 	}
-	
 	
 	#  |--  §Conditional_Debug_Print 	--|
 	function DPrint(dbgMessage, DoPrint = false, mode = 3) 	// default mode = ePrintTo.kMonolog || ePrintTo.kUI)
@@ -735,9 +756,8 @@ static sSharedSet = null
 		{
 			// negative ID display Archetype, has a special name like Player use it + Archetype, else only archetype.
 			local name = self < 0 ? Object.GetName(self) : ( Property.PossessedSimple(self, "SymName") ? "'"+Object.GetName(self)+"' a " + Object.GetName(Object.Archetype(self)) : Object.GetName(Object.Archetype(self)))
+			
 			local s = "DDebug("+GetClassName()+") on "+ "("+self+") "+name+":"
-			/*if (mode == false)				//Old Version: DBaseTrapDebug enabled via config var.
-				mode = 3*/
 			if (mode & ePrintTo.kIgnoreTimers && message().name == "Timer") 	//ignore timers	
 				return
 			if (mode & ePrintTo.kMonolog && IsEditor())		//Useless if not in editor; actually not they will be logged. But let's keep the log only for real important stuff.
@@ -789,59 +809,40 @@ class DBaseTrap extends DBasics
 		local mssg = bmsg.message
 		#DEBUG POINT 1
 		DPrint("\r\nStage 1 - Received a Message:\t" + mssg + " from " + bmsg.from, false, ePrintTo.kUI || ePrintTo.kMonolog)
-		if (mssg == kResetCountMsg)				// ResetCount is not script specific! low prio todo: do
-			{if (IsDataSet(script+"Counter")){SetData(script+"Counter",0)}}	
 		
-//		|-- Internal Messages	--|
-		// Is it an internal message from this script to this script? Can be faked from the outside.
-		if (bmsg.data3 == script){					// TODO: NOT COMPATIBLE WITH ONESHOT
-			
-			if (mssg == "FrameTimer"){				// problem are the other scripts.
+//		|-- Internal Messages --|
+		if (bmsc.getclass() == sScrTimerMsg){
+		/* All Timers, delayed activation and CapacitorFalloff */
+			if (bmsg.data3 == script){					#NOTE this is not 100% specific. but I doubt that anyone places the script name in data3
 				// Check if still active:
 				if (!IsDataSet(script+"InfRepeat"))
 					return
 				local perNFrames = bmsg.data
 				local curFrame	 = bmsg.data2
 				print("Got one. I'm now on frame " +curFrame +" /"+perNFrames)
-				if (perNFrames == curFrame)
+				if (perNFrames == curFrame)				// Frame count reached.
 				{
-					PostMessage(self,"FrameTimer",perNFrames,1,script)
+					PostMessage(self,"Timer", perNFrames, 1, script)
 					if (perNFrames > 0){this.DoOn(DN)}else{this.DoOff(DN)}
 					return 
 				}
-				PostMessage(self,"FrameTimer", perNFrames, curFrame+1, script)
+				PostMessage(self, "Timer", perNFrames, curFrame + 1, script)
 				return
 			}
 
-			
-			local TimerName = bmsg.name					// Name of the Timer
-
-			if (TimerName == script + "Falloff"){ 		// Ending FalloffCapacitor Timer. This is script specific.
-				local OnOff = bmsg.data			// "ON" or "OFF" or ""	//Check between On/Off/""Falloff
-				local dat	= GetData(script+OnOff+"Capacitor") - 1
-							  SetData(script+OnOff+"Capacitor", dat)	// Reduce Capacitor by 1
-				
-				if (dat != 0)					// If there are charges left, start a new timer.
-				{
-					SetData(script+OnOff+"FalloffTimer", SetOneShotTimer(script+"Falloff", DGetParam(script+OnOff+"CapacitorFalloff", 0, DN).tofloat(), OnOff) )
-				}
-				else 
-					ClearData(script+OnOff+"FalloffTimer")	//No more Timer, clear pointer.
-				return
-			}
+			local TimerName = bmsg.name						// Name of the Timer
 			//DELAY AND REPEAT
-			if (TimerName == script+"Delayed") 					// Delayed Activation now initiate script.
-			{
-				local ar 	= DGetTimerData(bmsg.data) 		//Get Stored Data, [ON/OFF, Source, More Repeats to do?, timerdelay]
-					ar[0]	= ar[0].tointeger()				//func Off(0), ON(1)
-				SourceObj 	= ar[1].tointeger()
+			if (TimerName == script+"Delayed"){ 			// Delayed Activation now initiate script.
+				local ar 	= DGetTimerData(bmsg.data) 		// Get Stored Data, [ON/OFF, Source, More Repeats to do?, timerdelay]
+					ar[0]	= ar[0].tointeger()				// func Off(0), ON(1)
+				SourceObj 	= ar[1].tointeger()				// original source
 					ar[2] 	= ar[2].tointeger()				// # of repeats left
 				#DEBUG POINT 6
 				DPrint("Stage 6 - Delayed ("+ar[0]+") Activation. Original Source: ("+SourceObj+"). "+(ar[2])+" more repeats.")
 				
 				if (ar[2] != 0){						//Are there Repeats left? If yes start new Timer
 					ar[3] = ar[3].tofloat()				//Delay - start a new timer with savegame persistent data.
-					SetData(script+"DelayTimer", DSetTimerData(script+"Delayed", ar[3], ar[0], SourceObj, (ar[2] != -1? ar[2] - 1 : -1), ar[3]))
+					SetData(script+"DelayTimer", DSetTimerData(script+"Delayed", ar[3], ar[0], SourceObj, (ar[2] != kInfiteRepeat? ar[2] - 1 : kInfiteRepeat), ar[3]))
 				}
 				else
 					ClearData(script+"DelayTimer")		//Clean up behind yourself!
@@ -849,7 +850,27 @@ class DBaseTrap extends DBasics
 				if (ar[0]){this.DoOn(DN)}else{this.DoOff(DN)}
 				return
 			}
+			
+			if (TimerName == script + "Falloff"){ 			// Ending FalloffCapacitor Timer. This is script specific.
+				local OnOff = bmsg.data						// "ON" or "OFF" or ""	//Check between On/Off/""Falloff
+				local dat	= GetData(script+OnOff+"Capacitor") - 1
+							  SetData(script+OnOff+"Capacitor", dat)	// Reduce Capacitor by 1
+				
+				if (dat != 0){								// If there are charges left, start a new timer.
+					SetData(script+OnOff+"FalloffTimer", SetOneShotTimer(script+"Falloff", DGetParam(script+OnOff+"CapacitorFalloff", 0, DN).tofloat(), OnOff) )
+				}
+				else 
+					ClearData(script+OnOff+"FalloffTimer")	//No more Timer, clear pointer.
+				return
+			}
+			
 		}
+		
+		if (mssg == kResetCountMsg){
+		/* If this script uses a Counter resets it - low prio todo: This is not script specific	*/
+			if (IsDataSet(script+"Counter"))
+				  SetData(script+"Counter",0)
+		}	
 		
 //		 |-- No Sources via Proxy and others --|
 		switch (bmsg.getclass())	// I think checking the instance is easier than string comparison.
@@ -923,21 +944,20 @@ class DBaseTrap extends DBasics
 		
 		
 	//Let it fail?
-		local FailChance = DGetParam(script+"FailChance",0,DN)
-		if (FailChance > 0) 
-			{if (FailChance >= Data.RandInt(0,100)){return}}
+		if (DGetParam(script+"FailChance", 0 , DN) > 0){
+			// yah I call this twice, but as it used vary rarely saves variable for all others.
+			if (DGetParam(script+"FailChance", 0 ,DN) >= Data.RandInt(0,100)){return}
+		}
 
 	######
 
-	//React to the received message? Checks if the script actually has a ON/OFF function and if the message is in the set of specified commands. And Yes a DScript can perform it's ON and OFF action if both accepct the same message.
-			if (DGetParam(script+"On", DGetParam("DefOn","TurnOn", this, kReturnArray),DN, kReturnArray).find(mssg) != null)
-			{
+	//React to the received message? Checks if the message is in the set of specified commands. And Yes a DScript can perform it's ON and OFF action if both accept the same message.
+			if (DGetParam(script+"On", DGetParam("DefOn","TurnOn", this, kReturnArray),DN, kReturnArray).find(mssg) != null){
 				#DEBUG POINT 2a
 				DPrint("Stage 2 - Got DoOn(1) message:\t"+mssg +" from "+SourceObj)
 				DCountCapCheck(script,DN, eScriptTurn.On)
 			}
-			if (DGetParam(script+"Off", DGetParam("DefOff","TurnOff", this, kReturnArray), DN, kReturnArray).find(mssg) != null)
-			{
+			if (DGetParam(script+"Off", DGetParam("DefOff","TurnOff", this, kReturnArray), DN, kReturnArray).find(mssg) != null){
 				#DEBUG POINT 2b
 				DPrint("Stage 2 - Got DoOff(0) message:\t"+mssg +" from "+SourceObj)
 				DCountCapCheck(script,DN, eScriptTurn.Off)
@@ -949,25 +969,21 @@ class DBaseTrap extends DBasics
 	# |--	Capacitor Data Interpretation 	--|
 	function DCapacitorCheck(script, DN, OnOff = "")	//Capacitor Check. General "" or "On/Off" specific
 	{
-		local newValue  =   GetData(script+OnOff+"Capacitor")+1	//NewValue
-		local threshold = DGetParam(script+OnOff+"Capacitor", 0, DN)
+		local newValue  =   GetData(script+OnOff+"Capacitor") + 1	// NewValue
+		local Threshold = DGetParam(script+OnOff+"Capacitor", 0, DN)
 		##DEBUG POINT 3
-		DPrint("Stage 3 - "+OnOff+"Capacitor:("+newValue+" of "+threshold+")")
+		DPrint("Stage 3 - "+OnOff+"Capacitor:("+newValue+" of "+Threshold+")")
 		//Reached Threshold?
-		if (newValue == threshold)			//DHub compatibility
-		{
+		if (newValue == Threshold){			//DHub compatibility
 			// Activate
 			SetData(script+OnOff+"Capacitor", 0)		// Reset Capacitor and terminate now unnecessary FalloffTimer
 			if (DGetParam(script+OnOff+"CapacitorFalloff", false, DN))
 				KillTimer(ClearData(script+OnOff+"FalloffTimer"))
 			return false	//Don't abort <- false
-		}
-		else
-		{
+		} else {
 			// Threshold not reached. Increase Capacitor and start a Falloff timer if wanted.
 			SetData(script+OnOff+"Capacitor", newValue)
-			if (DGetParam(script+OnOff+"CapacitorFalloff", false, DN))
-			{
+			if (DGetParam(script+OnOff+"CapacitorFalloff", false, DN)){
 				// Terminate the old one timer...
 				if (IsDataSet(script+OnOff+"FalloffTimer"))
 					KillTimer(GetData(script+OnOff+"FalloffTimer"))
@@ -982,7 +998,7 @@ class DBaseTrap extends DBasics
 	function DCountCapCheck(script, DN, func)
 	/*
 	Does all the checks and delays before the execution of a Script.
-	Checks if a Capacitor is set and if its threshold is reached with the function above. func=1 means a TurnOn
+	Checks if a Capacitor is set and if its Threshold is reached with the function above. func=1 means a TurnOn
 
 	Strange to look at it with the null statements. But this setup enables that a On/Off capacitor can't interfere with the general one.
 
@@ -992,12 +1008,11 @@ class DBaseTrap extends DBasics
 	{
 	# |-- 		Is a Capacitor set 		--|
 		local abort = null																		
-		if (IsDataSet(script+"Capacitor")			 )	{if(DCapacitorCheck(script,DN,""))				{abort = true}			else{abort=false}}
-		if (IsDataSet(script+"OnCapacitor")  && func == eScriptTurn.On )	{if(DCapacitorCheck(script,DN,"On")) {if (abort==null){abort = true}}	else{abort=false}}
-		if (IsDataSet(script+"OffCapacitor") && func == eScriptTurn.Off)	{if(DCapacitorCheck(script,DN,"Off")){if (abort==null){abort = true}}	else{abort=false}}
-		if (abort) //If abort changed to true.
-		{
-			#DEBUG OUTPUT
+		if (IsDataSet(script+"Capacitor"))									{if(DCapacitorCheck(script,DN,""))				{abort = true}		 else {abort=false}}
+		if (IsDataSet(script+"OnCapacitor")  && func == eScriptTurn.On )	{if(DCapacitorCheck(script,DN,"On")) {if (abort==null){abort = true}} else {abort=false}}
+		if (IsDataSet(script+"OffCapacitor") && func == eScriptTurn.Off)	{if(DCapacitorCheck(script,DN,"Off")){if (abort==null){abort = true}} else {abort=false}}
+		if (abort){ //If abort changed to true.
+			#DEBUG POINT
 			DPrint("Stage 3X - Not activated as ("+func+")Capacitor threshold is not yet reached.")
 			return
 		}
@@ -1005,18 +1020,18 @@ class DBaseTrap extends DBasics
 	# |-- 		  Is a Count set 		--|
 		if (IsDataSet(script+"Counter")) //low prio todo: add DHub compatibility	
 			{
-			local CountOnly = DGetParam(script+"CountOnly",0,DN)	//Count only ONs or OFFs
+			local CountOnly = DGetParam(script+"CountOnly", 0, DN)	//Count only ONs or OFFs
 			if (CountOnly == 0 || CountOnly+func == 2)				//Disabled or On(param1+1)==On(func1+2), Off(param2+1)==Off(func0+2); 
 			{
 				local Count = SetData(script+"Counter",GetData(script+"Counter")+1)
-				#DEBUG OUTPUT
+				#DEBUG POINT 4A
 				DPrint("Stage 4A - Current Count: "+Count)
-				if (Count > DGetParam(script+"Count",0,DN).tointeger())
-				{
-					#DEBUG OUTPUT
+				if (Count > DGetParam(script+"Count",0,DN)){
+					// Over the Max abort.
+					#DEBUG POINT 4X
 					DPrint("Stage 4X - Not activated as current Count: "+Count+" is above the threshold of: "+DGetParam(script + "Count"))
 					return
-				} //Over the Max abort. 
+				}
 			}	
 		}
 	# |-- 		    Fail Chance 		--|
@@ -1050,18 +1065,15 @@ class DBaseTrap extends DBasics
 			}
 	
 			## Stop old timers if ExlusiveDelay is set.
-			if ( IsDataSet(script+"DelayTimer") && DGetParam(script+"ExclusiveDelay", false, DN) )
-			{
-					KillTimer(GetData(script+"DelayTimer"))	//TODO: BUG CHECK - exclusive Delay and inf repeat, does it cancel without restart?
+			if ( IsDataSet(script+"DelayTimer") && DGetParam(script+"ExclusiveDelay", false, DN) ){
+					KillTimer(GetData(script+"DelayTimer"))	// TODO: BUG CHECK - exclusive Delay and inf repeat, does it cancel without restart?
 			}
 			
 			## Stop Infinite Repeat
-			if (IsDataSet(script+"InfRepeat"))	
-			{
+			if (IsDataSet(script+"InfRepeat")){
 				// Inverse Command received => end repeat and clean up.
 				// Same command received will do nothing.
-				if (GetData(script+"InfRepeat") != func)
-				{
+				if (GetData(script+"InfRepeat") != func){
 					#DEBUG POINT 5X
 					DPrint("Stage 5X - Infinite Repeat has been stopped.")
 					ClearData(script+"InfRepeat")
@@ -1071,20 +1083,18 @@ class DBaseTrap extends DBasics
 					ClearData(script+"DelayTimer")
 					return
 				}
-			}
-			else
-			{
+			} else {
 				## |-- Start Delay Timer --|
 				// DBaseFunction will handle activation when received.
 				#DEBUG POINT 5B
 				DPrint("Stage 5B - ("+func+") Activation will be executed after a delay of "+ delay + (doPerNFrames? " ." : " seconds."))
 				if (doPerNFrames){
 						SetData(script+"InfRepeat", func)
-						PostMessage(self, "Timer", script+"perFrame", doPerNFrames, 1)			// 0 is the current frame count.
+						PostMessage(self, "Timer", doPerNFrames, 1, script)	// 1 will be the next frame #NOTE fake timer message.
 						return
 				}
 				local repeat = DGetParam(script+"Repeat", 0, DN).tointeger()
-				if (repeat == -1)
+				if (repeat == kInfiteRepeat)
 					SetData(script+"InfRepeat", func)						//If infinite repeat store if they are ON or OFF.
 				// Store the Timer inside the ObjectsData, and start it with all necessary information inside the timers name.
 				SetData(script+"DelayTimer", DSetTimerData(script+"Delayed", delay, func, SourceObj, repeat, delay) )
@@ -1484,7 +1494,7 @@ constructor() 		//Initializing Script Data
 			}
 			else //Make a default array.
 			{
-				DefDN[def*2-1]=v	//Writes the specified value into the corresponding slot in our artificial DefDesignNote.
+				DefDN[def*2 - 1]=v	//Writes the specified value into the corresponding slot in our artificial DefDesignNote.
 			}
 			}
 		}	
