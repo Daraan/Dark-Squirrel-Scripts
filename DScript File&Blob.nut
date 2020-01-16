@@ -3,7 +3,7 @@
 #include DScript.nut // File & Blob Library is standalone.
 
 
-##		/--		§		§File_&_Blob_Library§		§		--\
+##		/--		Â§		Â§File_&_Blob_LibraryÂ§		Â§		--\
 //
 //	This file contains tools to interact with files (read only) and blobs.
 //	Ultimately enabling the extraction of data/parameters from files. 
@@ -66,7 +66,7 @@ myblob = null								// As we will work more with the derived dblob class
 		if (find(param, offset) >= 0){ 			// Check if present and move pointer behind pattern
 			myblob.seek(start, 'c')				// move start forward
 			local rv = ""
-			for (local i = 0; i < length; i++){	// read next length characters
+			for (local i = 0; (length? i < length : true); i++){		// if length == 0 will read to the end of the line.
 				local c = readNext('\n')
 				if (c)
 					rv += c.tochar()
