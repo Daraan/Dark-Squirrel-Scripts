@@ -3,4 +3,4 @@
 // I tried to make everything that could cause a conflict into a constant and move it into to Default file.
 // If there is still a conflict you can't go around please let me know on GitHub
 
-const kReplyMessage = "Overridden"
+// const kReplyMessage = "Overridden"
