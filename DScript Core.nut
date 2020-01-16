@@ -1,4 +1,4 @@
-##		--/					 §HEADER					--/
+##		--/					 Â§HEADER					--/
 
 #include DConfigDefault.nut
 // This file IS NECESSARY for DScript.nut to compile.
@@ -12,7 +12,7 @@
 // --------------------------------------------------------------------------
 
 
-##		/--		§#		§_INTRODUCTION__§		§#		--\
+##		/--		Â§#		Â§_INTRODUCTION__Â§		Â§#		--\
 //////////////////////////////////////////////////////////////////// 
 //					 	
 const DScriptVersion = 0.61 	// This is not a stable release!
@@ -31,7 +31,7 @@ const DScriptVersion = 0.61 	// This is not a stable release!
 //  To highlight code, special functions and constants and especially the use of custom fold points.
 //  An advanced text editor like notepad++ is recommended and necessary to use them. Like DromEd this file uses ANSI characters.
 //
-//		/--		§#		§_DEMO_CATEGORY_§		§#		--\
+//		/--		Â§#		Â§_DEMO_CATEGORY_Â§		Â§#		--\
 //			<-- fold it on the left
 //		|--			#		Paragraph		#			--|
 //			To fold the code into meaningful paragraphs.
@@ -78,7 +78,7 @@ The real scripts currently start at around line > 1000
 /////////////////////////////////////////////////////////////////
 
 // ----------------------------------------------------------------
-##		/--		§#		§___CONSTANTS___§		§#		--\
+##		/--		Â§#		Â§___CONSTANTS___Â§		Â§#		--\
 // Adjustable Constants are in the DConfig*.nut files.
 // ----------------------------------------------------------------
 
@@ -133,7 +133,7 @@ function getPlayerArm()
 
 // -----------------------------------------------------------------
 
-##		/--		§#	  	  §VERSION_CHECK§		§#		--\
+##		/--		Â§#	  	  Â§_VERSION_CHECK_Â§		Â§#		--\
 /* If a FanMission author defines a dRequiredVersion in a separate DConfig file this test will check if the 
 	current DScriptVersion of this file is sufficient or outdated and will display a ingame and monolog message to them. */
 
@@ -145,7 +145,7 @@ if (dRequiredVersion > DScriptVersion){
 }
 
 
-##		/--		§#	  §HELLO_&_HELP_DISPLAY§	§#		--\
+##		/--		Â§#	  Â§HELLO_&_HELP_DISPLAYÂ§	Â§#		--\
 ##		|--			#	   General_Help		#			--|
 
 if (!Engine.ConfigIsDefined("dsnohello") && dHelloMessage && IsEditor() && DScriptVersion > 0.68)	// will be enabled in Version 0.6 onward.
@@ -175,7 +175,7 @@ if (Engine.ConfigIsDefined("dhelp")) 		//TODO: Setup attributes.
 }
 
 ##		|-- ------------------------------------------- /--
-##		/--		§# §______BASE_FUNCTIONS_____§  §#		--\
+##		/--		Â§# Â§______BASE_FUNCTIONS_____Â§  Â§#		--\
 //
 // 				String and Parameter analysis
 //
@@ -194,7 +194,7 @@ class DBasics extends SqRootScript
 </
 Help 		= "Handles Parameter analysis. No ingame use."
 Help2		= "More detail"
-SubVersion 	= 0.5
+SubVersion 	= 0.59
 />
 //---------------------------------- 
 
@@ -241,22 +241,23 @@ static sSharedSet = null
 			// if it is already an array return it or a single value out of it.
 			if (inArray)
 				return param
-			return param.pop()
+			return param.pop()		// TODO: top or [1] should be better. Ceck performance.
 		}
 		if (inArray)				// else if a single value in an array is needed return it in one.
 			return [param]
 		return param
 	}
 	
-	## |-- 	§Main_Analysis_Function		--|
-	function DCheckString(str, returnInArray = false)		
+	## |-- 	Â§Main_Analysis_Function		--|
+	function DCheckString(str, returnInArray = false){		
 	/* 
 	Analysis of a given string parameter depending on its prefixed parameter.
 		if returnInArray is set it will return the found entities in an array else only a single one.
 		Most of the time this function revolves around objects but especially with the + operator it can for example be used to combine messages.
 	*/
-	{
 		# |-- Handling non strings	--|
+		// return them straight away. Check is a string could be an integer or float.
+		#NOTE: NewDark automatically detects them as well if they are not enclosed with "". Basically "" are not even necessary for new Dark.
 		switch (typeof(str))
 		{
 			case "null":
@@ -265,9 +266,10 @@ static sSharedSet = null
 				return DReturnThis(str, returnInArray)
 			case "string":
 				//Check if the string is digits only. To get rid of the necessity of using the # tointeger operator.
-				local intexp = regexp(@"^\s*(-?[0-9]+)\s*$")
-				if (intexp.match(str))
+				if (regexp(@"^\s*(-?[0-9]+)\s*$").match(str))	// TODO check performance without whitespaces.
 					str = str.tointeger()
+				else if (regexp(@"^\s*(-?[0-9]+.[0-9]+\s*$").match(str))
+					str = str.tofloat()
 				else
 					break
 			case "bool":
@@ -283,6 +285,12 @@ static sSharedSet = null
 		{
 			case "[me]"	:
 				return DReturnThis(self, returnInArray)
+			case "[culprit]" :			#NOTE Usable of Damage or Slain messages and more.
+				#DEBUG POINT
+				DPrint("Culprit for" + message().message + " was " + LinkDest(Link.GetOne("~CulpableFor", SourceObj)))
+				local culprit = LinkDest(Link.GetOne("~CulpableFor", SourceObj))
+				if (culprit != 0)
+					return DReturnThis(culprit, returnInArray) 	// else no break and return [source]
 			case "[source]"	:
 				return DReturnThis(SourceObj, returnInArray)
 			case "[player]" :
@@ -295,14 +303,6 @@ static sSharedSet = null
 					return [""]
 				}
 				return ""
-				
-			case "[culprit]" :								#NOTE Usable of Damage or Slain messages.
-				#DEBUG POINT
-				DPrint("Culprit for" + message().message + " was " + LinkDest(Link.GetOne("~CulpableFor", SourceObj)))
-				local culprit = LinkDest(Link.GetOne("~CulpableFor", SourceObj))
-				if (culprit == 0)
-					culprit = SourceObj
-				return DReturnThis(culprit, returnInArray)
 			// TODO: Test
 			case "[message]" : 								// Lets make using custom message.data possible but requires a new Parameter
 				return DReturnThis(DCheckString(message()[DGetParam(GetClassName()+"UseMsgData", "message")], returnInArray), returnInArray)
@@ -312,29 +312,29 @@ static sSharedSet = null
 		}
 
 		# |-- Operator Analysis 	--|
-		local objset = array(0)
+		local objset = []
 		switch (str[kGetFirstChar])
 		{
 			# |-- Linked Objects
 			case '&':
 				str = str.slice(kRemoveFirstChar)
 				local anchor = self
+				// Different anchor?
 				if ( str[kGetFirstChar] == '%'){				// &%NotMe%ControlDevice
 					local divide = DivideStringAtNext(str.slice(kRemoveFirstChar), '%')		// don't wanna split and might destroy other param parts
 					anchor = DCheckString(divide[0])
 					str = divide[1]
 				}
-				if (str[kGetFirstChar] != '-' && str[kGetFirstChar] != '='){	// normal behavior.{
+				// normal behaviour
+				if (str[kGetFirstChar] != '-' && str[kGetFirstChar] != '='){
 					foreach ( link in Link.GetAll(str, anchor))
-						objset.append(LinkDest(link))
-				}
-				else 											// Objects which are linked=together with that LinkType.
-				{
+						objset.append(LinkDest(link))	
+				} else {													// Objects which are linked=together with that LinkType.
 					objset.append( anchor )
 					if (str[kGetFirstChar] == '-')
-						DObjectsInPath(str.slice(kRemoveFirstChar), objset)	//Single Line, no loop support. Follows the lowest LinkID.
+						DObjectsInPath(str.slice(kRemoveFirstChar), objset)	// Single Line. Follows the lowest LinkID.
 					else
-						DObjectsInNet(str.slice(kRemoveFirstChar), objset)		//Alternativ gets every object. Also ordered in distance to start.
+						DObjectsInNet(str.slice(kRemoveFirstChar), objset)	// Alternativ gets every object. Also ordered in distance to start.
 				}
 				break
 				
@@ -373,34 +373,53 @@ static sSharedSet = null
 					objset.append(Quest.Get(str))
 					break
 				}
-				if (Quest.BinExists(str)){
-					objset.append(Quest.Get(str))		// TODO stoped here.
-					break
+				// No QVar, check config Var
+				if (Engine.ConfigIsDefined(str)){					// special[0]
+						/* switch(special[1]){						// not necessary as DCheckString gets integers
+						case "Int" 	: local ref = int_ref()
+							Engine.ConfigGetInt(special[0], ref)
+							str = ref.tointeger()
+						break
+						case "float"	: local ref = float_ref()	// Check how performance changes when integrating float.
+							Engine.ConfigGetFloat(special[0], ref)
+							str = ref.tofloat()
+							break 
+						default			: local ref = string()
+							Engine.ConfigGetRaw(special[0],ref)
+							str = DCheckString(ref.tostring(),returnArray)
+					}*/
+					local ref = string()
+					Engine.ConfigGetRaw(str,ref)
+					return DReturnThis(DCheckString(ref.tostring(),returnArray), returnInArray)
 				}
-				
-				# 
-			# Use a config variable
-			case '§': // Paragraph sign. 
-						#NOTE IMPORTANT this file needs to be saved with ANSI encoding!
+				// Else DSCustomConfig?
+				if (str in getconsttable().MissionsConstants)
+					return DReturnThis(DCheckString(getconsttable().MissionsConstants[str],returnArray), returnInArray)
+				// yes no break.
+			case 'Â§': // Paragraph sign. 
+				#NOTE IMPORTANT this file needs to be saved with ANSI encoding!
 				// replace with difficulty?
-				local another = str.find("§",1)
+				local another = str.find("Â§",1)
 				str = str.slice(kRemoveFirstChar)
 				if (another){
-					local ar = DivideAtNext(str,"§")
+					local ar = DivideAtNext(str,"Â§")
 					str = ar[0] + (Quest.Exists("DebugDifficulty") ? Quest.Get("DebugDifficulty") : Quest.Get("difficulty")) + ar[1]
-				}			
-				
-				local ref = string()
-				if (Engine.ConfigGetRaw(str, ref))
-					str = ref.tostring
-				else {
-					if (str in getconsttable().MissionConstants)
-					{}
 				}
-				
-				#DEBUG WARNING: ref is set here, if it does not exist will print this:
-				DPrint("Warning: Config variable " + str + "not set. Returning 0.", kDoPrint, ePrintTo.kMonolog || ePrintTo.kUI || ePrintTo.kLog)
-				objset = DCheckString(ref.tostring(), kReturnArray)
+				local customtable = split(str,".")
+				local tablename = kSharedBinTable
+				if (customtable.len() == 2)
+					tablename = customtable[1]
+				// At last if it is a BinQuestData
+				#NOTE this can be only generated by custom scripts, I would like this to use this as a possible Interface to other scripts.
+				#NOTE2 the BinTable where this is looked for is named 'SharedBinTable' but can be adjsted in the config files.
+				if (Quest.BinExists(tablename){
+					local table = Quest.BinGetTable(tablename)
+					if (customtable[0] in table)
+						return DReturnThis(DCheckString(table[customtable[0]]), returnInArray)
+				}
+				#DEBUG WARNING
+				DPrint("WARNING" + str + "was not found.", kDoPrint,ePrintTo.kMonolog || ePrintTo.kUI || ePrintTo.kLog )
+				objset.append(null)
 				break
 				
 			# Reply; GetData from another object.
@@ -411,18 +430,21 @@ static sSharedSet = null
 					if (str[1] == '/')	// start of the chain.
 					{
 							start = true
-							sSharedSet = [] //when to clear?
+							sSharedSet = [] //when to clear? // TODO is this really shared by all or only subclasses
 					}
-					local endaction = start? split(str,".") : message().data2
+					local endaction = start? split(str,".")[1] : message().data2
 					# Get First Object Set
 					local division = DivideStringAtNext(str, '/')
-					local tempset = DCheckString(division[0], kReturnArray)
-
+					if (division[1] != ""){ // we are not at the end
+			
+					local nextset  = DCheckString(division[0], kReturnArray)
+					DRelayTrap.RelayMessages(nextset, [DPingBack], endaction)
 					
+					}
 					# Send what?
 					if (endaction[1] == "PingBack")
 					{
-						foreach (obj in tempset)
+						foreach (obj in nextset)
 						{
 							SendMessage(obj, "DPingBack", str.len() == 3? endaction[2] : null) 	
 						}
@@ -440,7 +462,52 @@ static sSharedSet = null
 					
 					objset = sSharedSet		// TODO
 				break
-				
+			
+			case '>':		
+							// TODO: FMize path? Engine. works but what about dblob?
+							// >strings/testfile.txt>MyKey>>seperator // >strings/testfile.txt>MyVal>>1,0
+							// >strings/book/Green.str >...txt>MyKey  // >strings/testfile.txt>MyKey>Offset>"
+							// Offsetkey or #Offsetnumber
+					local divide = split(str,">")
+					if (endswith(divide[1],".str")){
+						local ref = string()
+						Engine.ReadFile(divide[0],"",divide[1], something likse this // TODO need the reference.)
+					}
+					local key 	 = divide[2]
+					
+					/*
+					divide >3 are optional
+					local offset	= divide[3]
+					local separator = divide[4]
+					local begin		= divide[4->5]
+					local end		= divide[4->6]
+					*/			
+						
+					if (divide.len() == 4){
+						if (divide[4].len() > 1){
+							local begin_end = DivideAtNext(divide[4],",")
+							divide.append(begin_end[0].tointeger())
+							divide.append(begin_end[1].tointeger())
+						}
+					}
+					local ofile  = ::dblob.open(divide[1])
+					local offset = 0
+					if (divide.len() >= 3){
+						// offset, can be another string or hard integer.
+						if (divide[3] != ""){
+							if (divide[3][0] == '#')
+								offset = divide[3].slice(kRemoveFirstChar).tointeger()
+							else
+								offset = ofile.find(offset)
+						}
+					}
+					if (divide.len() > 6)	// Keyname, return value if not found, begin, end, offset from start
+						objset = DCheckString(ofile.getParam2(divide[2], null, divide[5], divide[6], offset ), returnArray)
+					else
+						objset = DCheckString(ofile.getParam(divide[2], null, divide[4], offset), returnArray)
+											// Keyname, return value if not found, seperator, offset from start		
+				break
+					
 			# The closest object out of a set.
 			case '^':			// TODO: Does this work for Meta-Properties too?
 				local anchor = self
@@ -552,7 +619,7 @@ static sSharedSet = null
 					anchor = DCheckString(values[7])
 				}
 				// Checks each obj in the returned array via the map function and generates a new array.
-				objset = DCheckString(values[8], kReturnArray).map(
+				objset = DCheckString(values[8], kReturnArray).map(	// TODO filter
 					function(obj){
 						local objpos	= Object.Position(obj)
 						local ancpos	= Object.Position(anchor)
@@ -745,7 +812,7 @@ static sSharedSet = null
 		return [str.slice(0,i)	, str.slice( include ? i : i+1 )]
 	}
 	
-	#  |--  §Conditional_Debug_Print 	--|
+	#  |--  Â§Conditional_Debug_Print 	--|
 	function DPrint(dbgMessage, DoPrint = false, mode = 3) 	// default mode = ePrintTo.kMonolog || ePrintTo.kUI)
 	{
 		if (!DoPrint){
@@ -775,7 +842,7 @@ static sSharedSet = null
 
 
 // ----------------------------------------------------------------
-##		/--		§# §____FRAME_WORK_SCRIPT____§	§#		--\
+##		/--		Â§# Â§____FRAME_WORK_SCRIPT____Â§	Â§#		--\
 //
 // The DBaseTrap is the framework for nearly all other scripts in this file.
 // It handles incoming messages and interprets the general parameters like Count, Delay, Repeat.
@@ -798,7 +865,7 @@ class DBaseTrap extends DBasics
 		// Overload me.
 	}
 	
-### |-- §_Main_Message_Handler_§ --| ###
+### |-- Â§_Main_Message_Handler_Â§ --| ###
 	function DBaseFunction(DN,script){
 	/* Handles and interprets all incoming messages. 
 		- Are they a valid Activating or Deactivating message? 
@@ -964,7 +1031,7 @@ class DBaseTrap extends DBasics
 			}
 	}
 
-	# |-- 		§Pre_Activation_Checks 		--|
+	# |-- 		Â§Pre_Activation_Checks 		--|
 	/*Script activation Count and Capacitors are handled via Object Data, in this section they are set and controlled.*/
 	# |--	Capacitor Data Interpretation 	--|
 	function DCapacitorCheck(script, DN, OnOff = "")	//Capacitor Check. General "" or "On/Off" specific
@@ -1188,37 +1255,37 @@ class DAdvancedGeo extends DBaseTrap
 
 	DPolarCoordinates
 	<distance, theta, phi>
-	theta: 	below  pi/2 (90°) means below the object, above above
+	theta: 	below  pi/2 (90Â°) means below the object, above above
 
 	phi: Negative Values mean east, positive west.
-	Absolute values above 90° mean south, below north:
+	Absolute values above 90Â° mean south, below north:
 
 
 	Native return Values:	
 	Theta							Phi
-	Above180°						N0°			
+	Above180Â°						N0Â°			
 	/						(0,90) 	| (0,-90)	
-	X---90° 				W++++90°X-- -90°--E
+	X---90Â° 				W++++90Â°X-- -90Â°--E
 	\						(90,180)| (-90,-180)
-	Below0°						180°S-180°	
+	Below0Â°						180Â°S-180Â°	
 
 	DRelativeAngles
 	Corrected Values:
 	Theta							Phi
-	Above90°						N180°			
+	Above90Â°						N180Â°			
 	/								|	
-	X---0° 				  W--270°---X---90°--E
+	X---0Â° 				  W--270Â°---X---90Â°--E
 	\								|	
-	Below-90°						S0°	
+	Below-90Â°						S0Â°	
 
 
 	Camera.GetFacing()/Facing of the player object: The Y pitch values are a little bit different, the Z(heading) is like the corrected values:
 		Y							Z
-	Above270°						N180°			
+	Above270Â°						N180Â°			
 	/							 	|	
-	X---0°/360° 			W--270°-X--90°--E
+	X---0Â°/360Â° 			W--270Â°-X--90Â°--E
 	\								| 	
-	Below90°						S0°
+	Below90Â°						S0Â°
 	*/	
 
 	function DVectorBetween(from, to, UseCamera = true){
@@ -1246,7 +1313,7 @@ class DAdvancedGeo extends DBaseTrap
 	}
 
 	function DRelativeAngles(from, to, UseCamera = true){
-		//Uses the standard DPolarCoordinates, and transforms the values to be more DromEd like, we want Z(Heading)=0° to be south and Y(Pitch)=0° horizontal.
+		//Uses the standard DPolarCoordinates, and transforms the values to be more DromEd like, we want Z(Heading)=0Â° to be south and Y(Pitch)=0Â° horizontal.
 		//Returns the relative XYZ facing values with x=0.
 		local v = DPolarCoordinates(from, to, UseCamera)
 		return vector(0,v.y-90,v.z)
@@ -1325,10 +1392,10 @@ ________________
 SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages functions. As an example see DStdButton.
 #################################################### */
 {
-	function DSendMessage(t,msg){
+	function DSendMessage(t,msg,data = null, data2 = null, data3 = null){
 	/* Sends message or stim to target. */
 		if (msg[kGetFirstChar] != '[')					// Test if normal or "[Intensity]Stimulus" format.
-			SendMessage(t,msg)
+			SendMessage(t,msg,data,data2,data3)
 		else {
 			local ar = split(msg,"[]")
 			if (GetDarkGame())				// not T1/G
@@ -1338,7 +1405,7 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 		}
 	}
 
-	function DRelayMessages(OnOff,DN){
+	function DRelayMessages(OnOff,DN, data = null, data2 = null, data3 = null){
 	/* Sends each message to each target. */
 		local script = GetClassName()
 		foreach (msg in DGetParam(script+"T"+OnOff,"Turn"+OnOff, DN, kReturnArray)) //Determines the messages to be sent, TurnOn/Off is default.
@@ -1350,7 +1417,7 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 							DGetParam(script+"TDest",
 							"&ControlDevice", DN, kReturnArray), DN, kReturnArray), DN,kReturnArray), DN, kReturnArray))
 				{
-				DSendMessage(t,msg)
+				DSendMessage(t,msg, data, data2, data3)
 			}
 		}
 	}
@@ -1664,7 +1731,7 @@ function OnMessage(){
 ## END of HUB
 ################################
 
-### 	/-- 	§	Button & Lever scripts				--\
+### 	/-- 	Â§	Button & Lever scripts				--\
 
 #########################################
 class SafeDevice extends SqRootScript{
@@ -1940,8 +2007,8 @@ Use DWatchMeTarget to specify another object, archetype or metaproperty. (see no
 
 On TurnOff will remove any(!) AIWatchObj links to this object. You maybe want to set DWatchMeOff="Null".
 
-?¢Further (if set) copies!! the AI->Utility->Watch links default property of the archetype (or the closest ancestors with this property) and sets the Step 1 - Argument 1 to the Object ID of this object.
-?¢Alternatively if no ancestor has this property the property of the script object will be used and NO arguments will be changed. (So it will behave like the normal T1/PublicScripts WatchMe or NVWatchMeTrap scripts)
+?Â¢Further (if set) copies!! the AI->Utility->Watch links default property of the archetype (or the closest ancestors with this property) and sets the Step 1 - Argument 1 to the Object ID of this object.
+?Â¢Alternatively if no ancestor has this property the property of the script object will be used and NO arguments will be changed. (So it will behave like the normal T1/PublicScripts WatchMe or NVWatchMeTrap scripts)
 TODO: If the object has a custom one it should take priority.
 
 ------------------------------
@@ -2298,7 +2365,7 @@ DPortalTarget="+player+#88+@M-MySpecialAIs"
 ###################################End Teleporter Scripts###################################
 
 
-// 		|-- §Undercover / §Ignore_Player_until_Scripts		 --|
+// 		|-- Â§Undercover / Â§Ignore_Player_until_Scripts		 --|
 ###################################Undercover scripts###################################
 //Weapons scripts are in DUndercover.nut
 //TODO: Link the the detailed forum documentation.
