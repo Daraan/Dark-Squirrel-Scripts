@@ -44,9 +44,9 @@ myblob = null								// As we will work more with the derived dblob class
 		First scans until it finds the parameter, then looks for the next separator and the next behind it. Then returns the slice between these two.*/
 	#NOTE IMPORTANT: dfile and dblob.getParam work differently when there are linebreaks! 
 	#					dfile will give +1 character per linebreak on windows CR LF linebreaks. Unix LF is fine.
-		local rv = ""
-		if (find(param, offset)>=0){					// Check if present
-			if (find(separator)){						// Search for next separator
+		local valid = find(param, offset)
+		if (valid >= 0){										// Check if present
+			if (find(separator, valid)){						// Search for next separator
 				local rv = ""
 				while(true){
 					local c = readNext(separator)
@@ -66,7 +66,7 @@ myblob = null								// As we will work more with the derived dblob class
 		if (find(param, offset) >= 0){ 			// Check if present and move pointer behind pattern
 			myblob.seek(start, 'c')				// move start forward
 			local rv = ""
-			for (local i = 0; (length? i < length : true); i++){		// if length == 0 will read to the end of the line.
+			for (local i = 0; (length? i < length : true); i++){		// if length == 0 it will read to the end of the line.
 				local c = readNext('\n')
 				if (c)
 					rv += c.tochar()
@@ -284,10 +284,10 @@ class dblob extends dfile
 
 	function open(filename, path = ""){
 		try
-			return deblob(::file(path+filename, "r"))
+			return dblob(::file(path+filename, "r"))
 		catch(notfound){
-			DPrint("ERROR!!!: "+myfile+" not found. Necessary file for this script.", kDoPrint, ePrintTo.kMonolog || ePrintTo.kLog || ePrintTo.kUI)
-			return
+			error(filename+" not found. Necessary file for this script.")//, kDoPrint, ePrintTo.kMonolog || ePrintTo.kLog || ePrintTo.kUI)
+		return
 		}
 	}
 
