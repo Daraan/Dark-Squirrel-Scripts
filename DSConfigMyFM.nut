@@ -1,1 +1,0 @@
-const kReplyMessage = "This works"
