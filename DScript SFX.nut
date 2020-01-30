@@ -474,9 +474,10 @@ class DRenameItem extends DRelayTrap {
 			script = data[0]
 			local append = GetData(script + "Ticks") - 1
 			if (append == 0){
-				if (DGetParam(script + "NoRestart", null, DN) <= 1)	// #NOTE null < anything = true
+				if (DGetParam(script + "NoRestart", null, DN) <= 1){	// #NOTE null < anything = true
 					ClearData(script + "Ticks")
-				DoOff(userparams())
+					DoOff(userparams())
+				}
 				DRelayMessages("Off", userparams())
 				return
 			}
