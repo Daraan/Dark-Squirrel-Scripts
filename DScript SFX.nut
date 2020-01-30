@@ -168,44 +168,44 @@ NOTE: You will also need to do some Hierarchy changes to adjust the sound and mo
 TIP: Remember you can use multiple different melee weapons by using the cycle command. Or design them so that you can also use them from the normal inventory.
 ####################################################################*/
 {
-DefOn="InvSelect"
+DefOn = "InvSelect"
 
+#	|-- On / Off--|
 	function DoOn(DN)
 	{
-		SetOneShotTimer("Equip",0.5)
+		SetOneShotTimer("Equip",0.5)	// Need a little delay here as the arm object is not instantly created at InvSelect.
 	}
 
+#	|-- Handlers --|
 	function OnTimer()
 	{
-		if (message().name == "Equip")
-		{
+		if (message().name == "Equip"){ 
 			local DN		= userparams()
 			local sfxdummy 	= null
-			local usedummy	= DGetParam("DArmAttachmentUseObject", false, DN)
-			local model 	= DGetParam("DArmAttachmentModel", self, DN)
+			local usedummy	= DGetParam(script+"UseObject", 0, DN)
+			local model 	= DGetParam(script+"Model", self, DN)
 
 			// print("m1 = "+model)
-			//TODO: Switch better maybe?
 			if (model == self && !usedummy)
 				model = Property.Get(self,"ModelName")
 
 			if (usedummy){
-				sfxdummy = Object.Create(model)
+				sfxdummy = Object.BeginCreate(model)		// Changed
 				Property.SetSimple(sfxdummy,"RenderType",0)
 			} else {
-				sfxdummy = Object.Create(-1)
+				sfxdummy = Object.BeginCreate(-1)
 				Property.Add(sfxdummy,"ModelName")
 				Property.SetSimple(sfxdummy,"ModelName",model)
-				// print("model is: "+Property.Get(sfxdummy,"ModelName",DGetParam("DArmAttachmentModel","stool",DN)))
+				DPrint("Model is: " + Property.Get(sfxdummy,"ModelName"))
 			}
 
 			if (usedummy < 2)
 				Physics.DeregisterModel(sfxdummy)
-			if (usedummy != 3)
+			//if (usedummy != 3)
 				Property.SetSimple(sfxdummy,"HasRefs",0)
 			//Weapon.Equip(self)
-			local ar  = split(DGetParam("DArmAttachmentRot","0,0,0",DN),",")		// TODO? take vector directly?
-			local ar2 = split(DGetParam("DArmAttachmentPos","0,0,0",DN),",")
+			local ar  = split(DGetParam(script + "Rot","0,0,0",DN),",")		// TODO? take vector directly?
+			local ar2 = split(DGetParam(script + "Pos","0.1,-0.6,-0.43",DN),",")
 			local vr  = vector(ar[0].tofloat(),ar[1].tofloat(),ar[2].tofloat())
 			local vp  = vector(ar2[0].tofloat(),ar2[1].tofloat(),ar2[2].tofloat())
 
@@ -214,9 +214,12 @@ DefOn="InvSelect"
 			LinkTools.LinkSetData(l,"joint",10)
 			LinkTools.LinkSetData(l,"rel pos",vp)
 			LinkTools.LinkSetData(l,"rel rot",vr)
+			Object.EndCreate(sfxdummy)
 		}
+		
+		if (RepeatForIntances(OnTimer))
+			base.OnTimer()
 	}
-
 }
 
 
@@ -231,18 +234,16 @@ class DFaceObject extends DAdvancedGeo
 #$
 	function DObjFaceObj(obj,to,correction=0)
 	{
-		local a=DRelativeAngles(obj,to)+correction
+		local a = DRelativeAngles(obj,to)+correction
 		Property.Set(obj,"PhysState","Facing",a)
 	}
 
 	function DoOn(DN)
 	{
-		local script	= GetClassName()
 		local target	= DGetParam(script+"Target",self,DN)
 		local offset	= DGetParam(script+"Offset",0,DN)
 		
-		foreach (obj in DGetParam(script+"Object",self,DN,1))
-		{
+		foreach (obj in DGetParam(script+"Object",self,DN,1)){
 			DObjFaceObj(obj,target,offset)
 		}
 	}
@@ -260,81 +261,95 @@ DHudModel is independent of the scaleing of the original object.*/
 #########################################
 {
 DefOn		= "FrobInvEnd"
-DefOff		= "null"
+DefOff		= "[null]"
 loc_offset	= null
 rot_offset	= null
 oldfacing	= 0
+AttachLink 	= null // Faster to store it in the instance instead of getting the data twice per frame.
 
-	function OnBeginScript() 	//Storing this in the class instance and save the periodic parameter grabbing during runtime.
-	{	
-		loc_offset = DGetParam(GetClassName()+"Offset",vector(0.75,0,-0.4),userparams())
-		rot_offset = DGetParam(GetClassName()+"Rotation",vector(0,0,90),userparams())
-		if (typeof(rot_offset) != "vector")
-			rot_offset = vector(0,0,rot_offset)
-	}
+
  
- 	function CreateHudObj(ObjType)
-	{
+ 	function CreateHudObj(ObjType){
 		local obj  = Object.Create(ObjType)			//Create Selected item
 		Physics.DeregisterModel(obj)				//We want no physical interaction with anything.
-		local link = Link.Create("DetailAttachement", obj, ObjID("Player")) //::PlayerID())
+		local link = Link.Create("DetailAttachement", obj, ::PlayerID)
 		
-		LinkTools.LinkSetData(link,"Type",3)		//attach to camera
-		LinkTools.LinkSetData(link,"vhot/sub #", 0)
-		SetData("Compass", obj)						//Save the CreatedObj and LinkID to update them in the timer function and destroy it in the DoOff
-		SetData("CompassLink", link)
-		print("set link" + link)
+		LinkTools.LinkSetData(link,"Type", 3)		// Type: Submod
+		LinkTools.LinkSetData(link,"vhot/sub #", 0) // Submod 0, the camera.
 		
+		// Save the CreatedObj and LinkID to update them in the timer function and destroy it in the DoOff
+		SetData("Compass", obj)						
+		AttachLink = SetData("CompassLink", link)
 		return obj
 	}
  
 	function GetRotation(){
-			local v = Camera.GetFacing()
-			v.y = 0
-			return rot_offset - v
+		local v 	 = Camera.GetFacing()
+		oldfacing 	 = v.y
+		v.y = 0
+		return rot_offset - v
 	}
 
-
-	function OnUpdateHud(){
-		if (IsDataSet("Active")) 				//TODO: I'll make a handler for all hud objects.
-		{
-			if (Camera.GetFacing().y != oldfacing) 	//Don't update? Not necessary but should be m
-			{				
-					LinkTools.LinkSetData(GetData("CompassLink"), "rel rot", GetRotation())
-					oldfacing = Camera.GetFacing().y
-					//Get Position:
-					//First will calculate the absolute targeted world position of the object.
-					//Then calculates the ralativ vector between the player to that point.
-					//Lastly adjust it by the relativ camera offset.
-					//I think this might be doable with skipping WorldToObj and CalcRel to (0,0,0)
-					local v 	 = vector()
-					local Player = ObjID("Player")
-					Object.CalcRelTransform(Player, Player, v, vector(), 4, 0)
-					LinkTools.LinkSetData(GetData("CompassLink"), "rel pos", Object.WorldToObject(Player,Camera.CameraToWorld(loc_offset))+v)
+#	|-- Message Handlers --|
+	function OnFrameUpdate(){
+		/* Get Position:
+			First will calculate the absolute targeted world position of the object.
+			Then calculates the relativ vector between the player to that point.
+			Lastly adjust it by the relativ camera offset.
+			I think this might be doable with skipping WorldToObj and CalcRel to (0,0,0)
+		*/
+		if (message().data == GetData("Active")){							// This could be removed but unsafe, if two scripts fire.
+			if (Camera.GetFacing().y != oldfacing){ 						//Don't update? Not necessary but should be easy pre check to save res.			
+				LinkTools.LinkSetData(AttachLink, "rel rot", GetRotation())
+				local v 	 = vector()
+				Object.CalcRelTransform(::PlayerID, ::PlayerID, v, vector(), 4, 0)
+				LinkTools.LinkSetData(AttachLink, "rel pos",
+										Object.WorldToObject(::PlayerID, Camera.CameraToWorld(loc_offset)) + v
+										)
 			}
-			// Post Message is per frame but dang it still wobbles :( - but walking is stable :)
-			PostMessage(self,"UpdateHud")
 		}
 	}
+	
+	function OnBeginScript() 	//Storing this in the class instance and save the periodic parameter grabbing during runtime.
+	{	
+		// Skip if these were set on a child class.
+		if (!loc_offset)
+			loc_offset = DGetParam(script + "Position", vector(0.75,0,-0.4), userparams())
+		if (!rot_offset){
+			rot_offset = DGetParam(script + "Rotation", vector(0,0,90), userparams())
+			if (typeof(rot_offset) != "vector")
+				rot_offset = vector(0, 0, rot_offset)
+		}
+		if (typeof(loc_offset) != "vector")
+			DPrint("ERROR: Position must be a vector: Use: {Position}= \"<x,y,z\"", kDoPrint, ePrintTo.kUI || ePrintTo.kMonolog)
+				
+		if (IsDataSet("Active"))
+			AttachLink = GetData("CompassLink") 	// Restore data on reload
+		base.OnMessage()
+	}
 
-########	
-	function DoOn(DN)
-	{
+#	|-- On	 Off --|
+	function DoOn(DN, item = null){
 	//TODO: Make toggle optional
 	// Off or ON? Toggling item
 		if (IsDataSet("Active"))
-			{return this.DoOff(DN)}
-		SetData("Active",true)
+			{return DoOff(DN)}
 		
-		if (GetClassName() == "DHudCompass")	//base.DoOn from child.
-			CreateHudObj(DarkUI.InvItem())
-		PostMessage(self,"UpdateHud")
+		SetData("Active",::DHandler.Register(self, 1)) // update per 1 frame.
+		
+		if (!item)					// base.DoOn from child.
+			item = DarkUI.InvItem()
+		
+		item = CreateHudObj(item)
+		return item	// Return for base.DoOn on childs.
 	}
 
-	function DoOff(DN)
-	{ 
-		ClearData("Active")						//TODO: Make script specific (it should be) and why not remove it.
-		Object.Destroy(GetData("Compass"))
+	function DoOff(DN){ 
+		::DHandler.DeRegister(GetData("Active"))
+		ClearData("Active")
+		Object.Destroy(ClearData("Compass"))
+		ClearData("CompassLink")
+		return null
 	}
 }
 #########################################
@@ -349,30 +364,142 @@ Use X,Y 180° Rotation to imitate a Z 180° rotation.
 {
 	function OnBeginScript() 	//Storing this in the class instance and save the periodic parameter grabbing during runtime.
 	{	
-		loc_offset = DGetParam(GetClassName()+"Offset",vector(0.75,0,-0.4),userparams())
-		rot_offset = DGetParam(GetClassName()+"Rotation",vector(),userparams())
+		rot_offset = DGetParam(GetClassName() + "Rotation", vector(0,0,0), userparams())
 		if (typeof(rot_offset) != "vector")
 			rot_offset = vector(0,rot_offset,0)
+			
+		base.OnBeginScript() // loc offset is set on base.
 	}
 
-	function GetRotation()
-	{
+	function GetRotation(){
 		local v = Camera.GetFacing()
-		v.z=0
+		oldfacing 	 = v.y
+		v.z = 0
 		return v + rot_offset
 	}
 	
-// |-- On/Off 
-	function DoOn(DN)
-	{		
-		local script = GetClassName()
-		local obj 	 = CreateHudObj(DGetParam(script+"Object",DarkUI.InvItem()))
-		DScaleToMatch(obj,DGetParam(script+"MaxSize",0.25,DN))
-		
-		base.DoOn(DN)
+#	|-- On	 Off --|
+	function DoOn(DN){
+		local obj = base.DoOn(DN, DGetParam(script, DarkUI.InvItem()))
+		if (obj)	// else it was off action.	
+			DScaleToMatch(obj, DGetParam(script+"MaxSize", 0.25, DN))
 	}
 }
+
 #######################################
+class DRenameItem extends DRelayTrap {
+/* Renames the inventory description of an item, first tests if there is language support for the new name, to be more specific if there is an Name_ entry in a objnames.str file. If not sets it to the specific value. 
+	{} = item to rename
+	{NewName} : by default the ModelName, can be a name from objnames.str (without Name_) or a totally free one.
+	{Append}  : Appends a value
+	{Append} = [Timer]Delay, periodic update.
+		When the Timer runs out DRenameItemTOff messages are sent;
+	
+*/
+#######################################
+	
+	function ReplaceItemNameFromRes(item, newname){
+	/* Adjusts newname if there is language support for the new type (objnames.str), if so returns true, else false and newtype stays the same. 
+		#NOTE needs a string() object for reference! */
+		// First try language support
+		Property.SetSimple(item,"GameName","Name_" + newname)
+		// Check if there is language support:
+		local name = Data.GetObjString(item, "objnames")
+		if (name == "")
+			return false
+		newname.constructor(name)					// Magic..., sadly this needs a string ref and doesn't work directly with the strong.
+		return true
+	}
+	
+	function RenameItemHack(item, newname, append = null){
+		Property.SetSimple(item,"GameName", ":\"" + newname + (append? " " + append : "") + "\"")		// The mighty hack: "newname"
+	}
+	
+	/*#NOTE Two liner approach with language detection
+		local newname = string(name_to_test)
+		RenameItemHack(item, (ReplaceItemNameFromRes(item, newname), newname), append) 
+		
+		A more native approach would be this - as ReplaceItemNameFromRes already changes the name and tests if it is valid. And only hacks if it is not.
+		local newname = string(name_to_test)
+		if (!ReplaceItemNameFromRes(item, newname))
+			RenameItemHack(item, newname)
+	*/
+	
+	# |-- On / Off --|
+	function DoOn(DN, timer = null){
+		/* Each instance can rename one item.*/
+		
+		if (DGetParam(script + "NoRestart", false, DN) && IsDataSet(script + "Ticks"))
+			return
+			
+		local item 		= DGetParam(script, self, DN)			
+		local newname	= string(DGetParam(script+"NewName", Property.Get(item,"ModelName"), DN)) // need a reference for rename function.
+		local append 	= DGetParam(script+"Append", "", DN).tostring()
+		
+		// Backup? If the property is not set. It will be removed only and the archetype name appears again, else store it.
+		if (Property.PossessedSimple(item, "GameName"))
+			SetData(script+"OrgName", Property.Get(item,"GameName"))
+		
+		// Language support found and nothing special. EXIT
+		if (ReplaceItemNameFromRes(item, newname) && append == ""){			// If there is language support and nothing special we are done.
+			DPrint("Native name found: " + newname)
+			return
+		}
+			DPrint("Native name not found or appending stuff on: " + newname)
+		if (::startswith(append, "[Timer]")){
+			append = DCheckString(append.slice(7)).tointeger()				// slice away [Timer] and make really sure it's integer.	
+			// If a Timer is already running.
+			if (!IsDataSet(script + "Ticks"))								// TODO: This does not reset the past ms.
+				DSetTimerData("DRenameItem", 1.0, script, item, newname)	// Store all data in the timer.
+			
+			SetData(script + "Ticks", append)
+			append = append / 60 + ":" + append % 60 						// ("min, seconds") format.
+		}
+		
+		RenameItemHack(item, newname, append)
+	}
+	
+	function DoOff(DN){
+		if (GetData(script+"OrgName"))
+			Property.SetSimple(DGetParam(script, self, DN),"GameName",GetData(script+"OrgName"))
+		else
+			Property.Remove(DGetParam(script, self, DN), "GameName")
+	}
+	
+	# |-- Handlers --|
+	// Add a Countdown to an item:
+	function OnTimer(){
+		if (message().name == "DRenameItem"){
+			local data = DGetTimerData(message().data)
+			script = data[0]
+			local append = GetData(script + "Ticks") - 1
+			if (append == 0){
+				if (DGetParam(script + "NoRestart", null, DN) <= 1)	// #NOTE null < anything = true
+					ClearData(script + "Ticks")
+				DoOff(userparams())
+				DRelayMessages("Off", userparams())
+				return
+			}
+			SetData(script + "Ticks", append)
+			append = ::format("%d:%02d", append / 60, append % 60)  // ("min, seconds")
+			RenameItemHack(data[1].tointeger(), data[2], append)
+			DSetTimerData("DRenameItem", 1.0, data[0], data[1], data[2])
+			script = GetClassName()									// Resetting to make sure.
+			return
+		}
+		base.OnTimer()
+	}
+
+	function OnCreate(){
+		//#NOTE: FIX: Items with stacks get copied when dropped when a Timer is active they permanently have the time attached.
+		//				Only possible if this script operates on self, else there is no message to the script.
+		if (DGetParam(script, self) == self && ::startswith(DGetParam(script + "Append", "").tostring(), "[Timer]"))
+			Property.Remove(DGetParam(script, self, DN), "GameName")
+		if (RepeatForIntances(callee()))
+			base.OnMessage()					// If there is a On Trigger for Create it will set it again.
+	}
+
+}
 
 
 #########################################
@@ -456,12 +583,10 @@ Tried to make a Wave Like movement but have jet so succeed. SO it is more like a
 			if (mnA[eDrunkData.CurrentFade] < ( mnA[eDrunkData.Length] / mnA[eDrunkData.Interval] ))
 				strengthCurrent = mnA[eDrunkData.CurrentFade] / mnA[eDrunkData.Length] * mnA[eDrunkData.Interval]
 
-			if (mnA[eDrunkData.Length] > 0)
-			{	//Do FadeOut
-				if (mnA[eDrunkData.CurrentFade] > (mnA[eDrunkData.Length] - mnA[eDrunkData.FadeInTime]) / mnA[eDrunkData.Interval])
-					{
-						strengthCurrent= (mnA[eDrunkData.Length]/mnA[eDrunkData.Interval]-mnA[eDrunkData.CurrentFade])/(mnA[eDrunkData.FadeInTime]/mnA[eDrunkData.Interval])
-					}
+			if (mnA[eDrunkData.Length] > 0){	//Do FadeOut
+				if (mnA[eDrunkData.CurrentFade] > (mnA[eDrunkData.Length] - mnA[eDrunkData.FadeInTime]) / mnA[eDrunkData.Interval]){
+					strengthCurrent= (mnA[eDrunkData.Length]/mnA[eDrunkData.Interval]-mnA[eDrunkData.CurrentFade])/(mnA[eDrunkData.FadeInTime]/mnA[eDrunkData.Interval])
+				}
 			}			
 			local seed 		= Data.RandInt(-1,1) * 70				// Sway in one direction
 			local ofacing 	= (Camera.GetFacing().z + seed) * kDegToRad
@@ -470,11 +595,13 @@ Tried to make a Wave Like movement but have jet so succeed. SO it is more like a
 			//Rotate and push the player.
 			if (1 & mnA[eDrunkData.Mode])	//Rotate
 				{
-				Property.Set("player","PhysState","Rot Velocity",
-						vector(Data.RandFltNeg1to1()*strengthCurrent, Data.RandFltNeg1to1()*strengthCurrent, 4*strengthCurrent*Data.RandFltNeg1to1() ))
+				Property.Set(::PlayerID,"PhysState", "Rot Velocity",
+						vector(Data.RandFltNeg1to1() * strengthCurrent, 
+								Data.RandFltNeg1to1() * strengthCurrent, 
+								Data.RandFltNeg1to1() * strengthCurrent * 4))
 				}
 			if (2 & mnA[eDrunkData.Mode])	// Push forward
-				Physics.SetVelocity("player", orthv * (2*strengthCurrent) )
+				Physics.SetVelocity(::PlayerID, orthv * (2*strengthCurrent) )
 		}
 	}
 
@@ -485,3 +612,37 @@ Tried to make a Wave Like movement but have jet so succeed. SO it is more like a
 	}
 
 }
+
+
+#########################################
+class DModelByCount extends DStackToQVar {
+/* Will change the model depending on the stacks an object has. The Models are stored in the TweqModels property and thus limited to 5 different models. Model 0,1,2,3,4 will be used for Stack 1,2,3,4,5 and above.
+#########################################*/
+	constructor()		//If the object has already more stacks. TODO: Check Create statement and Constructor do the same thing twice.
+	{
+		local stack = GetProperty("StackCount") - 1
+		if (stack > 5)
+			stack = 5		
+		Property.SetSimple(self,"ModelName",GetProperty("CfgTweqModels","Model "+stack))
+		
+		base.constructor()
+	}
+########
+	function DoOn(DN)
+	{
+		local stack = ::StackToQVar() - 1	// -1 for Tweq Slot.
+		
+		//Limited to 5 models
+		if (stack > 5)
+			stack = 5
+			
+		//When an object gets dropped
+		if (message().message == "Create")
+			Property.SetSimple(self, "ModelName", Property.Get(self,"CfgTweqModels", "Model 0"))
+			
+		//Change appearance in the inventory.
+		local obj = GetObjOnPlayer(Object.Archetype(self))
+		Property.SetSimple(obj, "ModelName", Property.Get(obj, "CfgTweqModels", "Model "+stack))
+	}
+}
+

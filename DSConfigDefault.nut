@@ -1,12 +1,12 @@
 //////////////////////////////////////////////////////////////////// 
 //		§DSCRIPT_DEFAULT_CONSTANTS		--\
 ////////////////////////////////////////////////////////////////////
+// 
 // Constants declared here are meant to adjust the DScript
 // in case they conflict with your FM, your own code or to
 // better suit your need.
 //
 // # DO NOT CHANGE THIS FILE - TO MAKE ADJUSTMENTS CREATE A NEW ONE #
-//	 Expect to permanently turn off of the Hello & Help message.
 //
 //	I propose
 //	----------------
@@ -20,61 +20,63 @@
 //
 ////////////////////////////////////////////////////////////////////
 
-#	/-- 		§For_FM_Authors			--\ 
+//	/-- 		§For_FM_Authors			--\ 
 //	|--	Display Hello & Help Message?	--|
 
 const dHelloMessage		= true			// If it annoys you turn it off here.
 									
 
 //	|-- 		Required Version		--|
-/* Set this if your FM uses features that are only available from a certain DScript version onward.
-	It will print an UI Warning if the DScript.nut version of the user is below this one. */
+// Set this if your FM uses features that are only available from a certain DScript version onward.
+//	It will print an UI Warning if the DScript.nut version of the user is below this one.
 const dRequiredVersion	= 0
 
-// ----------------------------------------------------------------------
+// The $§ and > operator replace a present $ symbol with the current difficulty QuestVariable.
+// By default NV's "DebugDifficulty" has a higher priority. 
+// If you want to use a custom Quest Variable instead set this to their name.
+const kReplaceWithQVar = "DebugDifficulty"
 
-//	|--		Mission specific constants	--|
-/*	Depending on the Object Hierarchy of an FM these values might need to be adjusted. */
+// $ and § Parameter alternativ look up table.
+const kSharedBinTable	= "SharedBinTable"
 
-
-
-
-getconsttable().MissionConstants <-{
-	/* if you want to access non integer values via $QVar you can specify them here. 
-	 to get special characters like $ into the QVar name use this Syntax:
-	 "MyVar$" : 6
-	 NoSpecialChars	= "uselikethis" */
-}
+// Resets a counter: By default it is the same as the one for NVScript. If in any case you want an individual one.
+const kResetCountMsg	= "ResetCount"
 
 
-
-enum eAlarmSignals						// SignalAI sub messages to end ignoring the player for UndercoverScripts
-{										// Copy and expand this list if you are in need of more custom signals.
+// SignalAI sub messages to end ignoring the player for UndercoverScripts
+// Copy and expand this list if you are in need of more custom signals.
+enum eAlarmSignals						
+{
 	kOnAlarm 		= "alarm"
 	kOnAlert		= "alert" 
 	kOnEndIgnore	= "endignore"
 	kOnGong			= "gong_ring"
 }
 
-enum eDLoad								// For DPersistentLoad
+// For DPersistentLoad
+enum eDLoad
 {
 	kFile			= "taglist_vals.txt"// File to read.	// TODO: Shock compatible?
 	kOffset			= 4000				// Skipped bytes in kFile.
 	kBlobSize		= 4095	 			// Read bytes/Blob size after the offset. Normally the absolute position should be between 4500 and 6000.
 	kKeyName		= "Env Zone 63"		// Data field where DPersistentLoad will look for its data.
-	kDataLength		= 63				// bytes to read after kKeyName. Choosing another kKeyName can enable up to 255 bytes to be read.
+	kDataLength		= 63				// bytes to read after kKeyName. Choosing another kKeyName can enable up to 255 bytes to be read. Obsolete.
 }
+
+// DSpy registers only: Collision(1), Contact(2), Enter/Exit(4), the other types hold not that much useful information.
+const kDSpyPhysRegister	= 7				// Bitwise; see ePhysScriptMsgType reference. 
+
 
 // |-- Potential conflict risk --|
 
-if (GetDarkGame() != 1)
-	const kDummyArchetype	= -1527 	// Sign(-1521) - needs to be an archetype with Physics->Model->Type:OBB and without Physics->Model->Dimension.
-else										// TODO: T1/G? compatible?. Should be.
-	const kDummyArchetype	= -44		// TODO: NOTE: Not Shock compatible!
 
-const kResetCountMsg	= "ResetCount"	// By default it is the same as the one for NVScript. If in any case you want an individual one.
+// The { operator makes use of an modified vector class to make the xyz values accessible by index v[0] = v.x
+// I'm 99% sure there is no conflict or major performance loss for other vector based functions - but if there is you can disable the modification here.
+// You find the modification below in this file.
+const kEnableDistanceOperator	= true
 
-#	/-- 	§For_Script_Designers		--\ 
+
+#	/-- 	§For_Script_Designers		--\
 //	|--			Data Separators			--|
 
 /*	These are the separators I use to divide strings to get certain data.
@@ -99,4 +101,106 @@ enum eSeparator
 	*/
 }
 
-// End of adjustable constants /--
+// |-- End of adjustable constants --|
+
+# /-- 	API - Modifications 		--\
+
+// These are adjustments to the Squirrel API classes, 
+// While not really a Configuration I think it's good to place to point them out openly.
+
+
+# |-- Corrected [source] parameter --|
+foreach (k, MsgClass in ::getroottable())
+{
+	// This adds the _dFROM index as a redirection to the .from index to all Message classes. Adding only to sScrMsg is not sufficient.
+	if (::startswith(k,"s") && ::endswith(k,"Msg")){
+		MsgClass.__getTable._dFROM 	<- sScrMsg.__getTable.from
+	}
+}
+
+// For special classes where the .from object is 0. _dFROM will point to the corrected source.
+sScrMsg.__getTable._dFROM  			<- sScrMsg.__getTable.from
+sFrobMsg.__getTable._dFROM 			<- sFrobMsg.__getTable.Frobber
+sContainerScrMsg.__getTable._dFROM 	<- sContainerScrMsg.__getTable.containee
+sContainedScrMsg.__getTable._dFROM 	<- sContainedScrMsg.__getTable.container
+sCombineScrMsg.__getTable._dFROM 	<- sCombineScrMsg.__getTable.combiner	// This is the object that is frobbed and destroyed.
+sDamageScrMsg.__getTable._dFROM 	<- sDamageScrMsg.__getTable.culprit
+sSlayMsg.__getTable._dFROM 			<- sSlayMsg.__getTable.culprit			#NOTE this is mostly the WEAPON not the user. Use [culprit] 			
+sAttackMsg.__getTable._dFROM		<- sAttackMsg.__getTable.weapon
+sMovingTerrainMsg.__getTable._dFROM <- sMovingTerrainMsg.__getTable.waypoint
+sWaypointMsg.__getTable._dFROM 		<- sWaypointMsg.__getTable.moving_terrain
+sAIPatrolPointMsg.__getTable._dFROM <- sAIPatrolPointMsg.__getTable.patrolObj
+sAIObjActResultMsg.__getTable._dFROM<- sAIObjActResultMsg.__getTable.target	// Used by AI Script Services, 
+// sContainMsg 						<- #TODO #HELP ME Where how is this generated. - I think these are not used but I'm not 100% sure.
+
+// These three need a little bit more attention.
+sStimMsg.__getTable._dFROM 			<- @() sLink(source).source		#NOTE Source / Sensor links go From the sending object To the StimArchetype. Good to know ;)
+sPhysMsg.__getTable._dFROM 			<- 	function(){
+											// "PhysCollision"
+											if (collType)
+												return collObj		#NOTE can be a real object OR a texture
+											// "PhysContactCreate"
+											if (contactType)
+												return contactObj
+											// "PhysFellAsleep", "PhysWokeUp", "PhysMadePhysical", "PhysMadeNonPhysical" "PhysEnter", "PhysExit" left.
+											// For first two transObj is 0, For MadePhysical this is nonsense.
+											// For PhysEnter / Exit this is what we want.
+											return transObj
+										}
+										
+sRoomMsg.__getTable._dFROM 			<- 	function(){
+										// "ObjRoomTransit" is sent to the object. All other messages from API-reference are sent to the room.
+											if (TransitionType == eRoomChange.kRoomTransit) {
+												// As there are two options lets check for possible links which could define priority by the user.
+												foreach (link in ["Route", "~Population"]){
+													foreach (room in [ToObjId, FromObjId]){
+														if (Link.AnyExist(link, MoveObjId, room)){
+															return room
+														}
+													}
+												}
+												return ToObjId						// No link found return ToObjRoom; the entered Room.
+											}
+											else 	// Every other TransitionType is a message to the Room, so we return the triggerig Object.
+												return MoveObjId
+										}
+
+# |-- Vector Adjustment --|
+
+// This is a little bit more invasive therefore I added the option to disable it, speed for vectors stays basically the same.
+
+if (kEnableDistanceOperator) {
+/* Enables the access vector.x via vector[0] used to speed up the { operator.
+	The original API function should be very similar to the default part only. 
+	Optional but as there is already a switch why not add the standard xyz as well.*/
+	vector._get <- function(key){
+		switch (key)
+		{
+			case "x":
+			case 0:
+				return (__getTable.x)()
+			case "y":
+			case 1:
+				return (__getTable.y)()
+			case "z":
+			case 2:
+				return (__getTable.z)()
+			default:
+				return (__getTable[key])()	// this should never happen.
+		}
+		// throw null #NOTE this would be the normal procedure but with the default check above, the table object will throw when the value is not found.
+	}
+}
+
+// A 100% save alternativ would be this but it is slower. Feel free to add it as an else if you disable it.
+	/*
+	vector.__getTable[0] <- function(){
+				return (__getTable.y)()
+	}
+	vector.__getTable[1] <- function(){
+				return (__getTable.y)()
+	}
+	vector.__getTable[2] <- function(){
+				return (__getTable.y)()
+	}
+	*/

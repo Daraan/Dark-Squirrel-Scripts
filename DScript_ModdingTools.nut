@@ -1,5 +1,18 @@
 
-class DSpy extends DBasics
+class DEditorScripts extends DBaseTrap
+{
+// This is to track these scripts down before shipment.
+	constructor(){
+		if (Engine.ConfigIsDefined("deditor")  )
+			DPrint("Editor Script here.")
+
+		base.constructor()
+	}
+}
+
+
+
+class DSpy extends DEditorScripts
 /*Prints the whole data of a received message to the Monolog only.*/
 {
 
@@ -52,16 +65,16 @@ static enumlist =
 
 //Data names that represents objects
 static isObject = [
-	"from", "to", "targetObject", "FromObjId", "ToObjId", "MoveObjId", "waypoint","moving_terrain", "SrcObjId","DstObjId", "Frobber", 
+	"from", "to","_dFROM", "targetObject", "FromObjId", "ToObjId", "MoveObjId", "waypoint","moving_terrain", "SrcObjId","DstObjId", "Frobber", 
 	"culprit", "containee", "container", "combiner", "weapon", "patrolObj", "target", "collObj", "contactObj", "transObj", "stimulus", "kind","sensor", "source"
 ]
 
 //Register Object to all Phys Messages
 	function OnBeginScript()
-		Physics.SubscribeMsg(self,1023)
+		Physics.SubscribeMsg(self, kDSpyPhysRegister)
 
 	function OnEndScript()
-		Physics.UnsubscribeMsg(self,1023)	// I'm not sure why they always clean them up, but I keep it that way.
+		Physics.UnsubscribeMsg(self,kDSpyPhysRegister)	// I'm not sure why they always clean them up, but I keep it that way.
 
 	function InterpretConstants(dataname, datavalue){
 	/* Gives the raw values a sense like Object name or kDoorOpening */
@@ -139,32 +152,41 @@ static isObject = [
 ## Message Handler ##
 	function OnMessage()
 	{	
-		local ignore= DGetParam("DSpyIgnore", 6) 
+		local ignore= DGetParam("DSpyIgnore", 6, userparams(), kReturnArray) 
 		local bmsg 	= message()
 		local mssg 	= bmsg.message
 		if (ignore)
 		{
-			if (typeof(ignore)=="integer")
-			{
-				local ignoreset=[]
-				if (ignore & 1)
-					ignoreset.append("Timer")
-				if (ignore & 2)
-					ignoreset.extend(["BeginScript", "Sim", "DarkGameModeChange"])
-				if (ignore & 4)
-					ignoreset.extend(["PhysFellAsleep", "PhysWokeUp", "PhysMadePhysical", "PhysMadeNonPhysical"])
-				if (ignore & 8)
-					ignoreset.extend(["PhysCollision", "PhysContactCreate", "PhysContactDestroy", "PhysEnter", "PhysExit"])
-				ignore = ignoreset
-			} else
-				ignore = split(ignore, ",")
-				
+			if (ignore.len() == 1){
+				ignore = ignore[0]
+				if (typeof(ignore)=="integer")
+				{
+					local ignoreset=[]
+					if (ignore & 1)
+						ignoreset.extend(["Timer", "FrameUpdate"])
+					if (ignore & 2)
+						ignoreset.extend(["BeginScript", "Sim", "DarkGameModeChange"])
+					if (ignore & 4)
+						ignoreset.extend(["PhysFellAsleep", "PhysWokeUp", "PhysMadePhysical", "PhysMadeNonPhysical"])
+					if (ignore & 8)
+						ignoreset.extend(["PhysCollision", "PhysContactCreate", "PhysContactDestroy", "PhysEnter", "PhysExit"])
+					ignore = ignoreset
+				} else
+					ignore = ::split(ignore, ",")
+
+			}
 			//Check if the message should be ignored.
 			if (ignore.find(mssg) != null)
 				return
 		}
 		
-		DPrint("\n Message received: "+mssg + "(" + typeof(bmsg) + ")\n Data included:", kDoPrint, DGetParam("DSpyMode", ePrintTo.kMonolog) )
+		DPrint(::format(
+						"\n Message received: %s (%s) from %s.\n Data included:",
+						mssg, typeof(bmsg), 
+						bmsg.from == bmsg._dFROM? bmsg.from.tostring() : bmsg._dFROM + " (via Proxy 0)"
+						),
+				kDoPrint, DGetParam("DSpyMode", ePrintTo.kMonolog))
+		
 		foreach (dataname, v in bmsg.__getTable)		//the v are functions!
 			Debug.MPrint("\t" + dataname + (/*Add an extra Tabulator:*/ (dataname.len() > 7)? "\t: \t" : "\t\t: \t" ) + InterpretConstants(dataname, bmsg[dataname]))
 		print("\n")
@@ -174,7 +196,8 @@ static isObject = [
 
 
 
-if ( IsEditor() == 1){	// All classes from NewDark
+if (IsEditor()){	// All classes from NewDark
+	// These are all squirrel class objects added by NewDark
 	NewDarkStuff <- 
 	[	null,vector,string,object,sLink,linkset,int_ref,float_ref,SqRootScript,
 		sScrMsg,sScrTimerMsg,sTweqMsg,sSoundDoneMsg,sSchemaDoneMsg,sSimMsg,sRoomMsg,sQuestMsg,sMovingTerrainMsg,sWaypointMsg,sMediumTransMsg,sFrobMsg,sDoorMsg,sDiffScrMsg,sDamageScrMsg,sSlayMsg,sContainerScrMsg,sContainedScrMsg,sCombineScrMsg,sContainMsg,sBodyMsg,sAttackMsg,sAISignalMsg,sAIPatrolPointMsg,sAIAlertnessMsg,sAIHighAlertMsg,sAIModeChangeMsg,sAIObjActResultMsg,sPhysMsg,sStimMsg,sReportMsg,
@@ -187,22 +210,20 @@ if ( IsEditor() == 1){	// All classes from NewDark
 							)
 	}
 
-	if (GetDarkGame() == 1){
+	if (GetDarkGame() == 1){	// System Shock
 			NewDarkStuff.extend([sYorNMsg, sKeypadMsg,IShockGameScriptService,IShockObjScriptService,IShockWeaponScriptService,
-								IShockPsiScriptService,IShockAIScriptService,IShockOverlayScriptService,IDarkOverlayHandler,IShockOverlayHandler]
+								IShockPsiScriptService,IShockAIScriptService,IShockOverlayScriptService,IShockOverlayHandler]
 								)
 	}
 }
 
 
-//This is just a script for testing purposes. ignore
-class DLowerTrap extends DBaseTrap								
-{
-	DefOn = "TurnOn"
-	
-	// These are all squirrel class objects added by NewDark
 
-	
+
+//This is just a script for testing purposes. ignore
+class DLowerTrap extends DEditorScripts						
+{
+	DefOn = "Test"
 	
 	/*	local rp=vector()
 		local rf=vector() //difference between the facing values
@@ -224,15 +245,14 @@ class DLowerTrap extends DBaseTrap
 		}
 	}
 
-	function DumpTable(table, isSubTable = false)
-	{
+	function DumpTable(table, isSubTable = false){
 		foreach (key, value in table)
 		{
-			print((((!isSubTable)? "\t\t" : "" )  + "key: " + key +"  val: "+ value))
+			print((((!isSubTable)? "" : "\t\tSub:\t" )  + "key: " + key +"  val: "+ value))
 			if (typeof(value) == "table" || typeof(value) == "class")
 			{
-				print("\n"+key + " Subtable:")
-				DumpTable(value)
+				print(key + " Subtable:")
+				DumpTable(value, true)
 			
 			}
 		}
@@ -257,29 +277,17 @@ class DLowerTrap extends DBaseTrap
 	
 	function OnCreate()
 	{
-		print("CREATED" + self )
+		print("CREATED " + self )
 		Debug.Log("CREATED" + self)
-	}
-
-
-	function OnMessage()
-	{
-		base.OnMessage()
-
-	}
-	
-
-	function OnTest()
-	{
-	
-		DFunc()
 	}
 
 	constructor()
 	{
-		// IScriptService
-		print("I#m" + self + ": ^^"+DCheckString("^@Marker"))
-		
+		DCheckString("^@guard")
+	return
+	
+
+	
 		return	
 		local table = getroottable()
 		local isSubTable = false
@@ -296,8 +304,11 @@ class DLowerTrap extends DBaseTrap
 		
 	function DFunc()	//General catching for testing.
 	{
-		// SetOneShotTimer(DCheckString("player"),"Name",1,"data","data2")
+	AI.SetScriptFlags(411,4)
+	//AI.ClearGoals(411)
 
+		print("Checkin"+DCheckString("//Marker.TurnOn"))
+	//	print("Success?:" +Quest.BinSet("MyTable",blob(1)))
 	}
 
 
@@ -307,7 +318,7 @@ class DLowerTrap extends DBaseTrap
 	}
 
 	function DoOff(DN){
-
+	::DHandler.DeRegister(GetData("InfRepeat"))
 /* 
 Submodels and camera distance
 
@@ -330,10 +341,8 @@ SQUIRREL> 0.000000, 0.000000, 2.600000
 }
 
 
-
-
 /*
-class DImportObj extends DBaseTrap HAS BEEN MOVED
+class DImportObj extends DEditorScripts HAS BEEN MOVED
 ####################################################
 This script can import Objects into your Object Hierarchy. Yes. Check out the DSCreatorScripts for more information.
 
@@ -400,7 +409,7 @@ for (i = 1 , i <= omax, i++)
 
 
 ##############In Editor Mode Trap########
-class DEditorTrap extends DBasics
+class DEditorTrap extends DEditorScripts
 #########################################
 /*
 USE WITH CAUTION - Sent messages could be permanent!
@@ -432,45 +441,45 @@ A new idea that came to my mind is that you can catch reloads with this message,
 
 	function OnTest()
 		OnCreate()
-	
+
 }
+
 
 
 
 ##########################################
 // If your function is inside a specific class, make sure it gets inherited via extend or call it classname.function()
-class DPerformanceTest extends DBaseTrap
+class DPerformanceTest extends DEditorScripts
 ##########################################
 {
-DefOn="test" //Set def on at construction and DBaseFunction remove that check.
+// DefOn="test" //Set def on at construction and DBaseFunction remove that check.
 			//Set via Constructor -> faster calls.
+i = null
 	function DoTest()
 	{
 ################# Insert necessary Variables here#######################
-		local s = "QV$AR"
+		
 #####################################################################	
 		print("-------------------------------------\nStart Test: For Function 1")
-		local i=0
-		local start=time()
-		local end=start+1
-		local db = dblob("ABABCD")
-		while (time()==start){} 		//sinc to .0 second.
-		while (time()==end)				//Time interval is exactly 1 second.
-			{
+		local i 	= 0
+		local start = time()
+		local end	= start+1
+		while (time() == start){} 			//sinc to .0 second.
+		while (time() == end)				//Time interval is exactly 1 second.
+		{
 #################Insert the test function here#######################
-					DivideAtNext2(s,"$")
+				DCheckString("@Human")
 #####################################################################				
-				i++						//Checks how often this action can be perfomed within that 1 second.
-			}
+				i++						//Checks how often this action can be performed within that 1 second.
+		}
 		print("Function 1: was executed: " +i+" times in 1 second. Execution time: "+ (1000.0/i) +" ms")
-		
+
 #####################################################################
 //set true if you want to compare it to a second function
-		if (false)
+		if (true) 
 #####################################################################
 		{
 			print("Start Test: For 2nd Function")
-			local db2 = dblob("ABABCD")
 			local j=0
 			local start2=time()
 			local end2=start2+1
@@ -478,7 +487,7 @@ DefOn="test" //Set def on at construction and DBaseFunction remove that check.
 			while (time()==end2)			//Time interval is exactly 1 second.
 			{
 ################# Insert compare function here#######################
-					DivideAtNext2(s,"$")
+					DCheckString("@-14")
 #####################################################################
 				j++
 			}
@@ -488,27 +497,32 @@ DefOn="test" //Set def on at construction and DBaseFunction remove that check.
 	// Constructor is also a good alternative with the current setup it fails. You might need to integrate the DoTest body into the constructor.
 	constructor()
 	{
+		if(
 #####################################################################
-		if(false) //set true to enable testing
+		//set true to enable testing with SqRootScript features on script_reload
+		false
 #####################################################################
+		)
 			DoTest()
 	}
 	
 	
-	function OnMessage()
+	function OnTest()
 	{
-		if (MessageIs("test"))
 			DoTest()
 	}
-	
+
 	function DoOn(DN)
-	{
-	}
+	{}
 
 }
 # |-- Start Test --|
-# this is outside of the class, to enable test on script_reload.
-if (false){
+if (
+#####################################################################
+# this is outside of the class, to enable test on script_reload, will perform two tests.
+0
+#####################################################################
+){
 	DPerformanceTest.DoTest()
 	DPerformanceTest.DoTest()
 }
@@ -518,12 +532,26 @@ if (false){
 
 
 
+class DMyScript extends DBaseTrap
+{	
+	function OnMessage(){
+	/* This overwrites the DBaseTrap Main function */
+		foreach (script in DGetParam("DMyScript", null, userparams(), kReturnArray))
+			DBaseFunction(userparams(),script)
+	}
+	
+	function DoOn(){
+		getconsttable().MissionConstants[DGetParamRaw(script)]()
+	}
+	
+}
+
+############
+
+
+
 /*DrkInv.CapabilityControl(0,2)
 DrkInv.CapabilityControl(3,2)
 DrkInv.CapabilityControl(1,2)
 DrkInv.CapabilityControl(2,2)
 DrkInv.CapabilityControl(4,2)*/
-s<-"$QVAR$"
-
-foreach (k,v in getconsttable().MissionConstants)
-	print(k+v)

@@ -3,7 +3,7 @@
 #include DScript.nut // File & Blob Library is standalone.
 
 
-##		/--		Â§		Â§File_&_Blob_LibraryÂ§		Â§		--\
+##		/--		§		§File_&_Blob_Library§		§		--\
 //
 //	This file contains tools to interact with files (read only) and blobs.
 //	Ultimately enabling the extraction of data/parameters from files. 
@@ -139,7 +139,7 @@ myblob = null								// As we will work more with the derived dblob class
 			}
 		} else {
 			local length = pattern.len()
-			if (length == 1)				// If the string has only length 1 we are done.
+			if (length == 1)						// If the string has only length 1 we are done.
 				return find(pattern[0], myblob.tell())
 			while (true){
 				local first = find(pattern[0], myblob.tell())
