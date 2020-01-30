@@ -68,7 +68,7 @@ Engine
 	float BindingGetFloat(string name);
 	
 	// search for a file in paths defined by a path config var (like script_module_path), 'fullname' is
-	// set if return value is TRUE
+	// If the file is found then the resolved file name with path is returned and true is returned.
 	BOOL FindFileInPath(string path_config_var, string filename, string & fullname);
 	
 	// returns TRUE if running game in legacy DX6 mode
@@ -128,8 +128,8 @@ Object
     // then put the properties on, then EndCreate it. 
 	ObjID BeginCreate(object archetype_or_clone);
 	HRESULT EndCreate(object obj);
-	
 	ObjID Create(object archetype_or_clone);
+	
 	HRESULT Destroy(object obj);
 	BOOL Exists(object obj);
 	HRESULT SetName(object obj, string name);
@@ -196,6 +196,8 @@ Property
 	HRESULT Set(object obj, string prop, string field, cMultiParm val);
 	HRESULT SetSimple(object obj, string prop, cMultiParm val);
 #ifndef THIEF1
+	// Will set the property locally, even on a proxy object. # Only use for local data.
+	# Set will ask the owner to set the property if multiplayer.
 	HRESULT SetLocal(object obj, string prop, string field, cMultiParm val);
 #endif
 	HRESULT Add(object obj, string prop);
@@ -205,6 +207,7 @@ Property
 
 	// **** Available only in API version 11+ ****
 #ifdef THIEF1
+	# See above.
 	HRESULT SetLocal(object obj, string prop, string field, cMultiParm val);
 #endif
 
@@ -250,13 +253,27 @@ Link
 	LinkID Create(linkkind kind, object from, object to);
 	HRESULT Destroy(LinkID destroy_me);
 	BOOL AnyExist(linkkind kind = 0, object from = 0, object to = 0);
+	
+	 // Get all the links that match a particular pattern
 	linkset GetAll(linkkind kind = 0, object from = 0, object to = 0);
 	LinkID GetOne(linkkind kind = 0, object from = 0, object to = 0);
+	
 	HRESULT BroadcastOnAllLinks(object SelfObj, string Message, linkkind recipients);
+	
+	# BroadcastData has two different behaviors:
+	# A) The Link has no Dataslot / the value is blank / null, then the message.data will what you specify.
+	# B) The Link has a DataSlot with a value. Only when that value matches the parameter parameter the message will be sent.
+	#	So BroadcastOnAllLinksData can filter out some objects based on the linkdata.
 	HRESULT BroadcastOnAllLinksData(object SelfObj, string Message, linkkind recipients, cMultiParm linkdata);
+	
 	HRESULT CreateMany(linkkind kind, string FromSet, string ToSet);
 	HRESULT DestroyMany(linkkind kind, string FromSet, string ToSet);
+	
+	 // Query all links inherited by one or two objs
+	 // All links from me and my donors to you and your donors, in inheritance order
 	linkset GetAllInherited(linkkind kind = 0, object from = 0, object to = 0);
+	
+	// All links out from me or my donors to just you, in inheritance order 
 	linkset GetAllInheritedSingle(linkkind kind = 0, object from = 0, object to = 0);
 } 
 
@@ -296,9 +313,14 @@ Data
 	string GetString( string table, string name, string def = , string relpath = strings);
 	
 	// Fetch an object string, using the property that corresponds to the table
+	# This uses the ObjID as a key to find a value in a preloaded table, standard tables are obj objdescs and objnames from RES\Strings
+	# Can be used to retrieve obj string in user language.
+	# uses Inventory:
+	# Long Description <- objdescs
+	# Object Name <- objnames
 	string GetObjString(ObjID obj, string table);
 	
-	// just calls Rand() directly, ie. retuns 0 to 2^15-1
+	// just calls Rand() directly, ie. returns 0 to 2^15-1
 	int DirectRand();
 	// returns an integer between low and high inclusive, if high<=low, returns low
 	int RandInt(int low, int high);
@@ -322,7 +344,8 @@ AI
 		kNormalPriorityAction,
 		kHighPriorityAction
 	}	
-		
+	
+	# These three create an sAIObjActResultMsg on the AI
 	BOOL MakeGotoObjLoc(ObjID objIdAI, object objIdTarget, eAIScriptSpeed speed = kNormalSpeed, eAIActionPriority = kNormalPriorityAction, cMultiParm dataToSendOnReach = null); 
 														
 	BOOL MakeFrobObjWith(ObjID objIdAI, object objIdTarget, object objWith, eAIActionPriority = kNormalPriorityAction, cMultiParm dataToSendOnReach = null);	
@@ -330,9 +353,20 @@ AI
 													
 	eAIScriptAlertLevel GetAlertLevel(ObjID objIdAI);
 	SetMinimumAlert(ObjID objIdAI, eAIScriptAlertLevel level);
-	ClearGoals(ObjID objIdAI);
-	SetScriptFlags(ObjID objIdAI, int iFlags);
 	ClearAlertness(ObjID objIdAI);
+	
+	# In the source this is empty. Maybe it did something in T1; was used in the T2 archer demo.
+	ClearGoals(ObjID objIdAI);
+	
+	// Extra flags to let scripts control other aspects of AI state 
+	# Not tested by me
+	# Allow all				0
+	//define kSpeechOff     1	# This is permanent version of Sound.HaltSpeech(objIdAI)
+	# These seam to be not implemented.
+	//define kMotionOff     2	# This was used to disallow new motions (original WorkerBot script) and then control an AI via Puppet.PlayMotion
+	//define kCombatOffHACK 4
+	SetScriptFlags(ObjID objIdAI, int iFlags);
+	
 	Signal(ObjID objIdAI, string signal);
 	BOOL StartConversation(ObjID conversationID);
 	
@@ -445,23 +479,33 @@ Damage
 }
 
 Container
-{
-	HRESULT Add(object obj, object container, int type = 0, int flags = CTF_COMBINE);	
+{	
+	# eDarkContainType type
+		kContainTypeAlt		= -3
+		kContainTypeHand	= -2
+		kContainTypeBelt	= -1
+		kContainTypeGeneric	= 0
+	HRESULT Add(object obj, object container, eDarkContainType type = 0, int flags = CTF_COMBINE);	
 																	CTF_NONE=0 CTF_COMBINE=1
+	
+	# This has nothing to do with stacks. 
+	# You can use this to make the player drop an item at the current location BUT physics are not activated for the object. Alternative Debug.Command("drop_item")
+	# Returns 0 if it was contained and dropped. 1 If it was not contained or the container didn't match. Will always drop for container = 0.
 	HRESULT Remove(object obj, object container = 0);
 	HRESULT MoveAllContents(object src, object targ, int flags = CTF_COMBINE);
 
 	// **** Available only in API version 1+ ****
+	# This always returns quantity even if the obj has no stack prop.
 	HRESULT StackAdd(object src, int quantity);
 	
-	//NOTE: NOT BOOL!!!: 
-	//returns 0 if contained else if not contained eContainType.ECONTAIN_NULL = 2147483647 (0x7FFFFFFF)
+	#NOTE: NOT BOOL!!!: 
+	# returns 0 if contained else if not contained eContainType.ECONTAIN_NULL = 2147483647 (0x7FFFFFFF)
 	eContainType IsHeld(object container, object containee);
 }
 
 Quest
 {
-	# enum eQuestDataType
+	#REFERENCE ONLY:  enum eQuestDataType
 	kQuestDataMission	= 0
 	kQuestDataCampaign	= 1
 	kQuestDataUnknown	= 2
@@ -587,6 +631,7 @@ DarkGame
 	HRESULT FadeToBlack(float time);
 
 	// **** Available only in API version 2+ ****
+	# For secrets.
 	HRESULT FoundObject(ObjID obj);
 	
 	#NOTE: These 4 are available in Engine use them instead to be Shock compatible.
@@ -652,7 +697,6 @@ DrkInv
 				kDrkInvControlOff	= 1
 				kDrkInvControlToggle= 2
 			}
-	
 	
 	AddSpeedControl(string name, float speed_fac, float rot_fac);
 	RemoveSpeedControl(string name);

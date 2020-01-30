@@ -19,7 +19,7 @@ uint         : an integer value (unsigned integer natively but squirrel doesn''t
 float        : a floating point value
 bool         : a boolean 'true' or 'false' value
 BOOL         : an integer value (constants 'TRUE' or 'FALSE', but can be interchanged with 1 or 0)
-HRESULT      : an integer value used to indicate the result of many script service functions (>= 0 means success, typically S_OK, < 0 means failure)
+HRESULT      : an integer value used to indicate the result of many script service functions (>= 0 means success, typically S_OK(0), < 0 means failure)
 ObjID        : an integer representing an object ID
 LinkID       : an integer representing a link ID
 RelationID   : an integer representing a link flavor / relation ID
@@ -287,9 +287,10 @@ class SqRootScript
 	// functions for persistent script data/vars
 	BOOL IsDataSet(string sVarName);
 	cMultiParm GetData(string sVarName);
+	# Returns the value that was set.
 	cMultiParm SetData(string sVarName, cMultiParm value);
-	cMultiParm SetData(string sVarName); // same as SetData(sVarName, null)
-	cMultiParm ClearData(string sVarName);
+	cMultiParm SetData(string sVarName); 	# Same as SetData(sVarName, null)
+	cMultiParm ClearData(string sVarName);	# Returns the value that was in the DataSlot
 
 	// returns an ObjID based on an object name
 	ObjID ObjID(string sObjName);
@@ -404,7 +405,7 @@ TRAPF_INVERT		= 2
 TRAPF_NOON			= 4
 TRAPF_NOOFF			= 8
 
-enum ePlayerMode	ShockGame.PlayerMode(ePlayerMode)
+enum ePlayerMode	ShockGame.PlayerMode(ePlayerMode) # Used by Thief as well but I see no interface to get it.
 {
 	kPM_Stand		= 0
 	kPM_Crouch		= 1
@@ -487,7 +488,6 @@ enum eAIActionResult	Message: "ObjActResult" : sAIObjActResultMsg.result
 	kActionFailed		= 1
 	kActionNotAttempted	= 2
 }
-
 enum eAIAction			Message: "ObjActResult" : sAIObjActResultMsg.action
 {
 	kAINoAction			= 0
@@ -670,12 +670,14 @@ enum eFrobLoc				sFrobMsg.SrcLoc, sFrobMsg.DstLoc
 enum eContainsEvent				Messages: "Contained"	sContainedScrMsg.event; Messages: "Container"  	sContainerScrMsg.event
 {
    // Query messages get sent before the actual event occurs.
-   // If you want to veto the event, this is your chance.  
+   // If you want to veto the event, this is your chance. 
+	# These are for internal Container Callbacks. Not sure if/how you can make use of that.	   
 	kContainQueryAdd	= 0
 	kContainQueryCombine= 1
-	
+
    // These messages are sent upon COMPLETION of the event in question.  
-   // No sense cryin' about it now. 
+   // No sense cryin' about it now.
+   # These are stored in the message.event:
 	kContainAdd			= 2
 	kContainRemove		= 3
 	kContainCombine		= 4
@@ -683,12 +685,13 @@ enum eContainsEvent				Messages: "Contained"	sContainedScrMsg.event; Messages: "
 
 enum eContainType #Was not documented
 { 
-	ECONTAIN_NULL = 2147483647	= (0x7FFFFFFF) max possible int.
+	ECONTAIN_NULL = 2147483647	= (0x7FFFFFFF) max possible signed int.
 								Container.IsHeld(object container, object containee) returns 0 if contained! and 2147483647 if not!
 }
 
 DEFAULT_TIMEOUT			= -1001		DarkUI.TextMessage(string message, int color = 0, int timeout = DEFAULT_TIMEOUT);
 
+#
 Container.Add(...),	Container.MoveAllContents(object src, object targ, int flags = CTF_COMBINE);
 CTF_NONE		= 0
 CTF_COMBINE		= 1
@@ -722,7 +725,7 @@ KEY_DEL		= 10323
 KEY_HOME	= 10311
 KEY_END		= 10319
 KEY_PGUP	= 10313
-KEY_PGDN	= 10321 = 8129+KEY_PAD_PGUP
+KEY_PGDN	= 10321 = 8192 + KEY_PAD_PGUP
 KEY_LEFT	= 10315
 KEY_RIGHT	= 10317
 KEY_UP		= 10312
@@ -809,21 +812,24 @@ enum eInventoryType			ObjProp "InvType"
 	kInvTypeWeapon		= 2
 }
 
-enum eDarkContainType
+enum eDarkContainType		Container.Add(obj, container,)
 {
-	kContainTypeAlt		= -3
-	kContainTypeHand	= -2
-	kContainTypeBelt	= -1
-	kContainTypeRendMin	= -3
-	kContainTypeRendMax	= 0
+	// rendered types (negative numbers)
+   kContainTypeAlt 		= -3,		# Dark GamyeSys -> AltLinkLocation; see also M-LeftHandAlt, QuaffHeal script.
+   kContainTypeHand 	= -2, 
+   kContainTypeBelt 	= -1,
+   kContainTypeRendMin 	= kContainTypeAlt,
+   kContainTypeRendMax 	= 0,
 
-	kContainTypeNonRendMin	= 0
-	kContainTypeGeneric		= 0
-	kContainTypeInventory	= 0
-	kContainTypeNonRendMax	= 1
+   // non-rendered
+   kContainTypeNonRendMin = 0,
+   kContainTypeGeneric	  = kContainTypeNonRendMin,  // generic contents
+   kContainTypeInventory  = kContainTypeGeneric,  	 // general inventory
+   kContainTypeNonRendMax = 1
 
-	kContainTypeMin			= -3
-	kContainTypeMax			= 1
+   // total range
+   kContainTypeMin = kContainTypeRendMin,
+   kContainTypeMax = kContainTypeNonRendMax, 
 }
 
 
