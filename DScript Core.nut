@@ -1,4 +1,4 @@
-##		--/					 §HEADER					--/
+##		--/					 Â§HEADER					--/
 
 #include DConfigDefault.nut
 // This file IS NECESSARY for DScript.nut to compile.
@@ -12,10 +12,10 @@
 // --------------------------------------------------------------------------
 
 
-##		/--		§#		§_INTRODUCTION__§		§#		--\
+##		/--		Â§#		Â§_INTRODUCTION__Â§		Â§#		--\
 //////////////////////////////////////////////////////////////////// 
 //					 	
-const DScriptVersion = 0.68 	// This is not a stable release!
+const DScriptVersion = 0.681A 	// This is not a stable release!
 //
 // While many aspects got improved and added. They have been only minimally been tested.
 //  The DHub script should not work in this version.
@@ -31,7 +31,7 @@ const DScriptVersion = 0.68 	// This is not a stable release!
 //  To highlight code, special functions and constants and especially the use of custom fold points.
 //  An advanced text editor like notepad++ is recommended and necessary to use them. Like DromEd this file uses ANSI characters.
 //
-//		/--		§#		§_DEMO_CATEGORY_§		§#		--\
+//		/--		Â§#		Â§_DEMO_CATEGORY_Â§		Â§#		--\
 //			<-- fold it on the left
 //		|--			#		Paragraph		#			--|
 //			To fold the code into meaningful paragraphs.
@@ -78,7 +78,7 @@ The real scripts currently start at around line > 1000
 /////////////////////////////////////////////////////////////////
 
 // ----------------------------------------------------------------
-##		/--		§#		§___CONSTANTS___§		§#		--\
+##		/--		Â§#		Â§___CONSTANTS___Â§		Â§#		--\
 // Adjustable Constants are in the DConfig*.nut files.
 // ----------------------------------------------------------------
 
@@ -123,7 +123,7 @@ enum eScriptTurn					// Used by the DBaseTrap checks
 
 // -----------------------------------------------------------------
 
-##		/--		§#	  	  §_VERSION_CHECK_§		§#		--\
+##		/--		Â§#	  	  Â§_VERSION_CHECK_Â§		Â§#		--\
 /* If a FanMission author defines a dRequiredVersion in a separate DConfig file this test will check if the 
 	current DScriptVersion of this file is sufficient or outdated and will display a ingame and monolog message to them. */
 
@@ -134,7 +134,7 @@ if (dRequiredVersion > DScriptVersion){
 }
 
 
-##		/--		§#	  §HELLO_&_HELP_DISPLAY§	§#		--\
+##		/--		Â§#	  Â§HELLO_&_HELP_DISPLAYÂ§	Â§#		--\
 ##		|--			#	   General_Help		#			--|
 
 if (!::Engine.ConfigIsDefined("dsnohello") && dHelloMessage && IsEditor() && DScriptVersion > 0.70)	// will be enabled in Version 0.7 onward.
@@ -166,7 +166,7 @@ if (::Engine.ConfigIsDefined("dhelp")) 		//TODO: Setup attributes.
 
 
 ##		|-- ------------------------------------------- /--
-##		/--		§# §______BASIC_METHODS_____§  §#		--\
+##		/--		Â§# Â§______BASIC_METHODS_____Â§  Â§#		--\
 //
 // 				String and Parameter analysis
 //
@@ -238,7 +238,7 @@ SubVersion 	= 0.72
 	}
 
 	
-	## |-- 	§Main_Analysis_Function		--|
+	## |-- 	Â§Main_Analysis_Function		--|
 	function DCheckString(str, returnInArray = false){		
 	/* 
 	Analysis of a given string parameter depending on its prefixed parameter.
@@ -386,12 +386,12 @@ SubVersion 	= 0.72
 					return DReturnThis(DCheckString(value, returnInArray), returnInArray)
 				}
 				// yes no break.
-			case '§': // Paragraph sign. #NOTE IMPORTANT this file needs to be saved with ANSI encoding!
+			case 'Â§': // Paragraph sign. #NOTE IMPORTANT this file needs to be saved with ANSI encoding!
 				// replace with difficulty?
-				local another = str.find("§",1)
+				local another = str.find("Â§",1)
 				str = str.slice(kRemoveFirstChar)
 				if (another){
-					local ar = DivideAtNext(str,"§")
+					local ar = DivideAtNext(str,"Â§")
 					str = ar[0] + (Quest.Exists(kReplaceQVarOperatorWith) ? Quest.Get(kReplaceQVarOperatorWith) : Quest.Get("difficulty")) + ar[1]
 				}
 				local customtable = ::split(str,".")
@@ -463,10 +463,19 @@ SubVersion 	= 0.72
 			case '>':		
 						// 0>1Path>2Filename>3ParamerName>4Offset>5Separator OR 6begin,7end
 						// >strings/testfile.txt>MyKey>>seperator // >strings/testfile.txt>MyVal>>1,0
-						// >strings/book/Green.str >...txt>MyKey  // >strings/testfile.txt>MyKey>Offset>"
+						// >strings/book>/Green.str>MyKey  // >strings/>testfile.txt>MyKey>Offset>"
 						// Offsetkey or #Offsetnumber
 				local divide = ::split(str,">")
 				// replace QVar
+				if (divide.len() == 3){
+					// [1] Object, [2] objnames or objdesc
+					if (divide[2].tolower() == "objnames" || divide[2].tolower() == "objdesc")
+						return DReturnThis(Data.GetObjString(DCheckString(divide[1]), divide[2]), returnInArray)
+					else
+						DPrint("ERROR: File operator '>' wrong format", kDoPrint, ePrintTo.kMonolog || ePrintTo.kUI)
+					return DReturnThis(null, returnInArray)
+				}
+					
 				for (local i = 2; i <= 3; i++){
 					local replace = divide[i].find("$")
 					if (replace != null){
@@ -480,13 +489,14 @@ SubVersion 	= 0.72
 						}
 					}
 				}
+				
 				// For str files use book method
 				if (::endswith(divide[2],"str")){
-					return DReturnThis(Data.GetString( divide[2], divide[3], "", divide[1]), returnInArray)
+					return DReturnThis(DCheckString(Data.GetString( divide[2], divide[3], "", divide[1]) returnInArray), returnInArray)
 				}
+				// TODO add language support.
 				local key 	 = divide[3]
-				
-				local sref =string()
+				local sref 	 = string()
 				if (Engine.FindFileInPath("install_path", divide[2], sref))	// TODO cache location, check FM
 					{
 					print("yes in " + sref)
@@ -841,7 +851,7 @@ SubVersion 	= 0.72
 		return [str.slice(0,i)	, str.slice( include ? i : i+1 )]
 	}
 	
-	#  |--  §Conditional_Debug_Print 	--|
+	#  |--  Â§Conditional_Debug_Print 	--|
 	function DPrint(dbgMessage, DoPrint = null, mode = 3) 	// default mode = ePrintTo.kMonolog || ePrintTo.kUI)
 	{
 		if (!DoPrint){
@@ -872,7 +882,7 @@ SubVersion 	= 0.72
 
 
 // ----------------------------------------------------------------
-##		/--		§# §____FRAME_WORK_SCRIPT____§	§#		--\
+##		/--		Â§# Â§____FRAME_WORK_SCRIPT____Â§	Â§#		--\
 //
 // The DBaseTrap is the framework for nearly all other scripts in this file.
 // It handles incoming messages and interprets the general parameters like Count, Delay, Repeat.
@@ -1070,7 +1080,7 @@ SourceObj = null	//	The actual source of a message.
 		RepeatForIntances(::callee())
 	}
 
-### |-- §_Main_Message_Handler_§ --| ###
+### |-- Â§_Main_Message_Handler_Â§ --| ###
 	function DBaseFunction(DN){
 	/* Handles and interprets all incoming messages. 
 		- Are they a valid Activating or Deactivating message? 
@@ -1125,7 +1135,7 @@ SourceObj = null	//	The actual source of a message.
 		return RepeatForIntances(::callee(), userparams())
 	}
 
-	# |-- 		§Pre_Activation_Checks 		--|
+	# |-- 		Â§Pre_Activation_Checks 		--|
 	/*Script activation Count and Capacitors are handled via Object Data, in this section they are set and controlled.*/
 	
 	# |--	Custom Condition Parameter 	--|
@@ -1386,37 +1396,37 @@ class DAdvancedGeo extends DBaseTrap
 
 	DPolarCoordinates
 	<distance, theta, phi>
-	theta: 	below  pi/2 (90°) means below the object, above above
+	theta: 	below  pi/2 (90Â°) means below the object, above above
 
 	phi: Negative Values mean east, positive west.
-	Absolute values above 90° mean south, below north:
+	Absolute values above 90Â° mean south, below north:
 
 
 	Native return Values:	
 	Theta							Phi
-	Above180°						N0°			
+	Above180Â°						N0Â°			
 	/						(0,90) 	| (0,-90)	
-	X---90° 				W++++90°X-- -90°--E
+	X---90Â° 				W++++90Â°X-- -90Â°--E
 	\						(90,180)| (-90,-180)
-	Below0°						180°S-180°	
+	Below0Â°						180Â°S-180Â°	
 
 	DRelativeAngles
 	Corrected Values:
 	Theta							Phi
-	Above90°						N180°			
+	Above90Â°						N180Â°			
 	/								|	
-	X---0° 				  W--270°---X---90°--E
+	X---0Â° 				  W--270Â°---X---90Â°--E
 	\								|	
-	Below-90°						S0°	
+	Below-90Â°						S0Â°	
 
 
 	Camera.GetFacing()/Facing of the player object: The Y pitch values are a little bit different, the Z(heading) is like the corrected values:
 		Y							Z
-	Above270°						N180°			
+	Above270Â°						N180Â°			
 	/							 	|	
-	X---0°/360° 			W--270°-X--90°--E
+	X---0Â°/360Â° 			W--270Â°-X--90Â°--E
 	\								| 	
-	Below90°						S0°
+	Below90Â°						S0Â°
 	*/	
 
 	function DVectorBetween(from, to, UseCamera = true){
@@ -1443,7 +1453,7 @@ class DAdvancedGeo extends DBaseTrap
 	}
 
 	function DRelativeAngles(from, to, UseCamera = true){
-		//Uses the standard DPolarCoordinates, and transforms the values to be more DromEd like, we want Z(Heading)=0° to be south and Y(Pitch)=0° horizontal.
+		//Uses the standard DPolarCoordinates, and transforms the values to be more DromEd like, we want Z(Heading)=0Â° to be south and Y(Pitch)=0Â° horizontal.
 		//Returns the relative XYZ facing values with x=0.
 		local v = DPolarCoordinates(from, to, UseCamera)
 		return ::vector(0, v.y - 90, v.z)
@@ -1526,6 +1536,10 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 			PostMessage(t, msg, data, data2, data3)
 		else {
 			local ar = ::split(msg,"[]")
+			if (ar.len() > 2){				// 0[1[2random]3: low,high]4; 3 can be ""
+				ar[1] = "[" + ar[2] +"]" + ar[3] // recreate []
+				ar[2] = ar[4]
+			}
 			if (GetDarkGame())				// not T1/G
 				ActReact.Stimulate(t, ar[2], DCheckString(ar[1]), self)
 			else
@@ -1546,8 +1560,8 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 		}
 	}
 	
-	function DMultiMessage(targets, messages, data = null, data2 = null, data3 = null)
-	{
+	function DMultiMessage(targets, messages, data = null, data2 = null, data3 = null){
+	/* Sends an array of messages to an array of targets */
 		local SendFunc = DGetParam(script+"PostMessage", true)? DPostMessage : DSendMessage	// By default now, messages are posted.
 		foreach (msg in messages){
 			foreach (obj in targets)
@@ -1556,7 +1570,7 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 	}
 	
 	function DRelayMessages(OnOff, DN, data = null, data2 = null, data3 = null){
-	/* Gets messages and Targets, then sends them. */
+	/* Gets Messages and Targets from the DesignNote, Passes these on. */
 				//Priority Order: [On/Off]Target > [On/Off]TDest > Target > TDest > Default: &ControlDevice
 				DMultiMessage(DGetParam(script+OnOff+"Target", 
 								DGetParam(script+OnOff+"TDest", 
@@ -1586,7 +1600,7 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 
 
 
-// |-- §Handler_Object§ --|
+// |-- Â§Handler_ObjectÂ§ --|
 /* This creates one object named DScriptHandler, see the class below.
 	That script initializes some data at game time, like the PlayerID and handles the perFrame updates. */
 if (IsEditor()){
@@ -1958,7 +1972,7 @@ function OnMessage(){
 ## END of HUB
 ################################
 
-### 	/-- 	§	Button & Lever scripts				--\
+### 	/-- 	Â§	Button & Lever scripts				--\
 
 #########################################
 class SafeDevice extends SqRootScript{
@@ -2234,8 +2248,8 @@ Use DWatchMeTarget to specify another object, archetype or metaproperty. (see no
 
 On TurnOff will remove any(!) AIWatchObj links to this object. You maybe want to set DWatchMeOff="Null".
 
-?¢Further (if set) copies!! the AI->Utility->Watch links default property of the archetype (or the closest ancestors with this property) and sets the Step 1 - Argument 1 to the Object ID of this object.
-?¢Alternatively if no ancestor has this property the property of the script object will be used and NO arguments will be changed. (So it will behave like the normal T1/PublicScripts WatchMe or NVWatchMeTrap scripts)
+?Â¢Further (if set) copies!! the AI->Utility->Watch links default property of the archetype (or the closest ancestors with this property) and sets the Step 1 - Argument 1 to the Object ID of this object.
+?Â¢Alternatively if no ancestor has this property the property of the script object will be used and NO arguments will be changed. (So it will behave like the normal T1/PublicScripts WatchMe or NVWatchMeTrap scripts)
 TODO: If the object has a custom one it should take priority.
 
 ------------------------------
@@ -2536,7 +2550,7 @@ DPortalTarget="+player+#88+@M-MySpecialAIs"
 ###################################End Teleporter Scripts###################################
 
 
-// 		|-- §Undercover / §Ignore_Player_until_Scripts		 --|
+// 		|-- Â§Undercover / Â§Ignore_Player_until_Scripts		 --|
 ###################################Undercover scripts###################################
 //Weapons scripts are in DUndercover.nut
 //TODO: Link the the detailed forum documentation.
