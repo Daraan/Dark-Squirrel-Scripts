@@ -20,28 +20,64 @@
 //
 ////////////////////////////////////////////////////////////////////
 
+//	/-- 		§USER_CONFIG			--\ 
+
+
+
 //	/-- 		§For_FM_Authors			--\ 
-//	|--	Display Hello & Help Message?	--|
+#	|--	Display Hello & Help Message?	--|
 
 const dHelloMessage		= true			// If it annoys you turn it off here.
-									
+		
 
-//	|-- 		Required Version		--|
+#	|-- 	Required User Version		--|
 // Set this if your FM uses features that are only available from a certain DScript version onward.
 //	It will print an UI Warning if the DScript.nut version of the user is below this one.
 const dRequiredVersion	= 0
 
-// The $§ and > operator replace a present $ symbol with the current difficulty QuestVariable.
-// By default NV's "DebugDifficulty" has a higher priority. 
-// If you want to use a custom Quest Variable instead set this to their name.
-const kReplaceWithQVar = "DebugDifficulty"
+#	|-- 			Debugging			--|
+// DSpy registers only: Collision(1), Contact(2), Enter/Exit(4), the other types hold not that much useful information.
+const kDSpyPhysRegister	= 7				// Bitwise; see ePhysScriptMsgType reference. 
 
-// $ and § Parameter alternativ look up table.
+// I added an option to print the most recent parts of the monolog.txt(editor.exe) or game.log(game.exe) directly ingame into the interface. Enable it here.
+const kUseIngameLog = true
+
+#	|-- 	Operator Adjustments		--|
+// The { operator makes use of an modified vector class to make the xyz values accessible by index: v[0] = v.x
+// You can see the detailed the modification below in this file.
+const kEnableDistanceOperator	= true
+
+// The $§ and > operator replace a present $ symbol with the current difficulty QuestVariable.
+// By default NV's "DebugDifficulty" has a higher priority - for testing purposes.
+// But if you want to use a custom Quest Variable that is not difficulty related you can choose that one here.
+const kReplaceQVarOperatorWith = "DebugDifficulty"
+
+// $ and § Parameter alternativ look up binary table.
 const kSharedBinTable	= "SharedBinTable"
 
-// Resets a counter: By default it is the same as the one for NVScript. If in any case you want an individual one.
-const kResetCountMsg	= "ResetCount"
+// function GetRandomValue() {	return Data.RandFlt0to1()}
+getconsttable().MissionConstants <-{
+	/* if you want to access non integer values via $QVar you can specify them here. 
+	 
+	// To get special characters like $ into the QVar name use one these two syntaxes:
+	"MyVar$" : 6
+	["SOM$"] = "Alternative"
+	
+	NoSpecialChars	= "uselikethis" 
+	
+	// Your values must not be static, you can also define functions here that will get called:
+	MyFunc = function() {return Camera.GetCameraParent()}
+	
+	// And can also be outside this table / file, as long they are above it!
+	Random = GetRandomValue()
+	
+	*/
+}
 
+#	|-- 	Script specific Adjustments		--|
+// Resets the Count of a Script
+// By default it is the same as the one for NVScript. If in any case you want an individual one.
+const kResetCountMsg	= "ResetCount"
 
 // SignalAI sub messages to end ignoring the player for UndercoverScripts
 // Copy and expand this list if you are in need of more custom signals.
@@ -63,17 +99,7 @@ enum eDLoad
 	kDataLength		= 63				// bytes to read after kKeyName. Choosing another kKeyName can enable up to 255 bytes to be read. Obsolete.
 }
 
-// DSpy registers only: Collision(1), Contact(2), Enter/Exit(4), the other types hold not that much useful information.
-const kDSpyPhysRegister	= 7				// Bitwise; see ePhysScriptMsgType reference. 
-
-
-// |-- Potential conflict risk --|
-
-
-// The { operator makes use of an modified vector class to make the xyz values accessible by index v[0] = v.x
-// I'm 99% sure there is no conflict or major performance loss for other vector based functions - but if there is you can disable the modification here.
-// You find the modification below in this file.
-const kEnableDistanceOperator	= true
+// -------------------------------------------------------------------------------------
 
 
 #	/-- 	§For_Script_Designers		--\
@@ -101,19 +127,19 @@ enum eSeparator
 	*/
 }
 
-// |-- End of adjustable constants --|
+// |-- ---- End of adjustable constants ---- --|
 
-# /-- 	API - Modifications 		--\
 
-// These are adjustments to the Squirrel API classes, 
-// While not really a Configuration I think it's good to place to point them out openly.
-
+# /-- 		§API-Modifications 			--\
+/* These are adjustments to the Squirrel API classes, 
+	While not really a Configuration I think it's good to place to point them out openly. */
 
 # |-- Corrected [source] parameter --|
+
+// This adds the _dFROM index as a redirection to the .from index to all Message classes. Adding only to sScrMsg is not sufficient.
 foreach (k, MsgClass in ::getroottable())
 {
-	// This adds the _dFROM index as a redirection to the .from index to all Message classes. Adding only to sScrMsg is not sufficient.
-	if (::startswith(k,"s") && ::endswith(k,"Msg")){
+	if (::startswith(k,"s") && ::endswith(k,"Msg") && typeof MsgClass == "class"){	// should be a sufficient filter.
 		MsgClass.__getTable._dFROM 	<- sScrMsg.__getTable.from
 	}
 }
@@ -136,37 +162,36 @@ sAIObjActResultMsg.__getTable._dFROM<- sAIObjActResultMsg.__getTable.target	// U
 // These three need a little bit more attention.
 sStimMsg.__getTable._dFROM 			<- @() sLink(source).source		#NOTE Source / Sensor links go From the sending object To the StimArchetype. Good to know ;)
 sPhysMsg.__getTable._dFROM 			<- 	function(){
-											// "PhysCollision"
-											if (collType)
-												return collObj		#NOTE can be a real object OR a texture
-											// "PhysContactCreate"
-											if (contactType)
-												return contactObj
-											// "PhysFellAsleep", "PhysWokeUp", "PhysMadePhysical", "PhysMadeNonPhysical" "PhysEnter", "PhysExit" left.
-											// For first two transObj is 0, For MadePhysical this is nonsense.
-											// For PhysEnter / Exit this is what we want.
-											return transObj
-										}
+	// "PhysCollision"
+	if (collType)
+		return collObj		#NOTE can be a real object OR a texture
+	// "PhysContactCreate"
+	if (contactType)
+		return contactObj
+	// "PhysFellAsleep", "PhysWokeUp", "PhysMadePhysical", "PhysMadeNonPhysical" "PhysEnter", "PhysExit" left.
+	// For first two transObj is 0, For MadePhysical this is nonsense.
+	// For PhysEnter / Exit this is what we want.
+	return transObj
+}
 										
 sRoomMsg.__getTable._dFROM 			<- 	function(){
-										// "ObjRoomTransit" is sent to the object. All other messages from API-reference are sent to the room.
-											if (TransitionType == eRoomChange.kRoomTransit) {
-												// As there are two options lets check for possible links which could define priority by the user.
-												foreach (link in ["Route", "~Population"]){
-													foreach (room in [ToObjId, FromObjId]){
-														if (Link.AnyExist(link, MoveObjId, room)){
-															return room
-														}
-													}
-												}
-												return ToObjId						// No link found return ToObjRoom; the entered Room.
-											}
-											else 	// Every other TransitionType is a message to the Room, so we return the triggerig Object.
-												return MoveObjId
-										}
+	// "ObjRoomTransit" is sent to the object. All other messages from API-reference are sent to the room.
+	if (TransitionType == eRoomChange.kRoomTransit) {
+		// As there are two options lets check for possible links which could define priority by the user.
+		foreach (link in ["Route", "~Population"]){
+			foreach (room in [ToObjId, FromObjId]){
+				if (Link.AnyExist(link, MoveObjId, room)){
+					return room
+				}
+			}
+		}
+		return ToObjId						// No link found return ToObjRoom; the entered Room.
+	}
+	else 	// Every other TransitionType is a message to the Room, so we return the triggerig Object.
+		return MoveObjId
+}
 
 # |-- Vector Adjustment --|
-
 // This is a little bit more invasive therefore I added the option to disable it, speed for vectors stays basically the same.
 
 if (kEnableDistanceOperator) {
@@ -186,13 +211,13 @@ if (kEnableDistanceOperator) {
 			case 2:
 				return (__getTable.z)()
 			default:
-				return (__getTable[key])()	// this should never happen.
+				return (__getTable[key])()	// this should never happen now.
 		}
 		// throw null #NOTE this would be the normal procedure but with the default check above, the table object will throw when the value is not found.
 	}
 }
 
-// A 100% save alternativ would be this but it is slower. Feel free to add it as an else if you disable it.
+// A 100% save alternativ but it is slower. Feel free to add it as an else if you disable it.
 	/*
 	vector.__getTable[0] <- function(){
 				return (__getTable.y)()

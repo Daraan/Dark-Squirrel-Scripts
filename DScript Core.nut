@@ -1,4 +1,4 @@
-##		--/					 Â§HEADER					--/
+##		--/					 §HEADER					--/
 
 #include DConfigDefault.nut
 // This file IS NECESSARY for DScript.nut to compile.
@@ -8,14 +8,14 @@
 
 // --------------------------------------------------------------------------
 // This and all other files are released under the CC0 1.0 Universal License.
-//	Use them to your liking. 
+//	Use them to your liking.
 // --------------------------------------------------------------------------
 
 
-##		/--		Â§#		Â§_INTRODUCTION__Â§		Â§#		--\
+##		/--		§#		§_INTRODUCTION__§		§#		--\
 //////////////////////////////////////////////////////////////////// 
 //					 	
-const DScriptVersion = 0.681A 	// This is not a stable release!
+const DScriptVersion = 0.69 	// This is not a stable release!
 //
 // While many aspects got improved and added. They have been only minimally been tested.
 //  The DHub script should not work in this version.
@@ -31,7 +31,7 @@ const DScriptVersion = 0.681A 	// This is not a stable release!
 //  To highlight code, special functions and constants and especially the use of custom fold points.
 //  An advanced text editor like notepad++ is recommended and necessary to use them. Like DromEd this file uses ANSI characters.
 //
-//		/--		Â§#		Â§_DEMO_CATEGORY_Â§		Â§#		--\
+//		/--		§#		§_DEMO_CATEGORY_§		§#		--\
 //			<-- fold it on the left
 //		|--			#		Paragraph		#			--|
 //			To fold the code into meaningful paragraphs.
@@ -78,7 +78,7 @@ The real scripts currently start at around line > 1000
 /////////////////////////////////////////////////////////////////
 
 // ----------------------------------------------------------------
-##		/--		Â§#		Â§___CONSTANTS___Â§		Â§#		--\
+##		/--		§#		§___CONSTANTS___§		§#		--\
 // Adjustable Constants are in the DConfig*.nut files.
 // ----------------------------------------------------------------
 
@@ -113,17 +113,17 @@ enum eScriptTurn					// Used by the DBaseTrap checks
 }
 
 
-##		|--			#Constant_after_compiling			--|
+##		|--			#(Semi) Constant_after_compiling			--|
 
 ::GetPlayerArm 	<- @() Object.Named("PlyrArm")
-
 # Section Moved to -> DScriptHandler #
-	
+
+
 	// idea init object on create -> begin script.
 
 // -----------------------------------------------------------------
 
-##		/--		Â§#	  	  Â§_VERSION_CHECK_Â§		Â§#		--\
+##		/--		§#	  	  §_VERSION_CHECK_§		§#		--\
 /* If a FanMission author defines a dRequiredVersion in a separate DConfig file this test will check if the 
 	current DScriptVersion of this file is sufficient or outdated and will display a ingame and monolog message to them. */
 
@@ -134,7 +134,7 @@ if (dRequiredVersion > DScriptVersion){
 }
 
 
-##		/--		Â§#	  Â§HELLO_&_HELP_DISPLAYÂ§	Â§#		--\
+##		/--		§#	  §HELLO_&_HELP_DISPLAY§	§#		--\
 ##		|--			#	   General_Help		#			--|
 
 if (!::Engine.ConfigIsDefined("dsnohello") && dHelloMessage && IsEditor() && DScriptVersion > 0.70)	// will be enabled in Version 0.7 onward.
@@ -166,7 +166,7 @@ if (::Engine.ConfigIsDefined("dhelp")) 		//TODO: Setup attributes.
 
 
 ##		|-- ------------------------------------------- /--
-##		/--		Â§# Â§______BASIC_METHODS_____Â§  Â§#		--\
+##		/--		§# §______BASIC_METHODS_____§  §#		--\
 //
 // 				String and Parameter analysis
 //
@@ -192,9 +192,7 @@ SubVersion 	= 0.72
 
 	#  |-- 	Get Descending Objects 		--|
 	// #NOTE: ~MetaProp links are invisible in the editor but form the hierarchy of our archetypes. 
-	//				Counterintuitively going from Ancestor to Descendant. 
-			
-	// #NOTE: ~MetaProp links also go from a Meta-Property to objects. 
+	//				Counterintuitively going from Ancestor to Descendant. As well as from a Meta-Property to objects.
 	//			So @ will also return every concrete object that inherit them via archetypes.
 	//			And * will return only the concrete objects which have that Meta-Property set directly.	
 	function DGetAllDescendants(from, objset, allowInherit = true){
@@ -213,7 +211,7 @@ SubVersion 	= 0.72
 
 	function StringToObject(str){
 	/* Readies a string like @guard to be used by DGetAllDescendants.*/
-		if (str[0] == '-')					//Catch ArchetypeID if it comes as string.
+		if (typeof str == "integer" || str[0] == '-' )					//Catch ArchetypeID if it comes as string.
 			return str.tointeger()
 		
 		//Returns the object with this Symbolic name or the Archetype ID
@@ -238,7 +236,7 @@ SubVersion 	= 0.72
 	}
 
 	
-	## |-- 	Â§Main_Analysis_Function		--|
+	## |-- 	§Main_Analysis_Function		--|
 	function DCheckString(str, returnInArray = false){		
 	/* 
 	Analysis of a given string parameter depending on its prefixed parameter.
@@ -287,8 +285,8 @@ SubVersion 	= 0.72
 					case "[source]"	:
 						return DReturnThis(SourceObj, returnInArray)	#NOTE requires DBaseFunction to have run before!
 					case "[player]" :
-						return DReturnThis(::PlayerID(), returnInArray)
-					case "[message]": return DReturnThis(message().message, returnInArray)	// TODO: Test
+						return DReturnThis(::PlayerID, returnInArray)
+					case "[message]": return DReturnThis(message().message, returnInArray)
 					// case "true" : return DReturnThis(true, returnInArray)
 					// case "false": return DReturnThis(false, returnInArray)	
 					case "[null]" 	: return DReturnThis(null, returnInArray) // Don't handle this parameter. TODO: Check for errors.
@@ -386,12 +384,12 @@ SubVersion 	= 0.72
 					return DReturnThis(DCheckString(value, returnInArray), returnInArray)
 				}
 				// yes no break.
-			case 'Â§': // Paragraph sign. #NOTE IMPORTANT this file needs to be saved with ANSI encoding!
+			case '§': // Paragraph sign. #NOTE IMPORTANT this file needs to be saved with ANSI encoding!
 				// replace with difficulty?
-				local another = str.find("Â§",1)
+				local another = str.find("§",1)
 				str = str.slice(kRemoveFirstChar)
 				if (another){
-					local ar = DivideAtNext(str,"Â§")
+					local ar = DivideAtNext(str,"§")
 					str = ar[0] + (Quest.Exists(kReplaceQVarOperatorWith) ? Quest.Get(kReplaceQVarOperatorWith) : Quest.Get("difficulty")) + ar[1]
 				}
 				local customtable = ::split(str,".")
@@ -463,19 +461,22 @@ SubVersion 	= 0.72
 			case '>':		
 						// 0>1Path>2Filename>3ParamerName>4Offset>5Separator OR 6begin,7end
 						// >strings/testfile.txt>MyKey>>seperator // >strings/testfile.txt>MyVal>>1,0
-						// >strings/book>/Green.str>MyKey  // >strings/>testfile.txt>MyKey>Offset>"
+						// >strings/book>/Green.str>MyKey  // >strings/>testfile.txt>MyKey>Offset>" 	
 						// Offsetkey or #Offsetnumber
 				local divide = ::split(str,">")
-				// replace QVar
+				
+				
+				// Objects native name.
 				if (divide.len() == 3){
 					// [1] Object, [2] objnames or objdesc
-					if (divide[2].tolower() == "objnames" || divide[2].tolower() == "objdesc")
-						return DReturnThis(Data.GetObjString(DCheckString(divide[1]), divide[2]), returnInArray)
+					if (divide[2].tolower() == "objnames" || divide[2].tolower() == "objdescs")			// TODO no OBJDESC need another field.
+						return DReturnThis(Data.GetObjString(StringToObject(DCheckString(divide[1])), divide[2]), returnInArray)
 					else
 						DPrint("ERROR: File operator '>' wrong format", kDoPrint, ePrintTo.kMonolog || ePrintTo.kUI)
 					return DReturnThis(null, returnInArray)
 				}
-					
+				
+				// replace QVar
 				for (local i = 2; i <= 3; i++){
 					local replace = divide[i].find("$")
 					if (replace != null){
@@ -489,14 +490,15 @@ SubVersion 	= 0.72
 						}
 					}
 				}
+
 				
 				// For str files use book method
 				if (::endswith(divide[2],"str")){
-					return DReturnThis(DCheckString(Data.GetString( divide[2], divide[3], "", divide[1]) returnInArray), returnInArray)
+					return DReturnThis(Data.GetString( divide[2], divide[3], "", divide[1]), returnInArray)
 				}
-				// TODO add language support.
 				local key 	 = divide[3]
-				local sref 	 = string()
+				
+				local sref =string()
 				if (Engine.FindFileInPath("install_path", divide[2], sref))	// TODO cache location, check FM
 					{
 					print("yes in " + sref)
@@ -568,7 +570,7 @@ SubVersion 	= 0.72
 				local objset = []
 				foreach (t in ar){	//Loops back into this function to get your specific set
 					if (t[0] != '-')
-						objset.extend( DCheckString(t, kReturnArray) )	// TODO: Doubles are not removed.
+						objset.extend( DCheckString(t, kReturnArray) )	// TODO: Doubles are not removed. But I kinda want to leave this if someone explicitly wants it.
 					else // +- operator, remove subset
 					{
 						local removeset = DCheckString(t.slice(1), kReturnArray)
@@ -698,7 +700,6 @@ SubVersion 	= 0.72
 	}
 
 	#  |-- 	Get_Parameter_Functions 	--|
-
 	function DGetParamRaw(par, defaultValue = null, DN = null){
 	/* No analysis */
 		if(!DN){DN = userparams()}
@@ -726,7 +727,18 @@ SubVersion 	= 0.72
 		local 	kvArray = ::split(str, separators);				//Generates a [key1, value2, key2, ...] array
 		local 	key 	= div.find(param);
 
-		if (key)
+		/* // use find without splitting
+		
+		local key = str.find(param)
+		if (key >= 0){
+			local start = str.find("=", key)
+			return DCheckString(str.slice(start + 1, str.find("+", start)), returnInArray)
+		}
+		return DCheckString(defaultValue, returnInArray)
+
+
+		*/
+		if (key >= 0)
 			return DCheckString(kvArray[key+1], returnInArray)	//[...Parameter@Index, Value@Index+1,...]
 		return DCheckString(defaultValue, returnInArray)
 	}
@@ -774,8 +786,7 @@ SubVersion 	= 0.72
 		local apos 	  = ::Object.Position(anchor)
 		local minDist = 8000		// random big value
 		local retObj  = null
-		foreach (obj in objset)
-		{
+		foreach (obj in objset){
 			local curDist = (::Object.Position(obj) - apos).Length()
 			if (curDist < minDist){
 				minDist = curDist
@@ -785,9 +796,8 @@ SubVersion 	= 0.72
 		return retObj
 	}
 	
-	function DObjectsInNet(linktype, objset, current = 0)
+	function DObjectsInNet(linktype, objset, current = 0){
 	/* Get all objects in a Path witch branches. The set is ordered by distance to the start point.*/
-	{
 		foreach ( link in Link.GetAll(linktype, objset[current]) )
 		{
 			local nextobj = LinkDest(link)
@@ -800,33 +810,26 @@ SubVersion 	= 0.72
 			return DObjectsInNet(linktype, objset, current++)		//return enables a Tail Recursion with call stack collapse.
 	}
 
-	function DObjectsInPath(linktype,objset)
+	function DObjectsInPath(linktype,objset){
 	/* Similar to above but no loop support. No branching. */
-	{
 		local curobj = objset.top()
-		if(Link.AnyExist(linktype,curobj))						// Returns the link with the lowest LinkID.
-		{
+		if(Link.AnyExist(linktype,curobj)){						// Returns the link with the lowest LinkID.
 			local nextobj = LinkDest(Link.GetOne(linktype,curobj))
-			if ( !objset.find(nextobj) )						// Checks if next object is already present.
-			{
+			if (!objset.find(nextobj) ){						// Checks if next object is already present.
 				objset.append(nextobj)
 				return DObjectsInPath(linktype, objset)			// Tail Recursion with call stack collapse
 			}
-			// if it was present the Tail ends.
+			// if it was present, or no more object is found the Tail ends.
 		}
 	}
 
-	function DObjectsLinkedFromSet(objset, linktypes, onlyfirst = false)	
+	function DObjectsLinkedFromSet(objset, linktypes, onlyfirst = false){	
 	/* Returns the first or all object that are linked via a ~linktype to a set of objects.
 		For example can return the Elevator in a TPath (~TPathInit, ~TPathNext), or AI on a control Path. */
-	{			
 		local foundobjs =[]
-		foreach (curobj in objset)
-		{
-			foreach (linktype in linktypes)
-			{
-				if(Link.AnyExist(linktype, curobj))
-				{
+		foreach (curobj in objset){
+			foreach (linktype in linktypes){
+				if(Link.AnyExist(linktype, curobj)){
 					local nextobj = LinkDest(Link.GetOne(linktype, curobj))
 					if (!objset.find(nextobj))				//Checks if next object is already present.
 						foundobjs.append(nextobj)
@@ -835,8 +838,7 @@ SubVersion 	= 0.72
 		}
 		if (onlyfirst)
 			return [foundobjs[0]] //we work with obj arrays so return it in one.
-		else
-			return foundobjs
+		return foundobjs
 	}	
 	
 //	|-- String manipulation --|
@@ -851,8 +853,8 @@ SubVersion 	= 0.72
 		return [str.slice(0,i)	, str.slice( include ? i : i+1 )]
 	}
 	
-	#  |--  Â§Conditional_Debug_Print 	--|
-	function DPrint(dbgMessage, DoPrint = null, mode = 3) 	// default mode = ePrintTo.kMonolog || ePrintTo.kUI)
+	#  |--  §Conditional_Debug_Print 	--|
+	function DPrint(dbgMessage = null, DoPrint = null, mode = 3) 	// default mode = ePrintTo.kMonolog || ePrintTo.kUI)
 	{
 		if (!DoPrint){
 			// Enabled via user parameter?
@@ -860,20 +862,23 @@ SubVersion 	= 0.72
 		}
 		if (mode)	//*magic trick*
 		{
-			// negative ID display Archetype, has a special name like Player use it + Archetype, else only archetype.
-			local name = self < 0 ? Object.GetName(self) : ( Property.PossessedSimple(self, "SymName") ? "'"+Object.GetName(self)+"' a " + Object.GetName(Object.Archetype(self)) : Object.GetName(Object.Archetype(self)))
-			
-			local s = "DDebug("+GetClassName()+") on "+ "("+self+") "+name+":"
-			if (mode & ePrintTo.kIgnoreTimers && (message().message == "Timer" || message().message == "FrameUpdate")) 	//ignore timers	
-				return
-			if (mode & ePrintTo.kMonolog && ::IsEditor())		//Useless if not in editor; actually not they will be logged. But let's keep the log only for real important stuff.
-				::print(s + dbgMessage)
-			if (mode & ePrintTo.kUI)						// TODO: Shock compatible. What is the function???
-				::DarkUI.TextMessage(s + dbgMessage)		
-			if (mode & ePrintTo.kLog)
-				::Debug.Log(s + dbgMessage)
-			if (mode & ePrintTo.kError)
-				::error(s + dbgMessage)
+			if (dbgMessage){
+				// negative ID display Archetype, has a special name like Player use it + Archetype, else only archetype.
+				local name = self < 0 ? Object.GetName(self) : ( Property.PossessedSimple(self, "SymName") ? "'"+Object.GetName(self)+"' a " + Object.GetName(Object.Archetype(self)) : Object.GetName(Object.Archetype(self)))
+				
+				local s = "DDebug("+GetClassName()+") on "+ "("+self+") "+name+":"
+				if (mode & ePrintTo.kIgnoreTimers &&message().message == "Timer") 	//ignore timers	
+					return
+				if (mode & ePrintTo.kMonolog && ::IsEditor())		//Useless if not in editor; actually not they will be logged. But let's keep the log only for real important stuff.
+					::print(s + dbgMessage)
+				if (mode & ePrintTo.kUI)						// TODO: Shock compatible. What is the function???
+					::DarkUI.TextMessage(s + dbgMessage)		
+				if (mode & ePrintTo.kLog)
+					::Debug.Log(s + dbgMessage)
+				if (mode & ePrintTo.kError)
+					::error(s + dbgMessage)
+			}
+			return true // This can be used for if (DPrint) {// Do some Debug stuff like catch error?}
 		}
 	}
 	
@@ -882,14 +887,12 @@ SubVersion 	= 0.72
 
 
 // ----------------------------------------------------------------
-##		/--		Â§# Â§____FRAME_WORK_SCRIPT____Â§	Â§#		--\
+##		/--		§# §____FRAME_WORK_SCRIPT____§	§#		--\
 //
 // The DBaseTrap is the framework for nearly all other scripts in this file.
 // It handles incoming messages and interprets the general parameters like Count, Delay, Repeat.
 // After all checks have been passed it will call the appropriate activate or deactivate function of the script.
 // ----------------------------------------------------------------
-
-
 
 class DBaseTrap extends DBasics
 {
@@ -933,9 +936,10 @@ SourceObj = null	//	The actual source of a message.
 	
 	// This is magic.
 	function RepeatForIntances(func, ...){
-		/* Called via RepeatForIntances(callee(), all function parameters) whereby callee can be replaced with the current function name.
+		/* Called via RepeatForIntances(callee(), all function parameters) whereby callee could* be replaced with the current function name.
 			Returns true when all instances have been checked.
 			See the ResetCount function how to make use of that.*/
+		#NOTE * it is best to use callee() and not the function name, else there could be an ugly loop etc. if the function got shadowed by a child.
 			
 		if (!script)
 			script = GetClassName()		// this is used in the constructor.	
@@ -958,27 +962,44 @@ SourceObj = null	//	The actual source of a message.
 		return true
 	}
 	
-# |-- Message Handlers --| #
+# |-- Native Message Handlers --| #
 
 	function OnMessage(){
 	/* The function that gets called when any message is sent to this object. 
-		#NOTE If other handlers are present this one is not called! In most cases you should add a base.OnMessage() */
+		#NOTE If other handlers are present this one is not called! Think about if you should add a base.OnMessage() */
 		DBaseFunction(userparams())
 	}
 	
 	function OnBeginScript(){
-		// This does nothing yet but might in the future therefore
 		#NOTE include a base.OnBeginScript() if you use a OnBeginScript() function in a child class!; will also redirect to base.OnMessage()
 		
-		this.OnMessage()
+		// Check if a PerFrame action is active and reregister it in the ::DHandler
+		if (IsDataSet(script + "InfRepeat")){
+			local data = GetData(script + "InfRepeat")
+			// Negative or positive LinkID was stored,
+			if ( typeof data == "string"){
+				if (data[0] == 'F'){
+					local delay = DGetParam( script + "Delay")			// Delay is sent and is #Frames
+					delay = delay.slice(0, delay.find("F")).tointeger()
+					::DHandler.PerFrame_ReRegister(this, delay )
+				}
+				else
+					::DHandler.PerMidFrame_ReRegister(this)				// Is every frame.
+			}
+		}
+		// #NOTE returns to topmost OnMessage, do or don't? No way to go around it for the user, call base on message?
+		if (RepeatForIntances(::callee()))
+			this.OnMessage()
 	}
 
-//	Special Messages Handlers	--|				// Better have their own handler.
-	function OnFrameUpdate(){
-		if (message().data == GetData(script + "InfRepeat")){
-			this.DoOn(userparams())
-		}
-		RepeatForIntances(::callee())				// #NOTE it best to use callee(), else there could be an ugly loop if the function gets shaded.
+//	|-- Special Messages Handlers	--|
+	function FrameUpdate(whichscript){
+	/* As you might see this is actually no real message handler.
+		The FrameUpdate is performed by the ::DHandler by directly calling this function with the correct script.
+	*/
+		script = whichscript		// set
+		this.DoOn(userparams())
+		script = GetClassName()		// and reset.
 	}
 	
 	["On" + kResetCountMsg] = function() {		#NOTE: How to declare a function with a variable name.
@@ -1080,7 +1101,7 @@ SourceObj = null	//	The actual source of a message.
 		RepeatForIntances(::callee())
 	}
 
-### |-- Â§_Main_Message_Handler_Â§ --| ###
+### |-- §_Main_Message_Handler_§ --| ###
 	function DBaseFunction(DN){
 	/* Handles and interprets all incoming messages. 
 		- Are they a valid Activating or Deactivating message? 
@@ -1100,7 +1121,8 @@ SourceObj = null	//	The actual source of a message.
 //		|--	Is the message valid? --|
 	//React to the received message? Checks if the message is in the set of specified commands. And Yes a DScript can perform it's ON and OFF action if both accept the same message.
 		// Could do a Loop here over ["On","Off"]; little less memory but less speed as well.
-		if (DGetParam(script+"On", DGetParam("DefOn", "TurnOn", this, kReturnArray),DN, kReturnArray).find(mssg) != null){
+		
+		if (DGetParam(script+"On", DGetParam("DefOn", "TurnOn", this, kReturnArray), DN, kReturnArray).find(mssg) != null){
 			#DEBUG POINT 2a
 			DPrint("Stage 2 - Got DoOn(1) message:\t"+mssg +" from "+SourceObj)
 			// Theoretically this should be better:
@@ -1123,7 +1145,7 @@ SourceObj = null	//	The actual source of a message.
 		
 //		|-- BlockMessage --|
 		// After all important actions are done: Check if this script should block the message.
-		if (DCheckCondition(DGetParamRaw(script+"ExclusiveMessage",false,DN))){
+		if (DCheckCondition(DGetParamRaw(script+"ExclusiveMessage", false, DN))){
 			BlockMessage()
 			DPrint("ExclusiveMessage: Message has been blocked.")
 			return
@@ -1135,7 +1157,7 @@ SourceObj = null	//	The actual source of a message.
 		return RepeatForIntances(::callee(), userparams())
 	}
 
-	# |-- 		Â§Pre_Activation_Checks 		--|
+	# |-- 		§Pre_Activation_Checks 		--|
 	/*Script activation Count and Capacitors are handled via Object Data, in this section they are set and controlled.*/
 	
 	# |--	Custom Condition Parameter 	--|
@@ -1306,20 +1328,19 @@ SourceObj = null	//	The actual source of a message.
 				}
 				// for per Frame Delay if the message is off.
 				if (doPerNFrames && !func){
-					::DHandler.DeRegister(GetData(script+"InfRepeat"))
+					::DHandler.PerFrame_DeRegister(this)
 					ClearData(script+"InfRepeat")
 					return
-				}
-				
+				}	
 			} else {
 				## |-- Start Delay Timer --|
 				// DBaseFunction will handle activation when received.
 				#DEBUG POINT 5B
 				DPrint("Stage 5B - ("+func+") Activation will be executed after a delay of "+ delay + (doPerNFrames? " ." : " seconds."))
 				if (doPerNFrames){
-						SetData(script+"InfRepeat", 						::DHandler.Register(self,script, doPerNFrames))
-						// The handler returns a key / linkID that will be the key for this script.
-						return
+					SetData(script+"InfRepeat", ::DHandler.PerFrame_Register(this, doPerNFrames))
+					// The handler returns a key / linkID that will be the key for this script.
+					return
 				}
 				local repeat = DGetParam(script+"Repeat", 0, DN).tointeger()
 				if (repeat == kInfiteRepeat)
@@ -1345,161 +1366,9 @@ Handles custom [ScriptName]ON/OFF parameters specified in the Design Note and ca
 If no parameter is set the scripts normally respond to TurnOn and TurnOff, if you instead want another default activation message you can specify this with DefOn="CustomMessage" or DefOff="TurnOn" anywhere in your script class but outside of functions. Messages specified in the Design Note have priority.
 
 
-//}
-
-####################################
-//class DDebug extends SqRootScript
-/*DPrint is a conditional print. Which can serve you to debug your scripts but also other who would like some additional output during mission building.
-
-The main use will be to set [ScriptName]Debug=1 in the DesignNote for a specific script and object.
-
-But DPrint function can go further it will look for a config variable DDebug defined via 'set DDebug *'
-Replace * with
-- 1: All DPrints will be dumped. ('set DDebug 1')
-- #ObjID: DPrints for all scripts on this object. ('set DDebug #49')
-- (ObjGroup): I wished the # would be not necessary but this enables the standard DCheckString operators like 'set DDebug +@guard+@lever' without more code.
-
-The output mode: 1,2,3 is 1=monolog, 2=UIText, 3=both(default).
-
-For convenience you can use the optional force parameter to use the DPrint without setting the config var via DPrint("your message",mode,true)
-
-The DDebug script (class) can be used on an object to automatically 'set ddebug #[self]'.
-
-NOTE: For performance I deactivated the config var check. Look for the #&GLOBAL DEBUG line a few lines below to activate it.
-*/
-####################################
+//}*/
 
 #################################
-}
-
-
-class DAdvancedGeo extends DBaseTrap
-{
-	function Max(...) // Is there is really no basic squirrel function declared?
-	{
-		if (typeof vargv[0] == "array")
-			vargv = vargv[0]
-		local Max = vargv[0]
-		foreach (item in vargv)
-		{
-			if (item > Max)
-				Max = item
-		}
-		return Max
-	}
-
-#$$$$$$$ADV GEO$$$$$$$
-	
-	/* How to interpret your return values in DromEd:
-	First in DromEd there are the Position:HBP values you see in your normal editor view and the Model->State:Facing XYZ Values.
-	The return functions are always based on the Facing XYZ Values, misleading is the reversed order H=Z, P=Y and B=X-Axis rotations.
-
-	DPolarCoordinates
-	<distance, theta, phi>
-	theta: 	below  pi/2 (90Â°) means below the object, above above
-
-	phi: Negative Values mean east, positive west.
-	Absolute values above 90Â° mean south, below north:
-
-
-	Native return Values:	
-	Theta							Phi
-	Above180Â°						N0Â°			
-	/						(0,90) 	| (0,-90)	
-	X---90Â° 				W++++90Â°X-- -90Â°--E
-	\						(90,180)| (-90,-180)
-	Below0Â°						180Â°S-180Â°	
-
-	DRelativeAngles
-	Corrected Values:
-	Theta							Phi
-	Above90Â°						N180Â°			
-	/								|	
-	X---0Â° 				  W--270Â°---X---90Â°--E
-	\								|	
-	Below-90Â°						S0Â°	
-
-
-	Camera.GetFacing()/Facing of the player object: The Y pitch values are a little bit different, the Z(heading) is like the corrected values:
-		Y							Z
-	Above270Â°						N180Â°			
-	/							 	|	
-	X---0Â°/360Â° 			W--270Â°-X--90Â°--E
-	\								| 	
-	Below90Â°						S0Â°
-	*/	
-
-	function DVectorBetween(from, to, UseCamera = true){
-	/*Returns the Vector between the two objects.
-	If UseCamera=True it will use the camera position instead of the player object.
-	DVectorBetween(player,player,true) will get you the distance to the camera.*/
-		if (UseCamera){
-			if (::PlayerID == ObjID(to))
-				return ::Camera.GetPosition()- ::Object.Position(from)
-			if (::PlayerID == ObjID(from))
-				return ::Object.Position(to) - ::Camera.GetPosition()
-		}
-		return ::Object.Position(to) - ::Object.Position(from)
-	}
-
-	function DPolarCoordinates(from, to, UseCamera = true){
-	/*Returns the SphericalCoordinates in the ReturnVector (r,\theta ,\phi )
-	The geometry in Thief is a little bit rotated so this theoretically correct formulas still needs to be adjusted.
-	*/
-		local v = DVectorBetween(from, to , UseCamera)
-		local r = v.Length()
-
-		return ::vector(r, ::acos(v.z / r)/ kDegToRad, ::atan2(v.y, v.x) / kDegToRad) // Squirrel note: it is atan2(Y,X) in squirrel.
-	}
-
-	function DRelativeAngles(from, to, UseCamera = true){
-		//Uses the standard DPolarCoordinates, and transforms the values to be more DromEd like, we want Z(Heading)=0Â° to be south and Y(Pitch)=0Â° horizontal.
-		//Returns the relative XYZ facing values with x=0.
-		local v = DPolarCoordinates(from, to, UseCamera)
-		return ::vector(0, v.y - 90, v.z)
-	}
-	
-	function DGetModelDims(obj, scale = false, ofModel = false){
-	/*Returns the size of the objects model, equal to the DWH values in the DromEd Window
-
-	By default this will return the the size of the Shape->Model no matter the physics or scaling the object.
-	- Scale=true will take the objects scaling into account.
-	- Setting ofModel to an explicit model filename will work as well. In that case obj and scale will be ignored.
-	For Example: DGetPhysDims(null,false,"stool")*/
-	
-	// From what I know the BBox values can't be accessed directly.	
-	// Workaround: We need an archetype with PhysModel OBB but no PhysDims and change its model to the objects model.
-	// after creating it we can get its PhysDims which will match the model bounds.
-	// I'm abusing the Sign Archetype here marker here, declared as a constant. TODO: set phys on marker.
-		
-		local model = ofModel
-		if (!model)					//Use Model instead?
-			model = Property.Get(obj,"ModelName")	
-
-		
-		//Set and create dummy
-		local dummy = Object.BeginCreate("Marker")				// blank archetype
-		Property.SetSimple( dummy,"ModelName", model)
-		Property.Add(dummy,"ModelName")
-		Property.Add(dummy,"PhysType")
-		Property.Set(dummy,"PhysType","Type",0)			// PhysDims will be initialized if a model is set
-		local PhysDims	= Property.Get(dummy,"PhysDims","Size")
-		Object.EndCreate(dummy)
-		Object.Destroy(dummy)
-	
-		if (scale)
-			PhysDims = PhysDims * Property.Get(obj, "Scale")
-		
-		print(PhysDims)
-		return PhysDims
-	}
-
-	function DScaleToMatch(obj, MaxSize = 0.25){
-		local Dim  = DGetModelDims(obj)
-		local vmax = Max(Dim.x,Dim.y,Dim.z)
-		Property.SetSimple(obj, "Scale", vector(MaxSize/vmax))
-	}
-	
 }
 
 
@@ -1536,10 +1405,6 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 			PostMessage(t, msg, data, data2, data3)
 		else {
 			local ar = ::split(msg,"[]")
-			if (ar.len() > 2){				// 0[1[2random]3: low,high]4; 3 can be ""
-				ar[1] = "[" + ar[2] +"]" + ar[3] // recreate []
-				ar[2] = ar[4]
-			}
 			if (GetDarkGame())				// not T1/G
 				ActReact.Stimulate(t, ar[2], DCheckString(ar[1]), self)
 			else
@@ -1560,8 +1425,8 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 		}
 	}
 	
-	function DMultiMessage(targets, messages, data = null, data2 = null, data3 = null){
-	/* Sends an array of messages to an array of targets */
+	function DMultiMessage(targets, messages, data = null, data2 = null, data3 = null)
+	{
 		local SendFunc = DGetParam(script+"PostMessage", true)? DPostMessage : DSendMessage	// By default now, messages are posted.
 		foreach (msg in messages){
 			foreach (obj in targets)
@@ -1570,7 +1435,7 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 	}
 	
 	function DRelayMessages(OnOff, DN, data = null, data2 = null, data3 = null){
-	/* Gets Messages and Targets from the DesignNote, Passes these on. */
+	/* Gets messages and Targets, then sends them. */
 				//Priority Order: [On/Off]Target > [On/Off]TDest > Target > TDest > Default: &ControlDevice
 				DMultiMessage(DGetParam(script+OnOff+"Target", 
 								DGetParam(script+OnOff+"TDest", 
@@ -1585,14 +1450,14 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 	function DoOn(DN)
 	{
 		if (DGetParam(script + "ToQVar", false, DN))	// If specified will store the ObejctsID into the specified QVar
-			Quest.Set(DGetParam("DRelayTrapToQVar", null, DN), SourceObj, eQuestDataType.kQuestDataUnknown)
+			Quest.Set(DGetParam(script + "ToQVar", null, DN), SourceObj, eQuestDataType.kQuestDataUnknown)
 		DRelayMessages("On",DN)
 	}
 
 	function DoOff(DN)
 	{
 		if (DGetParam(script + "ToQVar",false,DN))		// TODO: Add new: delete config var.
-			Quest.Set(DGetParam("DRelayTrapToQVar",null,DN), SourceObj, eQuestDataType.kQuestDataUnknown)
+			Quest.Set(DGetParam(script + "ToQVar",null,DN), SourceObj, eQuestDataType.kQuestDataUnknown)
 		DRelayMessages("Off",DN)
 	}
 
@@ -1600,7 +1465,7 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 
 
 
-// |-- Â§Handler_ObjectÂ§ --|
+// |-- §Handler_Object§ --|
 /* This creates one object named DScriptHandler, see the class below.
 	That script initializes some data at game time, like the PlayerID and handles the perFrame updates. */
 if (IsEditor()){
@@ -1629,85 +1494,191 @@ if (IsEditor()){
 	
 class DScriptHandler extends DRelayTrap
 {
-	DefOn 	 = "BeginScript"			// TODO for Basetrap adjust this on begin script.
-	database = null
+	DefOn 	 		  	 = "BeginScript"
+	PerFrame_database 	 = null
+	PerMidFrame_database = null
+	OverlayHandlers    	 = null
 
 // |-- Set Up Constants and Init Messages.	
-	
-	function OnBeginScript()
-	{
-		::DHandler 		<- this									// And the instance., the object can be accessed via DHandler.self
-		::PlayerID		<- ObjID("Player")						// Caches the PlayerID, faster, and easier wo write.
-		if (!::PlayerID)										#NOTE If the player object does not exist, check a frame later.
-			return PostMessage(self, "BeginScript")				// TODO check if there is a conflict with the later declaration. it's 1ms
-			
-		// Store all links after restart.
-		if (Link.AnyExist("HostObj",self))						// Necessary to recreate DB?
-			database = []
-		foreach (link in Link.GetAll("HostObj",self)){			// Save game compatibility, recreate database. TODO test.
-			local data = LinkTools.LinkGetData(link,"")
-			database.append([LinkDest(link), link, data & 63])
-			// In data is the link and the perNFrames data saved.
-			// The per frame data is in the last 6 bits (63 = 111111)
+	constructor(){
+		::DHandler 		<- this		// Storing the instance. The object can be accessed via DHandler.self
+		// recreate database; doing this in the constructor, to have this initialized before BeginScript.
+		if (IsDataSet("Active"))
+			PerFrame_database = {}
+		if (IsDataSet("PerMidFrame_Active")){
+			OverlayHandlers = {}
+			PerMidFrame_database = {}
 		}
-		base.OnBeginScript()										// For InitMessages via DRelayTrap
+		
+		base.constructor()
+	}
+	
+	function OnBeginScript(){
+		::PlayerID		<- ObjID("Player") 	// Caches the PlayerID, faster, and easier wo write.
+		
+		#NOTE If the player object does not exist, check a frame later.
+		if (!::PlayerID)										
+			return PostMessage(self, "BeginScript")		// TODO check if there is a conflict with the later declaration. it's 1ms
+			
+		if (kUseIngameLog){
+			OverlayHandlers = {IngameLog = cDIngameLogOverlay()}
+		}
+		if (IsDataSet("PerMidFrame_Active"))
+			OverlayHandlers.FrameUpdater <- cDHandlerFrameUpdater()
+		
+		if (OverlayHandlers){
+			local Service = (GetDarkGame() != 1)? DarkOverlay : ShockOverlay
+			foreach (handler in OverlayHandlers)
+				Service.AddHandler(handler);
+		}
+		base.OnBeginScript()							// For the DoOn part.
 	}
 
-	function DeRegister(link){	
-		// Deregister Script
-		Link.Destroy(link)
-		if (!Link.GetAll("HostObj", self).AnyLinksLeft()){
+// |-- Hashfunction
+	// This Key might not be the fastest but the tables won't hold that many entries, and better a save key than a faster one that has a minimal but existing conflict potential.
+	
+	//13 bits obj id
+	//8 bits first character
+	//17 bits the length * character sum
+	
+	function CreateHashKey(instance){
+		/* pretty pretty simple but does create a unique name key:
+			The Key will looks like this ObjIDScriptName, whereby for IDs < 1000, 0 are prefixed, so it is always 4 digits.
+			So for example: 0313DRelayTrap3; Object: 313 Script: DRelayTrap3.
+			
+			Also works for non DScripts that don't have the script variable in their class. */
+		return ::format("%4u%s",instance.self, ("script" in instance)? instance.script : instance.GetClassName())
+	}
+
+// |-- PerFrame_ Updates
+	function PerFrame_DeRegister(instance){	
+	/* Deregisters a script from doing PerFrame Updates */
+		delete PerFrame_database[CreateHashKey(instance)]
+		if (!PerFrame_database.len()){
 			ClearData("Active")
 		}
 	}
-
-	function Register(obj, doPerNFrames){
-		// Register Obj
-		local link = Link.Create("HostObj",self, obj)			// The doPerNFrames will be stored in the links data
-		LinkTools.LinkSetData(link, "", doPerNFrames)
-		if (!IsDataSet("Active")){
-			database = [[obj, link, doPerNFrames]]				// For faster execution, saving the data separately, so a sLink and LinkTools is not necessary.
-			SetData("Active")
-			PostMessage(self,"DoUpdates",0)
-		} else 
-			database.append([[obj, link, doPerNFrames]])
 		
-		return link			// The LinkID is the key for the script. What a nice idea.
+	function PerFrame_ReRegister(instance, doPerNFrames){
+	/* Recreate the database after reloaded */
+		PerFrame_database[CreateHashKey(instance)] <- [doPerNFrames, instance, ("script" in instance)? instance.script : instance.GetClassName()]
 	}
 
+	function PerFrame_Register(instance, doPerNFrames){
+	/* Registers a Script for PerFrame updates, on the script the function FrameUpdate(script) will be called */
+		local key = CreateHashKey(instance)
+		if (!IsDataSet("Active")){
+			PerFrame_database = {
+				[key] 
+					= [doPerNFrames, instance, ("script" in instance)? instance.script : instance.GetClassName()]
+			}	// This is the data needed to perform the actions for the right instance and to be save game compatible (via the keyname).
+			SetData("Active")
+			PostMessage(self, "DoUpdates", 0)
+		} else 
+			PerFrame_database[key] <- [doPerNFrames, instance, ("script" in instance)? instance.script : instance.GetClassName()]
+
+		return "F" + key	// The F indicates Per>F<rame							
+	}
 
 	function OnDoUpdates(){
 		if (!IsDataSet("Active"))
-			return	
-	
-		local curFrame = message().data+1
-		foreach (tuple in database)
+			return
+		
+		local curFrame = message().data + 1
+		
+		foreach ( data in PerFrame_database)	// [0: doPerNFrames, 1: instance, 2:script]
 		{
-			if (!(curFrame % tuple[2]))							// if curFrame modulo perNFrames == 0
-				SendMessage(tuple[0], "FrameUpdate", tuple[1])
+			// if curFrame modulo perNFrames == 0
+			if (!(curFrame % data[0]))							
+				data[1].FrameUpdate(data[2])
 		}
-		//if (curFrame == 630)		// ah why reset it, let it roll, question is only are high modulos slow?
+		//if (curFrame == 630)					// resetting will lead to small gaps. let it roll, question is only are high modulos slow?
 		//	curFrame = 0
 			
 		PostMessage(self,"DoUpdates", curFrame)
 	}
+// |-- PerMidFrame Updates via Overlay
+	function PerMidFrame_DoUpdates(){
+		foreach ( data in PerMidFrame_database){		// [instance, script]						
+			data[0].FrameUpdate(data[1])
+		}
+	}
+	
+	function PerMidFrame_DeRegister(instance){	
+	/* Deregisters a script from doing PerFrame Updates */
+		delete PerMidFrame_database[CreateHashKey(instance)]
+		if (!PerMidFrame_database.len()){
+			ClearData("PerMidFrame_Active");
+			((GetDarkGame() != 1)? DarkOverlay : ShockOverlay).RemoveHandler(OverlayHandlers.FrameUpdater);
+		}
+	}
+		
+	function PerMidFrame_ReRegister(instance){
+	/* Recreate the database after reloaded */
+		PerMidFrame_database[CreateHashKey(instance)] <- [instance, ("script" in instance)? instance.script : instance.GetClassName()]
+	}
 
+	function PerMidFrame_Register(instance){
+	/* Similar to above, link is negative. */
+		local key = CreateHashKey(instance)
+		if (!IsDataSet("PerMidFrame_Active")){
+			PerMidFrame_database = {[key] = [instance, ("script" in instance)? instance.script : instance.GetClassName()]}
+			SetData("PerMidFrame_Active")
+			if (!OverlayHandlers)						// Another handler already registered?
+				OverlayHandlers = {}
+			if (!("FrameUpdater" in OverlayHandlers)){	// FrameUpder already initialized
+				OverlayHandlers.FrameUpdater <- ::cDHandlerFrameUpdater();	// In Overlays.nut
+			}
+			((GetDarkGame() != 1)? DarkOverlay : ShockOverlay).AddHandler(OverlayHandlers.FrameUpdater)	
+		} else 
+			PerMidFrame_database[key] <- [instance, ("script" in instance)? instance.script : instance.GetClassName()]
+		
+		return "M" + key					// Per>M<idFrame
+	}
+	
+// |-- Others
+	function IsRegistered(instance){
+		local key = CreateHashKey(instance)
+		if (key in PerFrame_database)
+			return 'F'						// Which DB
+		if (key in PerMidFrame_database)
+			return 'M'
+		return FALSE
+	}
+
+// |-- On/Off
 	// This is for standard DRelayTrap like sent messages at mission begin, to initializes settings.
 	function DoOn(DN){
 		if (Property.Get(self,"Locked"))
 			return
 
-		DRelayMessages("On",DN)
+		base.DoOn(DN)
 		if (!DGetParam(script + "InitAlways",false,DN))	// By default it will only react at mission start but can react at every game load.
 			Property.SetSimple(self,"Locked",true)
 	}
+
+// |-- Destructor
+	function OnEndScript()
+	{
+		local Service = (GetDarkGame() != 1)? DarkOverlay : ShockOverlay
+		if (OverlayHandlers)
+			foreach (handler in OverlayHandlers)
+				Service.RemoveHandler(handler);
+	}
 	
+	function destructor()
+	{
+		local Service = (GetDarkGame() != 1)? DarkOverlay : ShockOverlay
+		if (OverlayHandlers)
+			foreach (handler in OverlayHandlers)
+				Service.RemoveHandler(handler);
+	}
 }
 
 
 
 #########################################################
-class DHub extends DBaseTrap   // NOT A BASE SCRIPT - oh it became one but at the moment not tested.
+class DHub extends DBaseTrap  								// NOT A BASE SCRIPT - oh it became one but at the moment not tested.
 #########################################################
 {
 	/*
@@ -1771,7 +1742,7 @@ DefOn		= null
 i			= null
 
 constructor() 		//Initializing Script Data
-	{
+{
 		local ie= !IsEditor()
 		local DN= userparams()
 		local def = 0
@@ -1972,7 +1943,7 @@ function OnMessage(){
 ## END of HUB
 ################################
 
-### 	/-- 	Â§	Button & Lever scripts				--\
+### 	/-- 	§	Button & Lever scripts				--\
 
 #########################################
 class SafeDevice extends SqRootScript{
@@ -2172,7 +2143,7 @@ Alternatively if just a special set of objects should trigger a TurnOn then thes
 		local vfrom = Object.Position(from)
 		local vto   = Object.Position(to)
 		local v 	= vto - vfrom					//Vector between the objects.
-		if (from == ::PlayerID)						//TODO: FIX FOR PLAYER ID
+		if (from == ::PlayerID)
 		{
 			vfrom = Camera.GetPosition()			// TODO: THIS IS NOT USED
 			vfrom = vector(sin(from.y)*cos(from.z),sin(from.y)*sin(from.z),cos(from.y))		// TODO: I can do better now?, maybe add offset?
@@ -2248,8 +2219,8 @@ Use DWatchMeTarget to specify another object, archetype or metaproperty. (see no
 
 On TurnOff will remove any(!) AIWatchObj links to this object. You maybe want to set DWatchMeOff="Null".
 
-?Â¢Further (if set) copies!! the AI->Utility->Watch links default property of the archetype (or the closest ancestors with this property) and sets the Step 1 - Argument 1 to the Object ID of this object.
-?Â¢Alternatively if no ancestor has this property the property of the script object will be used and NO arguments will be changed. (So it will behave like the normal T1/PublicScripts WatchMe or NVWatchMeTrap scripts)
+?¢Further (if set) copies!! the AI->Utility->Watch links default property of the archetype (or the closest ancestors with this property) and sets the Step 1 - Argument 1 to the Object ID of this object.
+?¢Alternatively if no ancestor has this property the property of the script object will be used and NO arguments will be changed. (So it will behave like the normal T1/PublicScripts WatchMe or NVWatchMeTrap scripts)
 TODO: If the object has a custom one it should take priority.
 
 ------------------------------
@@ -2429,7 +2400,7 @@ class DTPBase extends DBaseTrap
 		
 		if (x != 0 || y != 0 || z != 0)
 			return vector(x,y,z)
-		return false
+		return null
 	}
 
 }
@@ -2446,7 +2417,7 @@ If any of the DTp_ parameters is specified and not 0 these have priority.
 		local victim = ::PlayerID
 		local dest = GetTeleportVector()
 		
-		if (dest != false)
+		if (!dest)
 			dest =(Object.Position(victim) + dest);
 		else
 			dest = Object.Position(self);
@@ -2471,11 +2442,11 @@ DTrapTeleporterTarget=^Zombie types
 #########################################*/
 {
 	function DoOn(DN){
-		local dest = Object.Position(self)
+		local dest   = Object.Position(self)
 		local target = DGetParam(script + "Target", "&ControlDevice", DN, kReturnArray)
 		foreach (t in target){
 			DTeleportation(t, dest);
-			if (!DGetParam("DTeleportStatic",true,DN)){
+			if (!DGetParam("DTeleportStatic", true, DN)){
 				Physics.SetVelocity(t, vector(0,0,1)); 		//There might be a nicer way to re enable physics
 				Physics.Activate(t)
 			}
@@ -2483,8 +2454,6 @@ DTrapTeleporterTarget=^Zombie types
 	}
 	
 }
-
-
 
 #########################################
 class DPortal extends DTPBase
@@ -2522,12 +2491,10 @@ DPortalTarget="+player+#88+@M-MySpecialAIs"
 			KillTimer(GetData("PortalTimer"));
 		}
 		SetData("PortalTimer", 
-			SetOneShotTimer("GoPortal", 0.1, 
-				DArrayToString(
-					DGetParam("DPortalTarget", message().transObj, DN, kReturnArray)
+				SetOneShotTimer("GoPortal", 0.1, 
+					DArrayToString(
+						DGetParam("DPortalTarget", message().transObj, DN, kReturnArray)
 				)));
-				
-		
 	}
 
 	function OnTimer(){
@@ -2550,7 +2517,7 @@ DPortalTarget="+player+#88+@M-MySpecialAIs"
 ###################################End Teleporter Scripts###################################
 
 
-// 		|-- Â§Undercover / Â§Ignore_Player_until_Scripts		 --|
+// 		|-- §Undercover / §Ignore_Player_until_Scripts		 --|
 ###################################Undercover scripts###################################
 //Weapons scripts are in DUndercover.nut
 //TODO: Link the the detailed forum documentation.
