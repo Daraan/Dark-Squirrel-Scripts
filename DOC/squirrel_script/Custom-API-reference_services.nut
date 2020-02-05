@@ -238,7 +238,7 @@ Physics
 	HRESULT ControlCurrentPosition(object obj);
 	HRESULT DeregisterModel(object obj);
 	
-	// subModel = 0, bobs the head in the direction of the vector.
+	# subModel = 0, bobs the head in the direction of the vector.
 	PlayerMotionSetOffset(int subModel, vector & offset);
 	HRESULT Activate(const object obj);
 	BOOL ValidPos(const object obj);
@@ -764,7 +764,6 @@ DarkOverlay
 //
 // coordinate mapping (may ONLY be called inside the DarkOverlayHandler::DrawHUD and DrawTOverlay handlers)
 //
-
 	// map a 3D position in the world to a screen coordinate, returns FALSE if off-screen
 	BOOL WorldToScreen(vector pos, int_ref x, int_ref y);
 	
@@ -774,7 +773,6 @@ DarkOverlay
 //
 // transparent overlay management
 //
-
 	// create a transparent overlay item (like the security icon in shock), alpha is 0 to 255
 	// its contents have to be updated using Begin/EndTOverlayUpdate and draw calls, note that constant updating
 	// isn't too optimal, so it should only be done when necessary and avoided on larger items
@@ -803,7 +801,6 @@ DarkOverlay
 // methods that may ONLY be called inside the DarkOverlayHandler::DrawHUD handler
 // or inside a DarkOverlayHandler::Begin/EndTOverlayUpdate pair
 //
-
 	// draw a loaded bitmap at the given position, bitmap will be drawn unscaled
 	DrawBitmap(int handle, int x, int y);
 	
@@ -831,7 +828,6 @@ DarkOverlay
 //
 // methods that may ONLY be called inside a DarkOverlayHandler::Begin/EndTOverlayUpdate pair
 //
-
 	// fill contents of a transparent overlay item to palette index color (0 is black), 'alpha' sets alpha component of
 	// the image data and should not be confused with the alpha specified in the CreateOverlayItem functions,
 	// which is applied on top of the alpha in image data (normally it's set to 255)
@@ -840,7 +836,6 @@ DarkOverlay
 //
 // methods that may ONLY be called inside the DarkOverlayHandler::DrawTOverlay handler
 //
-
 	// must be called before updating a transparent overlay item contents with draw calls
 	// make sure the return value is TRUE before drawing anything
 	BOOL BeginTOverlayUpdate(int handle);
@@ -851,7 +846,7 @@ DarkOverlay
 	// draw a transparent overlay item, handle is an overlay item handle returned by one of the CreateTOverlayItem functions
 	DrawTOverlayItem(int handle);
 	
-//See also font color styles 
+#See also font color styles 
 enum StyleColorKind in API-reference.nut
 }
 
