@@ -3,7 +3,7 @@
 #include DScript.nut // File & Blob Library is standalone.
 
 
-##		/--		§		§File_&_Blob_Library§		§		--\
+##		/--		Â§		Â§File_&_Blob_LibraryÂ§		Â§		--\
 //
 //	This file contains tools to interact with files (read only) and blobs.
 //	Ultimately enabling the extraction of data/parameters from files. 
@@ -43,7 +43,7 @@ myblob = null								// As we will work more with the derived dblob class
 	/* There it is the extract a parameter function. Yay :)
 		First scans until it finds the parameter, then looks for the next separator and the next behind it. Then returns the slice between these two.*/
 	#NOTE IMPORTANT: dfile and dblob.getParam work differently when there are linebreaks! 
-	#					dfile will give +1 character per linebreak on windows CR LF linebreaks. Unix LF is fine.
+	#					dfile will give +1 character per linebreak on windows CR LF linebreaks. Unix LF is fine. #TODO didn't I fix this?
 		local valid = find(param, offset)
 		if (valid >= 0){										// Check if present
 			if (find(separator, valid)){						// Search for next separator
@@ -336,5 +336,46 @@ class dblob extends dfile
 		}
 		throw null
 	}
+	
+}
+
+
+################ Game related scripts
+
+
+## Persistent Saves
+/* There are two different scripts, which both have their advantages and disadvantages:
+
+DPersistentSaveSimple:
+Advantage: No conflicts with other authors.
+Disadvantage: 1 file per event
+
+DPersistentSave:
+Advantage: Can cause conflict
+Disadvantage: Multiple event's in one file
+
+*/
+
+
+class DPersistentSaveSimple extends DRelayTrap
+{
+DefOff = null
+	
+	function OnBeginScript(){
+		if (DGetParam(script + "NewGame") && !IsDataSet("Timestamp")){
+			SetData("Timestamp", ::format("%d%d%d",date().yday, date().hour , date().min))
+		}
+	
+	}
+	
+	function DoOn(DN){
+		local event_name = DGetParam(script + "Event")
+		if (DGetParam(script + "NewGame")){
+			event_name = ::format("%s_%s", event_name, GetData("Timestamp"))
+		}
+		// make a save
+		Debug.Command("dump_props",event_name + ".dsav")
+	}
+	
 	
 }
