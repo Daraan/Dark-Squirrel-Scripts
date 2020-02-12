@@ -1,4 +1,4 @@
-##		--/					 §HEADER					--/
+##		--/					 Â§HEADER					--/
 
 #include DConfigDefault.nut
 // This file IS NECESSARY for DScript.nut to compile.
@@ -12,7 +12,7 @@
 // --------------------------------------------------------------------------
 
 
-##		/--		§#		§_INTRODUCTION__§		§#		--\
+##		/--		Â§#		Â§_INTRODUCTION__Â§		Â§#		--\
 //////////////////////////////////////////////////////////////////// 
 //					 	
 const DScriptVersion = 0.71 	// This is not a stable release!
@@ -31,7 +31,7 @@ const DScriptVersion = 0.71 	// This is not a stable release!
 //  To highlight code, special functions and constants and especially the use of custom fold points.
 //  An advanced text editor like notepad++ is recommended and necessary to use them. Like DromEd this file uses ANSI characters.
 //
-//		/--		§#		§_DEMO_CATEGORY_§		§#		--\
+//		/--		Â§#		Â§_DEMO_CATEGORY_Â§		Â§#		--\
 //			<-- fold it on the left
 //		|--			#		Paragraph		#			--|
 //			To fold the code into meaningful paragraphs.
@@ -78,7 +78,7 @@ The real scripts currently start at around line > 1000
 /////////////////////////////////////////////////////////////////
 
 // ----------------------------------------------------------------
-##		/--		§#		§___CONSTANTS___§		§#		--\
+##		/--		Â§#		Â§___CONSTANTS___Â§		Â§#		--\
 // Adjustable Constants are in the DConfig*.nut files.
 // ----------------------------------------------------------------
 
@@ -123,7 +123,7 @@ enum eScriptTurn					// Used by the DBaseTrap checks
 
 // -----------------------------------------------------------------
 
-##		/--		§#	  	  §_VERSION_CHECK_§		§#		--\
+##		/--		Â§#	  	  Â§_VERSION_CHECK_Â§		Â§#		--\
 /* If a FanMission author defines a dRequiredVersion in a separate DConfig file this test will check if the 
 	current DScriptVersion of this file is sufficient or outdated and will display a ingame and monolog message to them. */
 
@@ -134,7 +134,7 @@ if (dRequiredVersion > DScriptVersion){
 }
 
 
-##		/--		§#	  §HELLO_&_HELP_DISPLAY§	§#		--\
+##		/--		Â§#	  Â§HELLO_&_HELP_DISPLAYÂ§	Â§#		--\
 ##		|--			#	   General_Help		#			--|
 
 if (!::Engine.ConfigIsDefined("dsnohello") && dHelloMessage && IsEditor() && DScriptVersion > 0.90)	// will be enabled in Version 0.7 onward.
@@ -166,7 +166,7 @@ if (::Engine.ConfigIsDefined("dhelp")) 		//TODO: Setup attributes.
 
 
 ##		|-- ------------------------------------------- /--
-##		/--		§# §______BASIC_METHODS_____§  §#		--\
+##		/--		Â§# Â§______BASIC_METHODS_____Â§  Â§#		--\
 //
 // 				String and Parameter analysis
 //
@@ -363,7 +363,7 @@ SubVersion 	= 0.72
 		throw null								// will now look in root table
 	}*/
 	
-	## |-- 	§Main_Analysis_Function		--|
+	## |-- 	Â§Main_Analysis_Function		--|
 	function DCheckString(str, returnInArray = false){		
 	/* 
 	Analysis of a given string parameter depending on its prefixed parameter.
@@ -508,12 +508,12 @@ SubVersion 	= 0.72
 					return ::DScript.FormatForReturn(DCheckString(value, returnInArray), returnInArray)
 				}
 				// yes no break.
-			case '§': // Paragraph sign. #NOTE IMPORTANT this file needs to be saved with ANSI encoding!
+			case 'Â§': // Paragraph sign. #NOTE IMPORTANT this file needs to be saved with ANSI encoding!
 				// replace with difficulty?
-				local another = str.find("§",1)
+				local another = str.find("Â§",1)
 				str = str.slice(kRemoveFirstChar)
 				if (another){
-					local ar = ::DScript.DivideAtNextChar(str,"§")
+					local ar = ::DScript.DivideAtNextChar(str,"Â§")
 					str = ar[0] + (::Quest.Exists(kReplaceQVarOperatorWith) ? ::Quest.Get(kReplaceQVarOperatorWith) : ::Quest.Get("difficulty")) + ar[1]
 				}
 				local customtable = ::split(str,".")
@@ -882,7 +882,7 @@ print("SHARED" + obj)
 		return ::split(data, separator)
 	}
 
-	#  |--  §Conditional_Debug_Print 	--|
+	#  |--  Â§Conditional_Debug_Print 	--|
 	function DPrint(dbgMessage = null, DoPrint = null, mode = 3) 	// default mode = ePrintTo.kMonolog | ePrintTo.kUI)
 	{
 		if (!DoPrint){
@@ -914,7 +914,7 @@ print("SHARED" + obj)
 }
 
 // ----------------------------------------------------------------
-##		/--		§# §____FRAME_WORK_SCRIPT____§	§#		--\
+##		/--		Â§# Â§____FRAME_WORK_SCRIPT____Â§	Â§#		--\
 //
 // The DBaseTrap is the framework for nearly all other scripts in this file.
 // It handles incoming messages and interprets the general parameters like Count, Delay, Repeat.
@@ -1122,7 +1122,7 @@ SourceObj 	  = null	//	The actual source of a message.
 		RepeatForCopies(::callee())
 	}
 
-### |-- §_Main_Message_Handler_§ --| ###
+### |-- Â§_Main_Message_Handler_Â§ --| ###
 	function DBaseFunction(DN){
 	/* Handles and interprets all incoming messages. 
 		- Are they a valid Activating or Deactivating message? 
@@ -1174,7 +1174,7 @@ SourceObj 	  = null	//	The actual source of a message.
 		return RepeatForCopies(::callee(), DN)
 	}
 
-	# |-- 		§Pre_Activation_Checks 		--|
+	# |-- 		Â§Pre_Activation_Checks 		--|
 	/*Script activation Count and Capacitors are handled via Object Data, in this section they are set and controlled.*/
 	# |--	Custom Condition Parameter 	--|
 	function DCheckCondition(Condition){
@@ -1485,7 +1485,7 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 }
 
 
-// |-- §Handler_Object§ --|
+// |-- Â§Handler_ObjectÂ§ --|
 /* This creates one object named DScriptHandler, see the class below.
 	That script initializes some data at game time, like the PlayerID and handles the perFrame updates. */
 if (IsEditor()){
@@ -1738,15 +1738,15 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubCount","DHubCapacitor","DHu
 	getter = function(key){
 		/* Checks if there is a default DHub parameter instead. */
 			// slice the _script part away and place DHub before.
-			if (key in DelegateDN.cache){
-				return DelegateDN.cache[key]
-			}
+			// if (key in DelegateDN.cache){
+			//	return DelegateDN.cache[key]
+			//}
 			local baseDN = userparams(false)			
-			if (key in baseDN)	// if GetClassName() was used; explicit base lookup.
-				return baseDN[key]
+			// if (key in baseDN)	// if GetClassName() was used; explicit base lookup.
+			//	return baseDN[key]
 			
 			// Get key
-			if (key.find(_script) >= 0)
+			if (key.find(_script) >= 0)		// with the double delagate this should not be necessary
 				key = key.slice(_script.len())	
 			local rv = null
 			if (_script in baseDN){
@@ -1757,9 +1757,10 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubCount","DHubCapacitor","DHu
 				if (rv in baseDN){
 					rv = baseDN[rv]
 				}
-				else return null // will not throw but is null instead. As the in DN check will not work.
+				else return null // idx not found, will not throw but return null for defaultValue.
 			}
-			DelegateDN.cache[_script + key] <- rv
+			baseDN[_script + key] <- rv	// cache it in the DN, next time the delegate will handle it.
+			// DelegateDN.cache[_script + key] <- rv
 			return rv
 		}
 
@@ -1792,13 +1793,23 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubCount","DHubCapacitor","DHu
 		return base.userparams()
 	}
 # End Hack
+/*
+or
+userprarams={}
+delegate={
+	_call return this
+	_get getter
+}
+delegate.delegate(base user)
 
+*/
+	
 	function DGetStringParam(param, defaultValue, str, returnInArray = false, separators = eSeparator.kStringData){
 	/* Finds and interprets a value in a param=value;... string */
 		return DCheckString(::DScript.DGetStringParamRaw(param, defaultValue, str, separators), returnInArray)
 	}
 
-	constructor() 				//Initializing Script Data
+	constructor() 					//Initializing Script Data
 	{
 		local DN  = base.userparams()
 		SubDN = {IsFake = true}
@@ -1807,6 +1818,7 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubCount","DHubCapacitor","DHu
 			 _get = getter.bindenv(this)
 		}
 		SubDN.setdelegate(DelegateDN)
+		DelegateDN.setdelegate(DN)		// So when a key is directly present it will be used.
 		_script = GetClassName()	
 		//print("Debug mode" + DGetParamRaw(GetClassName()+"Debug", false))
 		if (!IsEditor()){return}			// Data is set in the editor.
@@ -1909,7 +1921,7 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubCount","DHubCapacitor","DHu
 ## END of HUB
 ################################
 
-### 	/-- 	§	Button & Lever scripts				--\
+### 	/-- 	Â§	Button & Lever scripts				--\
 
 #########################################
 class SafeDevice extends SqRootScript{
@@ -1941,8 +1953,8 @@ NOTE: As this is a DRelayTrap script as well it can be activated via TurnOn; but
 ######################################### */
 	{
 ###StdController
-DefOn  = "DIOn"		//A successful Button Push will sent a DIOn to itself and then trigger underlying DBase&DRelayTrap features
-DefOff = "DIOff"
+DefOn  = null		// Changing these lets you bypass the ButtonPush()
+DefOff = null
 
 	function OnBeginScript(){
 		if(Property.Possessed(self,"CfgTweqJoints"))					// Standard procedure to have other property as well.
@@ -1953,7 +1965,7 @@ DefOff = "DIOff"
 	}
 
 	function OnEndScript(){
-		Physics.UnsubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);//I'm not sure why they always clean them up, but I keep it that way.
+		Physics.UnsubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);	//I'm not sure why they always clean them up, but I keep it that way.
 	}
 		
 	function ButtonPush(){
@@ -2161,9 +2173,9 @@ This will copy the Physics->Controls and Renderer->Transparency(Alpha) property 
 {
 	
 	function DoOn(DN){
-		local props  = DGetParam(_script + "Property", null,DN,kReturnArray)
+		local props  = DGetParam(_script + "Property", null, DN, kReturnArray)
 		local source = DGetParam(_script + "Source", self,DN)
-		local target = DGetParam(_script + "Target", "&ScriptParams", DN,kReturnArray);
+		local target = DGetParam(_script + "Target", "&ScriptParams", DN, kReturnArray);
 
 		foreach (to in target){
 			foreach (prop in props){
@@ -2483,7 +2495,7 @@ DPortalTarget="+player+#88+@M-MySpecialAIs"
 ###################################End Teleporter Scripts###################################
 
 
-// 		|-- §Undercover / §Ignore_Player_until_Scripts		 --|
+// 		|-- Â§Undercover / Â§Ignore_Player_until_Scripts		 --|
 ###################################Undercover scripts###################################
 //Weapons scripts are in DUndercover.nut
 //TODO: Link the the detailed forum documentation.
@@ -2800,17 +2812,15 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 #########END of UNDERCOVER SCRIPTS############
 
 
-
-
 #########################################
 class DCompileTrap extends DBaseTrap
-/* compiles the EdComment! (Yes NOT the Design Note) and runs it if you need short squirrel code */
+/* compiles the string given via DCompileTrapCode, uses the _ operator Syntax, which is added automatically. */
 ######################################### 
 # TODO NOT present in game.exe
 {
-	function DoOn(DN)
-	{
-		local func = compilestring(GetProperty("EdComment"))	// TODO works only in Editor
-		func()
+	function DoOn(DN){	
+		DCheckString("_"+DGetParamRaw(_script + "Code"))
+		// local func = compilestring(GetProperty("EdComment"))	// TODO works only in Editor
+		// func()
 	}
 }
