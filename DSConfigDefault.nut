@@ -39,8 +39,11 @@ const dRequiredVersion	= 0
 // DSpy registers only: Collision(1), Contact(2), Enter/Exit(4), the other types hold not that much useful information.
 const kDSpyPhysRegister	= 7				// Bitwise; see ePhysScriptMsgType reference. 
 
-// I added an option to print the most recent parts of the monolog.txt(editor.exe) or game.log(game.exe) directly ingame into the interface. Enable it here.
-const kUseIngameLog = true
+// If enabled ports the newest part of the monolog.txt(editor.exe) or game.log(game.exe) directly ingame onto the screen.
+const kUseIngameLog = true			// same as "-480/0"
+// const kUseIngameLog = "20/30"	// use this as an alternativ to define the X/Y position from the upper left corner. Use negative values for right/bottom
+
+const kGameLogAlpha = true			// Default is 0/Off, 255 is full black.
 
 #	|-- 	Operator Adjustments		--|
 // The { operator makes use of an modified vector class to make the xyz values accessible by index: v[0] = v.x
@@ -50,10 +53,10 @@ const kEnableDistanceOperator	= true
 // The $§ and > operator replace a present $ symbol with the current difficulty QuestVariable.
 // By default NV's "DebugDifficulty" has a higher priority - for testing purposes.
 // But if you want to use a custom Quest Variable that is not difficulty related you can choose that one here.
-const kReplaceQVarOperatorWith = "DebugDifficulty"
+const kReplaceQVarOperatorWith  = "DebugDifficulty"
 
 // $ and § Parameter alternativ look up binary table.
-const kSharedBinTable	= "SharedBinTable"
+const kSharedBinTable			= "SharedBinTable"
 
 // function GetRandomValue() {	return Data.RandFlt0to1()}
 getconsttable().MissionConstants <-{
@@ -93,8 +96,8 @@ enum eAlarmSignals
 enum eDLoad
 {
 	kFile			= "taglist_vals.txt"// File to read.	// TODO: Shock compatible?
-	kOffset			= 4000				// Skipped bytes in kFile.
-	kBlobSize		= 4095	 			// Read bytes/Blob size after the offset. Normally the absolute position should be between 4500 and 6000.
+	kStart			= "ENVMAPVAR"				// Skipped bytes in kFile.
+	kEnd			= "SKYMODE" 			// Read bytes/Blob size after the offset. Normally the absolute position should be between 4500 and 6000.
 	kKeyName		= "Env Zone 63"		// Data field where DPersistentLoad will look for its data.
 	kDataLength		= 63				// bytes to read after kKeyName. Choosing another kKeyName can enable up to 255 bytes to be read. Obsolete.
 }
@@ -117,7 +120,8 @@ enum eSeparator
 	kTimerSimple	= "+"		// How data is separated in a simple DataTimer.
 	kTimerKeyValue	= "+="		// How if they come as Key = Value pairs.
 	
-	kStringData		= ";="		// Used by DGetStringParam. 	// TODO: new = operator not useable for DHub.
+	kStringData		= ";="		// Used by DGetStringParam. The order is important the first indicates a new key the second the value. key=value;nextkey
+	// TODO: new = operator not useable for DHub.
 	
 	// Not implemented in the code:
 	/* 

@@ -11,12 +11,24 @@ DMath <-
 	
 	function SetFacingForced(obj, newface){
 	/* This sets the rotation, even on unrotatable objects: OBBs and Controlled*/
-		Property.Set(obj,"PhysState", "Facing", newface)										// This won't hurt even if it fails.
-		if (Property.Get(obj,"PhysControl", "Controls Active") & 16 || Physics.IsOBB(obj)){	// Controls Rotation or OBB
-			Property.Set(obj,"Position","Heading", newface.z * 182)			// 182 is nearly the difference between angle and the hex representation in Position
-			Property.Set(obj,"Position","Pitch",   newface.y * 182)
-			Property.Set(obj,"Position","Bank",    newface.x * 182)	
+		::Property.Set(obj,"PhysState", "Facing", newface)										// This won't hurt even if it fails.
+		if (::Property.Get(obj,"PhysControl", "Controls Active") & 16 || ::Physics.IsOBB(obj)){		// Controls Rotation or OBB
+			::Property.Set(obj,"Position","Heading", newface.z * 182)								// 182 is nearly the difference between angle and the hex representation in Position
+			::Property.Set(obj,"Position","Pitch",   newface.y * 182)
+			::Property.Set(obj,"Position","Bank",    newface.x * 182)	
 		}
+	}
+	
+	function CompileExpressions(...){
+	/* Little but powerful.
+		It might be helpfull to .call(this,...) this function or use bindenv. */
+		if (typeof vargv[0] == "array")
+			vargv = vargv[0]
+		local s = "return ("
+		foreach (val in vargv){
+			s += val
+		}
+		return ::compilestring(s + ")").call(this)
 	}
 
 # |-- 		Geometry		--|
@@ -77,7 +89,7 @@ DMath <-
 	/* Returns the SphericalCoordinates in the ReturnVector (r,\theta ,\phi )
 		The geometry in Thief is a little bit rotated so this theoretically correct formulas still needs to be adjusted.
 	*/
-		local v = DVectorBetween(from, to , UseCamera)
+		local v = ::DMath.DVectorBetween(from, to , UseCamera)
 		local r = v.Length()
 
 		return ::vector(r, ::acos(v.z / r)/ kDegToRad, ::atan2(v.y, v.x) / kDegToRad) // Squirrel note: it is atan2(Y,X) in squirrel.
@@ -87,7 +99,7 @@ DMath <-
 		/* Uses the standard DPolarCoordinates, and transforms the values to be more DromEd like, we want 
 			Z(Heading)=0° to be south and Y(Pitch)=0° horizontal.
 			Returns the relative XYZ facing values with x = 0. */
-		local v = DPolarCoordinates(from, to, UseCamera)
+		local v = ::DMath.DPolarCoordinates(from, to, UseCamera)
 		return ::vector(0, v.y - 90, v.z)
 	}
 	
@@ -109,19 +121,19 @@ DMath <-
 		if (typeof obj == "string" && ::endswith(obj, ".bin")){
 			model = obj.slice(0, -4)
 		} else
-			model = Property.Get(obj,"ModelName")	
+			model = ::Property.Get(obj,"ModelName")	
 		
 		//Set and create dummy
-		local dummy = Object.BeginCreate("Marker")		// Need an archetype with an model to net get errors.
-		Property.SetSimple( dummy,"ModelName", model)
-		Property.Add(dummy,"PhysType")
-		Property.Set(dummy,"PhysType","Type",0)			// PhysDims will be initialized if a model is set
-		local PhysDims	= Property.Get(dummy,"PhysDims","Size")
-		Object.EndCreate(dummy)
-		Object.Destroy(dummy)
-	
+		local dummy = ::Object.BeginCreate("Marker")		// Need an archetype with an model to net get errors.
+		::Property.SetSimple( dummy,"ModelName", model)
+		::Property.Add(dummy,"PhysType")
+		::Property.Set(dummy,"PhysType","Type",0)			// PhysDims will be initialized if a model is set
+		local PhysDims	= ::Property.Get(dummy,"PhysDims","Size")
+		::Object.EndCreate(dummy)
+		::Object.Destroy(dummy)
+		
 		if (scale)
-			PhysDims = PhysDims * Property.Get(obj, "Scale")
+			PhysDims = PhysDims * ::Property.Get(obj, "Scale")
 		
 		return PhysDims
 	}
@@ -129,8 +141,8 @@ DMath <-
 	function DScaleToMatch(obj, MaxSize = 0.25){
 		local Dim  = DGetModelDims(obj)
 		local ar = [Dim.x, Dim.y, Dim.z]
-		ar.sort()	// top index is max.
-		Property.SetSimple(obj, "Scale", vector(MaxSize / ar.top()))
+		ar.sort()											// top index is max.
+		::Property.SetSimple(obj, "Scale", ::vector(MaxSize / ar.top()))
 	}
 	
 }
@@ -159,10 +171,10 @@ Each parameter can target multiple objects also more than one special effect can
 
 	function DoOn(DN)
 	{
-		local fromset = DGetParam(script + "From",	self,DN,kReturnArray)
-		local toset   = DGetParam(script + "To",	self,DN,kReturnArray)
-		local type    = DGetParam(script + "Scaling",0 , DN)
-		local attach  = DGetParam(script + "Attach", false, DN)
+		local fromset = DGetParam(_script + "From",	self,DN,kReturnArray)
+		local toset   = DGetParam(_script + "To",	self,DN,kReturnArray)
+		local type    = DGetParam(_script + "Scaling",0 , DN)
+		local attach  = DGetParam(_script + "Attach", false, DN)
 		foreach (sfx in DGetParam("DRaySFX","ParticleBeam",DN,kReturnArray))
 		{
 			local vel_max 	= Property.Get(sfx,"PGLaunchInfo","Velocity Max").x
@@ -316,8 +328,8 @@ DefOn = "InvSelect"
 		if (message().name == "Equip"){ 
 			local DN		= userparams()
 			local sfxdummy 	= null
-			local usedummy	= DGetParam(script+"UseObject", 0, DN)
-			local model 	= DGetParam(script+"Model", self, DN)
+			local usedummy	= DGetParam(_script+"UseObject", 0, DN)
+			local model 	= DGetParam(_script+"Model", self, DN)
 
 			// print("m1 = "+model)
 			if (model == self && !usedummy)
@@ -338,8 +350,8 @@ DefOn = "InvSelect"
 			//if (usedummy != 3)
 				Property.SetSimple(sfxdummy,"HasRefs",0)
 			//Weapon.Equip(self)
-			local ar  = split(DGetParam(script + "Rot","0,0,0",DN),",")		// TODO? take vector directly?
-			local ar2 = split(DGetParam(script + "Pos","0.1,-0.6,-0.43",DN),",")
+			local ar  = split(DGetParam(_script + "Rot","0,0,0",DN),",")		// TODO? take vector directly?
+			local ar2 = split(DGetParam(_script + "Pos","0.1,-0.6,-0.43",DN),",")
 			local vr  = vector(ar[0].tofloat() , ar[1].tofloat(),  ar[2].tofloat())
 			local vp  = vector(ar2[0].tofloat(), ar2[1].tofloat(), ar2[2].tofloat())
 
@@ -351,7 +363,7 @@ DefOn = "InvSelect"
 			Object.EndCreate(sfxdummy)
 		}
 		
-		if (RepeatForIntances(OnTimer))
+		if (RepeatForCopies(OnTimer))
 			base.OnTimer()
 	}
 }
@@ -380,9 +392,9 @@ class DObjectFaceTarget extends DBaseTrap
 
 	function DoOn(DN)
 	{
-		local target	= DGetParam(script+"Target", self, DN)
-		local offset	= DGetParam(script+"Offset",    0, DN, kReturnArray)
-		local Viewers	= DGetParam(script+"Viewer", self, DN, kReturnArray)
+		local target	= DGetParam(_script+"Target", self, DN)
+		local offset	= DGetParam(_script+"Offset",    0, DN, kReturnArray)
+		local Viewers	= DGetParam(_script+"Viewer", self, DN, kReturnArray)
 		
 		ResizeArrayToArray(offset, Viewers, 0)	// each object can has it's own offset.
 		foreach (i, obj in Viewers){
@@ -421,18 +433,18 @@ class DObjectPanTo extends DRelayTrap
 		} */
 		
 		if ((difference).Length() < speed){
-			DMath.SetFacingForced(obj, full_change)		// Fix to end point.
+			::DMath.SetFacingForced(obj, full_change)		// Fix to end point.
 			// Extra relay messages
-			if (script + "TSingleOff" in userparams()){
+			if (_script + "TSingleOff" in userparams()){
 				SourceObj = obj							// [source] will be this object.
 				base.DRelayMessages("SingleOff", userparams(), obj)
 			}
 			// Auto Remove item from queue?
-			if (DGetParam(script + "AutoOff", true)){
+			if (DGetParam(_script + "AutoOff", true)){
 				Viewers.remove(Viewers.find(obj))		// low prio todo. #BUG: One item will be skipped in the loop, but just for one step.
 				if (Viewers.len() == 0){
 					// Sent message?
-					if (script + "TOff" in userparams()){
+					if (_script + "TOff" in userparams()){
 						SourceObj = obj							// message that finished it's facing queue.
 						base.DRelayMessages("Off", userparams(), obj)
 					}
@@ -444,7 +456,7 @@ class DObjectPanTo extends DRelayTrap
 		
 		difference.Normalize()
 		// (difference) normalized to 1 degree * speed in degrees per frame + current facing.
-		DMath.SetFacingForced(obj, difference * speed + facing)
+		::DMath.SetFacingForced(obj, difference * speed + facing)
 	}
 
 #	|-- Message Handlers --|
@@ -470,30 +482,26 @@ class DObjectPanTo extends DRelayTrap
 		// Reregister
 		local data = GetData("Active")
 		if (data && (typeof data) == "string"){
-			::DHandler.PerFrame_ReRegister(this, DGetParam(script + "Interval",  2, DN))
-		}
-		
+			::DHandler.PerFrame_ReRegister(this, DGetParam(_script + "Interval",  2, DN))
+		}	
 		base.OnBeginScript()
 	}
 
 
 #	|-- On Off --|
 	function DoOn(DN){
-		target	= DGetParam(script + "Target", self, DN)
-		offset	= DGetParam(script + "Offset",    0, DN, kReturnArray)
-		speed	= DGetParam(script + "Speed",     3, DN) // degrees per frame
-		Viewers = DGetParam(script + "Viewer", self, DN, kReturnArray)
+		target	= DGetParam(_script + "Target", self, DN)
+		offset	= DGetParam(_script + "Offset",    0, DN, kReturnArray)
+		speed	= DGetParam(_script + "Speed",     3, DN) // degrees per frame
+		Viewers = DGetParam(_script + "Viewer", self, DN, kReturnArray)
 		
-		DObjectFaceTarget.ResizeArrayToArray(offset, Viewers, 0)
-		DLowerTrap.DumpTable(Viewers)
-		DLowerTrap.DumpTable(offset)
-		
+		::DObjectFaceTarget.ResizeArrayToArray(offset, Viewers, 0)
 		foreach (i, viewer in Viewers){
 			DPanToTarget(viewer, target, speed, offset[i])
 		}
 		
 		if (!IsDataSet("Active")){
-			local interval = DGetParam(script+"Interval",  2, DN)
+			local interval = DGetParam(_script + "Interval",  2, DN)
 			if (!interval)	// Can be 0.
 				return
 			if (typeof interval == "integer"){	// Per Frame or float?
@@ -507,9 +515,11 @@ class DObjectPanTo extends DRelayTrap
 	}
 	
 	function DoOff(DN = null){
-		print("done")
-		if (typeof GetData("Active") == "string")
+		DPrint("All done.")
+		if (typeof GetData("Active") == "string"){
 			::DHandler.PerFrame_DeRegister(this)
+			ClearData("Active")
+		}
 		else
 			KillTimer(ClearData("Active"))
 		// clear variables
@@ -560,7 +570,9 @@ spin	 	= null
 	function OnBeginScript()
 	{	// Re set data after reload.
 		if (IsDataSet("Active")){
+			// rot_offset = vector()
 			AttachLink = GetData("CompassLink"); 	// Restore data
+			DoOn(userparams(), null, true)
 			::DHandler.PerMidFrame_ReRegister(this);
 		}
 		base.OnBeginScript()
@@ -573,12 +585,14 @@ spin	 	= null
 
 		local ScreenZ = ::DHandler.OverlayHandlers.FrameUpdater.HeightToZ
 	
-		// Skip if these were set on a child class.
-		local pos = DGetParam(script + "Position", vector(0.6, 0, -70), userparams())
+		local pos = DGetParam(_script + "Position", null, userparams())
+		if (!pos)
+			pos = vector(0.6, 0, -70)	// Default, don't want to init this in DGetParam just to destroy it again.
+		if (typeof(pos) != "vector")
+			DPrint("ERROR: Position must be a vector: Use: {Position}= \"<x, y, z\" y, z in % of screen.", kDoPrint, ePrintTo.kUI | ePrintTo.kMonolog)
 		pos.y = pos.y /100 * ScreenY
 		pos.z = pos.z /100 * ScreenZ	
-		if (typeof(pos) != "vector")
-			DPrint("ERROR: Position must be a vector: Use: {Position}= \"<x, y, z\" y, z in % of screen.", kDoPrint, ePrintTo.kUI || ePrintTo.kMonolog)
+	
 		loc_offset = pos
 	}
 
@@ -593,9 +607,11 @@ spin	 	= null
 	function FrameUpdate(script = null){
 		LinkTools.LinkSetData(AttachLink, "rel rot", GetRotation())
 		local v 	 = vector()
-		Object.CalcRelTransform(::PlayerID, ::PlayerID, v, vector(), 4, 0)	// nearly constant, can't access PlayerMode (stand, crouch) in Thief :/
+		local rot=vector()
+		Object.CalcRelTransform(::PlayerID, ::PlayerID, v, rot, 4, 0)	// nearly constant, can't access PlayerMode (stand, crouch) in Thief :/
+		print(rot)
 		LinkTools.LinkSetData(AttachLink, "rel pos",
-								Object.WorldToObject(::PlayerID, Camera.CameraToWorld(loc_offset)) + v)	// CameraToWorld nearly constant for all instances.
+								Object.WorldToObject(::PlayerID, Camera.CameraToWorld(loc_offset)) + v)	// CameraToWorld nearly constant for all Copies.
 	}
 
  	function CreateHudObj(ObjType, usedummy){
@@ -621,9 +637,9 @@ spin	 	= null
 	}
 
 #	|-- On	 Off --|
-	function DoOn(DN, item = null){
+	function DoOn(DN, item = null, onreload = null){
 	// Off or ON? Toggling item
-		if (IsDataSet("Active"))							//TODO: Make toggle optional
+		if (IsDataSet("Active") && !onreload)							//TODO: Make toggle optional
 			{return DoOff(DN)}
 		
 		if (!rot_offset){									
@@ -632,19 +648,20 @@ spin	 	= null
 				rot_offset = vector(0,rot_offset,0)
 		}
 		SpinBase   = DGetParam(GetClassName() + "Spin", null, DN)
-		if (SpinBase){
+		if (SpinBase)
 			spin = 0
-		}
+
+		PostMessage(self, "CalcLocOffset")	// necessary info not available before next 1.1 frames
+		if (onreload)
+			return
 		
 		if (!item)					// base.DoOn from child.
-			item = DGetParam(script, DarkUI.InvItem(), DN)
-		item = CreateHudObj(item, DGetParam(script+"UseDummy", 1))
-		DMath.DScaleToMatch(item, DGetParam(script + "MaxSize", 0.20, DN))
+			item = DGetParam(_script, DarkUI.InvItem(), DN)
+		item = CreateHudObj(item, DGetParam(_script+"UseDummy", 1))
+		DMath.DScaleToMatch(item, DGetParam(_script + "MaxSize", 0.20, DN))
 		
 		::DHandler.PerMidFrame_Register(this)
-		SetData("Active") // PerMidFrame is registered without number
-		//	while (!::DHandler.OverlayHandlers.FrameUpdater.WorldX){ /* wait one frame */ } // Sadly halts everything :/
-		PostMessage(self, "CalcLocOffset")	// necessary info not available before next 1.1 frames
+		SetData("Active")
 		
 		return item					// Return for base.DoOn on children.
 	}
@@ -680,12 +697,12 @@ Use X,Y 180° Rotation to imitate a Z 180° rotation.
 		return rot_offset - v
 	}
 #	|-- On	 Off --|
-	function DoOn(DN){
-		rot_offset = DGetParam(script + "Rotation", vector(0,0,90))
+	function DoOn(DN, onreload = null){
+		rot_offset = DGetParam(_script + "Rotation", vector(0,0,90))
 		if (typeof(rot_offset) != "vector")
 			rot_offset = vector(0, 0, rot_offset)
 
-		base.DoOn(DN)
+		base.DoOn(DN, null, onreload)
 	}
 	
 }
@@ -711,7 +728,7 @@ class DRenameItem extends DRelayTrap {
 		local name = Data.GetObjString(item, "objnames")
 		if (name == "")
 			return false
-		newname.constructor(name)					// Magic..., sadly this needs a string ref and doesn't work directly with the strong.
+		newname.constructor(name)					// Magic..., sadly this needs a string ref and doesn't work directly with the string.
 		return true
 	}
 	
@@ -731,22 +748,22 @@ class DRenameItem extends DRelayTrap {
 	
 	# |-- On / Off --|
 	function DoOn(DN, timer = null){
-		/* Each instance can rename one item.*/
+		/* Each copy can rename one item.*/
 		
-		if (DGetParam(script + "NoRestart", false, DN) && IsDataSet(script + "Ticks"))
+		if (DGetParam(_script + "NoRestart", false, DN) && IsDataSet(_script + "Ticks"))
 			return
 			
-		local item 		= DGetParam(script, self, DN)			
-		local newname	= string(DGetParam(script+"NewName", Property.Get(item,"ModelName"), DN)) // need a reference for rename function.
-		local append 	= DGetParam(script+"Append", "", DN).tostring()
+		local item 		= DGetParam(_script, self, DN)			
+		local newname	= string(DGetParam(_script+"NewName", Property.Get(item,"ModelName"), DN)) // need a reference for rename function.
+		local append 	= DGetParam(_script+"Append", "", DN).tostring()
 		
 		// Send TOn only when it is specified
-		if (script + "TOn" in DN)
+		if (_script + "TOn" in DN)
 			base.DRelayMessages("On", DN)	
 		
 		// Backup? If the property is not set. It will be removed only and the archetype name appears again, else store it.
 		if (Property.PossessedSimple(item, "GameName"))
-			SetData(script+"OrgName", Property.Get(item,"GameName"))
+			SetData(_script+"OrgName", Property.Get(item,"GameName"))
 		
 		// Language support found and nothing special. EXIT
 		if (ReplaceItemNameFromRes(item, newname) && append == ""){			// If there is language support and nothing special we are done.
@@ -756,10 +773,10 @@ class DRenameItem extends DRelayTrap {
 		if (::startswith(append, "[Timer]")){
 			append = DCheckString(append.slice(7)).tointeger()				// slice away [Timer] and make really sure it's integer.	
 			// If a Timer is already running.
-			if (!IsDataSet(script + "Ticks"))								// TODO: This does not reset the past ms.
-				DSetTimerData("DRenameItem", 1.0, script, item, newname)	// Store all data in the timer.
+			if (!IsDataSet(_script + "Ticks"))								// TODO: This does not reset the past ms.
+				DSetTimerData("DRenameItem", 1.0, _script, item, newname)	// Store all data in the timer.
 			
-			SetData(script + "Ticks", append)
+			SetData(_script + "Ticks", append)
 			append = append / 60 + ":" + append % 60 						// ("min, seconds") format.
 		}
 		
@@ -767,10 +784,10 @@ class DRenameItem extends DRelayTrap {
 	}
 	
 	function DoOff(DN){
-		if (GetData(script+"OrgName"))
-			Property.SetSimple(DGetParam(script, self, DN),"GameName",GetData(script+"OrgName"))
+		if (GetData(_script+"OrgName"))
+			Property.SetSimple(DGetParam(_script, self, DN),"GameName",GetData(_script+"OrgName"))
 		else
-			Property.Remove(DGetParam(script, self, DN), "GameName")
+			Property.Remove(DGetParam(_script, self, DN), "GameName")
 	}
 	
 	# |-- Handlers --|
@@ -778,21 +795,21 @@ class DRenameItem extends DRelayTrap {
 	function OnTimer(){
 		if (message().name == "DRenameItem"){
 			local data = DGetTimerData(message().data)
-			script = data[0]
-			local append = GetData(script + "Ticks") - 1
+			_script = data[0]
+			local append = GetData(_script + "Ticks") - 1
 			if (append == 0){
-				if (DGetParam(script + "NoRestart", null, DN) <= 1)	// #NOTE null < anything = true
-					ClearData(script + "Ticks")
+				if (DGetParam(_script + "NoRestart", null, DN) <= 1)	// #NOTE null < anything = true
+					ClearData(_script + "Ticks")
 				DoOff(userparams())
 				base.DRelayMessages("Off", userparams())
 				return
 			}
-			SetData(script + "Ticks", append)
+			SetData(_script + "Ticks", append)
 			append = ::format("%d:%02d", append / 60, append % 60)  // ("min, seconds")
 			RenameItemHack(data[1].tointeger(), data[2], append)
 			DSetTimerData("DRenameItem", 1.0, data[0], data[1], data[2])
 			
-			script = GetClassName()									// Resetting to make sure.
+			_script = GetClassName()									// Resetting to make sure.
 		}
 		base.OnTimer()
 	}
@@ -800,9 +817,9 @@ class DRenameItem extends DRelayTrap {
 	function OnCreate(){
 		//#NOTE: FIX: Items with stacks get copied when dropped when a Timer is active they permanently have the time attached.
 		//				Only possible if this script operates on self, else there is no message to the script.
-		if (DGetParam(script, self) == self && ::startswith(DGetParam(script + "Append", "").tostring(), "[Timer]"))
-			Property.Remove(DGetParam(script, self, DN), "GameName")
-		if (RepeatForIntances(callee()))
+		if (DGetParam(_script, self) == self && ::startswith(DGetParam(_script + "Append", "").tostring(), "[Timer]"))
+			Property.Remove(DGetParam(_script, self, DN), "GameName")
+		if (RepeatForCopies(::callee()))
 			base.OnMessage()					// If there is a On Trigger for Create it will set it again.
 	}
 

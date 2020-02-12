@@ -3,7 +3,7 @@
 #include DScript.nut // File & Blob Library is standalone.
 
 
-##		/--		Â§		Â§File_&_Blob_LibraryÂ§		Â§		--\
+##		/--		§		§File_&_Blob_Library§		§		--\
 //
 //	This file contains tools to interact with files (read only) and blobs.
 //	Ultimately enabling the extraction of data/parameters from files. 
@@ -26,7 +26,7 @@ myblob = null								// As we will work more with the derived dblob class
 					myblob = ::file(path+filename, "r")
 					break
 				} catch(notfound) {
-					DPrint("ERROR!!!: "+myfile+" not found. Necessary file for this script.", kDoPrint, ePrintTo.kMonolog || ePrintTo.kLog || ePrintTo.kUI)
+					print("DScript ERROR!: "+filename+" not found. Necessary file for this script.")
 					return
 				}
 			case "file" :
@@ -62,7 +62,7 @@ myblob = null								// As we will work more with the derived dblob class
 		return def
 	}
 
-	function getParam2(param, def = "", start = 1, length = 1, offset = 0){
+	function getParam2(param, def = "", start = 1, length = 0, offset = 0){
 		if (find(param, offset) >= 0){ 			// Check if present and move pointer behind pattern
 			myblob.seek(start, 'c')				// move start forward
 			local rv = ""
@@ -117,7 +117,6 @@ myblob = null								// As we will work more with the derived dblob class
 		myblob.seek( start, start < 0? 'e' : 'b')
 		if (end <= 0)
 			end = myblob.len() + end			// get absolute position
-		print("end at " + end)
 		end = end - myblob.tell()				// end must be a length. So absolute position - current position
 		if (end < 0){							// string slice would throw an error now. We slice backwards here.
 			return slice(start + end, start)
@@ -286,8 +285,8 @@ class dblob extends dfile
 		try
 			return dblob(::file(path+filename, "r"))
 		catch(notfound){
-			error(filename+" not found. Necessary file for this script.")//, kDoPrint, ePrintTo.kMonolog || ePrintTo.kLog || ePrintTo.kUI)
-		return
+			error(filename+" not found. Necessary file for this script.")//, kDoPrint, ePrintTo.kMonolog | ePrintTo.kLog | ePrintTo.kUI)
+			return null
 		}
 	}
 
@@ -339,9 +338,9 @@ class dblob extends dfile
 	
 }
 
-
-################ Game related scripts
-
+################################################################
+##################    Game related scripts    ##################
+################################################################
 
 ## Persistent Saves
 /* There are two different scripts, which both have their advantages and disadvantages:
@@ -362,20 +361,273 @@ class DPersistentSaveSimple extends DRelayTrap
 DefOff = null
 	
 	function OnBeginScript(){
-		if (DGetParam(script + "NewGame") && !IsDataSet("Timestamp")){
-			SetData("Timestamp", ::format("%d%d%d",date().yday, date().hour , date().min))
+		// At Mission start create timestamp.
+		if (DGetParam(_script + "ClearAtNewGame", true) && !Quest.Exists("DTimestamp")){
+			Quest.Set("Timestamp", (date().yday<<11)+(date().hour<<6)+(date().min))
 		}
-	
+		
+		// At SaveGame load, sent message?
+		local IsOn = null
+		if (DGetParam(_script + "ClearAtNewGame", true)){
+			IsOn = ::format("%s_%X.dsav", DGetParam(_script + "EventName"), Quest.Get("DTimestamp"))
+		} else {
+			IsOn = DGetParam(_script + "EventName") + ".dsav"
+		}
+		
+		IsOn = Engine.FindFileInPath("install_path", IsOn, string())
+		
+		print(IsOn)
+		if (IsOn)
+			base.RelayMessages("On")
+		
+		if (RepeatForCopies(callee()))
+			base.OnBeginScript()
 	}
 	
 	function DoOn(DN){
-		local event_name = DGetParam(script + "Event")
-		if (DGetParam(script + "NewGame")){
-			event_name = ::format("%s_%s", event_name, GetData("Timestamp"))
+		local event_name = DGetParam(_script + "EventName")
+		if (DGetParam(_script + "AllowNewGame")){
+			event_name = ::format("%s_%X", event_name, Quest.Get("DTimestamp"))
 		}
 		// make a save
-		Debug.Command("dump_props",event_name + ".dsav")
+		Debug.Command("dump_cmds", event_name + ".dsav")
+	}
+
+}
+
+class DSaveHandler
+{
+	File	= null
+	rawdata	= null
+	MPrint  = null
+	Saves	= null
+	Slot	= null
+	MissData= null
+	
+	constructor(){
+		// constructed during BeginScript
+		::DSaveHandler <- this
+		print("constr save")
+		// At Mission start create timestamp.
+		if (!Quest.Exists("DTimestamp")){
+			Quest.Set("Timestamp", (date().yday<<11)+(date().hour<<6)+(date().min))
+		}
 	}
 	
+	function RegisterPrint(finger){
+	/* Author can register a custom print or use a automatic one. */
+		if (!finger || MPrint)	// Set on some other handler or already set.
+			return
 	
+		if (typeof finger != "string" && finger.len() != 6)
+			throw "DMissionFingerPrint must be a string of length 6"
+			
+		if (finger.tolower() == "[auto]")
+			GetMissionPrint()
+		else
+			MPrint  = "$"+finger
+		// Init data
+		Saves = {}
+		GetSaveRaw()	// MissData now set
+		if (!Slot)
+			print("NOT GOOD")
+		// Now OnSim data can be catched
+	}
+	
+	function GetMissionPrint(){
+		if (MPrint)
+			return MPrint		
+		
+		// Make [auto]matic print.
+		local name = string()
+		local map  = string()
+		Version.GetCurrentFM(name)
+		Version.GetMap(map)
+	
+		name = name.tostring()
+		map  = map.tostring()
+		print("map :" + map)
+		print("name :" + name)
+
+		local stamp = ""
+		// first two name characters
+		if (name != "" && !IsEditor()){
+			if (::startswith(name.tolower(),"the") && name.len() > 6)	// to make this more unique, filter out missions starting with the.
+				stamp = name.slice(4,6)
+			else
+				stamp = name.slice(0,2)
+		} else {
+			if (!IsEditor())
+				print("DScript WARNING: DPersistentSave: FM Name not set - hopefully still playtest.", kDoPrint, ePrintTo.kLog | ePrintTo.kUI)
+		}
+		
+		// Last character of miss file
+		stamp += map.slice(-6,-4)
+		// And some checksum via both names
+		local key = -50
+		for (local i = 1; i < name.len(); i++)
+			key += name[i]
+		for (local i = 1; i < map.len(); i++)
+			key += map[i]
+		
+		// And combine
+		MPrint = "$" + stamp + (key % 99)	// only make it 2 digits. Stamp:$ + 6 characters; 5 characters timestamp; - 63-7 = 57 characters left for saves.
+		print(MPrint)
+		return MPrint
+	}
+	
+	function GetSaveRaw(){
+		if (!Engine.FindFileInPath("install_path", eDLoad.kFile, string())){
+			print("DUMP FILE")
+			Debug.Command("dump_tagblocks_vals", "generate.txt") 		// file not present create it.
+		}
+		
+		File = ::dfile(eDLoad.kFile)
+		rawdata = File.slice(File.find(eDLoad.kStart), File.find(eDLoad.kEnd))
+		// File.myfile.close()
+		// print(rawdata)
+		
+		for (local i = 63; i > 9; i--){
+			local param = rawdata.getParam2("Env Zone "+i, null, 2)
+			// print("P" + i + "=" + param + "'")
+			if (::startswith(param, GetMissionPrint())){
+				Slot 	 = i
+				MissData = param
+				// Saves[i] = param
+			}
+			if (param == ""){
+				if (!Slot){
+					Slot = i
+					MissData = "---------------------------------------------------------"
+				}
+			} else if (param[0] == '$')	// Save data from other missions.
+				Saves[i] <- param
+		}
+		if (Slot) {
+			// current mission shall always be slot 63
+			if (Slot != 63){
+				foreach (idx, save in Saves){
+					// lower number by 1
+					if (idx == Slot)
+						continue	// Else stored twice.
+					Saves[idx - 1] <- save
+				}
+				Slot = 63
+				Saves[Slot] <- MissData
+			}
+			return Slot
+		}
+
+		// Else all were used... really? Lot's of Env maps prolly
+		print("WARNING all")
+		if (Saves.len() < 63 ){
+			// Well not all as saves slot at least, just lot's of Env maps cool.
+			for (local i = 63; i > 0; i--){
+				if (!(i.tostring() in Saves)){
+					Slot = i
+					return i
+				}
+			}
+		} else {
+			// wow this chance is low..., clean data.
+			return null
+		}
+		
+	}
+	
+	function SaveFile(){
+		// Create a backup for used envmaps, or other saves
+		local backup ={}
+		Debug.Command("dump_tagblocks_vals", "DumpForBackups")
+		rawdata = File.slice(File.find(eDLoad.kStart), File.find(eDLoad.kEnd))
+		foreach (slot, save in Saves){
+			local data = rawdata.getParam2("Env Zone "+slot,"", 2, 0);	// original mission data
+			print(slot+data)
+			if (data != "")
+				backup[slot] <- data
+			Engine.SetEnvMapZone(slot, Saves[slot]);
+		}
+		Debug.Command("dump_tagblocks_vals", "NowSave")								// persistent save data
+		foreach (slot, save in backup){												// restore backup
+			Engine.SetEnvMapZone(slot, save);
+		}
+	}
+	
+	function SetEvent(event_id, value, instantly = true){
+		assert(value >= 0 && value < 16)
+		print(MissData)
+		MissData = MissData.slice(0, -event_id) + value + MissData.slice(-event_id + 1)
+		print(MissData)
+		// TODO also do a backup blob
+		if (instantly)
+			SaveFile()
+	}
+	
+	function GetEvent(event_id){
+		if (MissData[- event_id] != '-')
+			return ::DMath.CompileExpressions("0x",MissData[- event_id].tochar()) // HEX to int. # TODO is there really no easy way for hexstring to int???
+		return null
+	}
+
+
+}
+
+class DPersistentSave extends DRelayTrap
+{
+DefOff  = null
+EventID	= null
+
+	function OnBeginScript(){
+		// Create Handler if not present
+		if (typeof ::DSaveHandler == "class")
+			::DSaveHandler()
+	
+		// Register FingerPrint; if not set on this object, doesn't matter.
+		::DSaveHandler.RegisterPrint(DGetParamRaw("DMissionFingerPrint"))		
+
+		base.OnBeginScript()
+	}
+	
+	function OnSim(){
+		// Doing this on Sim to be sure that all necessary Data has been set during BeginScript
+		if (!message().starting)
+			return
+		
+		// Get EventID
+		EventID = DGetParam(_script + "EventID", null)
+		if (!EventID || EventID > 57){
+			DPrint("ERROR: EventID not set. Values between 1 to 57", kDoPrint, ePrintTo.kMonolog | ePrintTo.kUI)
+			return
+		}
+		// Get EventValue
+		local event_data = DSaveHandler.GetEvent(EventID)
+		DPrint("Event Data is "+ event_data, true)
+		print(typeof event_data)
+		// Is data not null 0 -> 15
+		if (event_data >= 0){
+			// DataMatch does allow some advanced comparison.
+			local test = DGetParam(_script + "DataMatch", null)				// gives a test string like "%d == 4"
+			if (test){
+				if (DMath.CompileExpressions(::format(test, event_data)))	// Does the test return true?
+					base.RelayMessages("On", userparams(), _script, event_data)
+			} else {
+			// Just differentiate between TRUE > 0 and FALSE == 0
+			if (event_data)
+				base.DRelayMessages(event_data? "On" : "Off", userparams(), _script, event_data)
+			}
+		}
+		
+		// Repeat
+		if (RepeatForCopies(callee()))
+			base.OnMessage()
+	}
+	
+	function DoOn(DN){
+		local EventID = DGetParam(_script + "EventID")
+		if (DGetParam(_script + "AllowNewGame")){
+			event_name = ::format("%s_%s", event_name, Quest.Get("DTimestamp"))
+		}
+		::DSaveHandler.SetEvent(EventID, DGetParam(_script + "Data", 1))
+	}
+
 }

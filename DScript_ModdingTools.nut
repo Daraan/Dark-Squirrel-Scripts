@@ -3,7 +3,7 @@ class DEditorScripts extends DBaseTrap
 {
 // This is to track these scripts down before shipment.
 	constructor(){
-		if (Engine.ConfigIsDefined("deditor")  )
+		if (::Engine.ConfigIsDefined("deditor")  )
 			DPrint("Editor Script here.")
 
 		base.constructor()
@@ -69,10 +69,10 @@ static isObject = [
 
 //Register Object to all Phys Messages
 	function OnBeginScript()
-		Physics.SubscribeMsg(self, kDSpyPhysRegister)
+		::Physics.SubscribeMsg(self, kDSpyPhysRegister)
 
 	function OnEndScript()
-		Physics.UnsubscribeMsg(self,kDSpyPhysRegister)	// I'm not sure why they always clean them up, but I keep it that way.
+		::Physics.UnsubscribeMsg(self,kDSpyPhysRegister)	// I'm not sure why they always clean them up, but I keep it that way.
 
 	function InterpretConstants(dataname, datavalue){
 	/* Gives the raw values a sense like Object name or kDoorOpening */
@@ -88,7 +88,7 @@ static isObject = [
 					if (typeof datavalue == "object")					// returned by Stim messages
 						datavalue = datavalue.tointeger()
 					if (dataname == "source" || dataname == "sensor")
-						datavalue = sLink(datavalue).From()
+						datavalue = ::sLink(datavalue).From()
 					
 					// When does that mean? When it is a concrete object: if it has a special name like 'Player' will return it + the Archetype else only the Archetype directly.
 					local name =  (datavalue > 0) ?
@@ -133,6 +133,10 @@ static isObject = [
 			}
 		}
 		
+		if (message().getclass() == sDarkGameModeScrMsg && (dataname == "resuming" || dataname == "suspending") && !message().resuming &&!message().suspending)
+			retvalue = datavalue + "\t\t" + " | (BOTH 0 => GameModeInit)"
+
+		
 		if (!bitwise)
 			return retvalue
 		//else
@@ -143,14 +147,13 @@ static isObject = [
 			if (constant & datavalue)
 				retvalue += constname+"("+constant+") | "
 		}
-
 		return retvalue
 	}
 
 ## Message Handler ##
 	function OnMessage()
 	{	
-		local ignoreparam= DGetParam("DSpyIgnore", 6, userparams(), kReturnArray) 
+		local ignoreparam= DGetParam("DSpyIgnore", 22, userparams(), kReturnArray) 
 		local bmsg 	= message()
 		local mssg 	= bmsg.message
 		if (ignoreparam)
@@ -161,13 +164,15 @@ static isObject = [
 				{
 
 					if (ignore & 1)
-						ignoreset.extend(["Timer", "FrameUpdate"])
+						ignoreset.extend(["Timer"])
 					if (ignore & 2)
 						ignoreset.extend(["BeginScript", "Sim", "DarkGameModeChange"])
 					if (ignore & 4)
 						ignoreset.extend(["PhysFellAsleep", "PhysWokeUp", "PhysMadePhysical", "PhysMadeNonPhysical"])
 					if (ignore & 8)
 						ignoreset.extend(["PhysCollision", "PhysContactCreate", "PhysContactDestroy", "PhysEnter", "PhysExit"])
+					if (ignore & 16)
+						ignoreset.append("ObjRoomTransit")
 				} else
 					ignoreset.append(ignore)
 			}
@@ -186,18 +191,18 @@ static isObject = [
 		// Storing the function throws, have to do it like this:
 		if (IsEditor()){
 			foreach (dataname, v in bmsg.__getTable){		//the v are functions!
-				Debug.MPrint(::format( "\t%s%s%s", dataname ,
+				::Debug.MPrint(::format( "\t%s%s%s", dataname ,
 												( (dataname.len() > 7)? "\t: \t" : "\t\t: \t" ),
 												InterpretConstants(dataname, bmsg[dataname])))
 			}
 		} else {
 			foreach (dataname, v in bmsg.__getTable){		//the v are functions!
-				Debug.Log(::format( "\t%s%s%s", dataname ,
+				::Debug.Log(::format( "\t%s%s%s", dataname ,
 												( (dataname.len() > 7)? "\t: \t" : "\t\t: \t" ),
 												InterpretConstants(dataname, bmsg[dataname])))
 			}
 		}
-		print("\n")
+		::Debug.MPrint("\n")
 	}
 	
 }
@@ -225,6 +230,7 @@ if (IsEditor()){	// All classes from NewDark
 
 
 
+local z = 2
 ::Test <- false
 //This is just a script for testing purposes. ignore
 class DLowerTrap extends DEditorScripts						
@@ -235,7 +241,7 @@ class DLowerTrap extends DEditorScripts
 		local rf=vector() //difference between the facing values
 		Object.CalcRelTransform("Player",2,rp,rf,0,0) */
 
-	function PrintAllConstants()
+	static function PrintAllConstants()
 	/* Prints all constants and enumerations.*/
 	{
 		foreach (k,t in getconsttable())
@@ -251,7 +257,7 @@ class DLowerTrap extends DEditorScripts
 		}
 	}
 
-	function DumpTable(table, isSubTable = false){
+	static function DumpTable(table, isSubTable = false){
 		foreach (key, value in table)
 		{
 			print((((!isSubTable)? "" : "\t\tSub:\t" )  + "key: " + key +"  val: "+ value))
@@ -264,15 +270,30 @@ class DLowerTrap extends DEditorScripts
 		}
 	}
 
+	function OnBeginScript(){
+		base.OnBeginScript()
+	}
+	
+	function OnEndScript(){
+	
+	}
+	
 	constructor()
 	{
-		if (self == 6)
-		::TESTI <- this
-		// print(DCheckString(">-44>objdescs"))
-	
-		// return
 		if (self != 6)
 			return	
+		base.constructor()
+		if (self == 6){
+			//print("HUB"+DHub.DGetStringParam("A","notf",str))
+			//print(DCheckString("@human"))
+			//print(DCheckString("_(var.t<-2 , var.t)"))
+			//print(DCheckString("_DCheckString(\"^human\", true).find(_#411_) >= 0"))
+		}
+		
+		//::TESTI <- this
+		//print(DCheckString(">-44>objnames"))
+		
+		return
 		local table = getroottable()
 		local isSubTable = false
 					local ar = []
@@ -280,22 +301,29 @@ class DLowerTrap extends DEditorScripts
 		{
 			if (typeof(value) != "class" || key[0] != 'D')
 				continue
-			
-			local hash = 0
-			
-		
 			// print((((isSubTable)? "\t\t" : "\t" )  + "key: " + key +"  val: "+ value))
 		}
 		
-		DLowerTrap.DumpTable(ar)
+		// DLowerTrap.DumpTable(ar)
 
 	}
-		
+	
+	static getSource = function(){return SourceObj}
+	
 	function DFunc()	//General catching for testing.
-	{
-	//AI.ClearGoals(411)
-		::Test = ::Test? false : true
-		print("Checkin"+DCheckString("//Marker.TurnOn"))
+	{	
+	
+		print(message().flags)
+		BlockMessage()
+		print(message().flags)
+		
+		
+		//		print("Checkin"+DCheckString("//Marker.TurnOn"))
+
+		if (Version.IsEditor() == 2){	// ingame
+			
+		}
+		
 	//	print("Success?:" +Quest.BinSet("MyTable",blob(1)))
 	}
 
@@ -306,8 +334,8 @@ class DLowerTrap extends DEditorScripts
 	}
 
 	function DoOff(DN){
-	local datavalue = message().time
-	local ms 	= datavalue % 1000
+		local datavalue = message().time
+		local ms 	= datavalue % 1000
 					print( ms + "ms ")
 
 /* 
@@ -356,6 +384,9 @@ SQUIRREL> 0.000000, 0.000000, 2.600000
 	
 }
 
+class DTestTrap2 extends DLowerTrap{
+
+}
 
 /*
 class DImportObj extends DEditorScripts HAS BEEN MOVED
@@ -465,18 +496,19 @@ class DMyScript extends DBaseTrap
 {	
 	function OnMessage(){
 	/* This overwrites the DBaseTrap Main function */
-		foreach (script in DGetParam("DMyScript", null, userparams(), kReturnArray))
-			DBaseFunction(userparams(),script)
+		foreach (script in DGetParam("DMyScript", null, userparams(), kReturnArray)){
+			_script = script
+			DBaseFunction(userparams())
+		}
 	}
 	
 	function DoOn(){
-		getconsttable().MissionConstants[DGetParamRaw(script)]()
+		getconsttable().MissionConstants[DGetParamRaw(_script)]()
 	}
 	
 }
 
 ############
-
 
 
 ##########################################
@@ -503,15 +535,16 @@ i = null
 		while (time() == end)				//Time interval is exactly 1 second.
 		{
 #################Insert the test function here#######################
-			local a = [3,2,5,2]
-			local b = DMath.Max(a)
+			DCheckString("[me]")
 #####################################################################				
 				i++						//Checks how often this action can be performed within that 1 second.
 		}
 		print("Function 1: was executed: " +i+" times in 1 second. Execution time: "+ (1000.0/i) +" ms")
 #####################################################################
 //set true if you want to compare it to a second function
-		if (true) 
+		if (
+		0
+		) 
 #####################################################################
 		{
 #####################################################################
@@ -523,9 +556,7 @@ i = null
 			while (time()==end2)			//Time interval is exactly 1 second.
 			{
 ################# Insert compare function here#######################
-			local a = [3,2,5,2]
-			a.sort()
-			local b = a.top()
+			::IObjectScriptService.Named("Materials")
 #####################################################################
 				j++
 			}
@@ -535,6 +566,7 @@ i = null
 	// Constructor is also a good alternative with the current setup it fails. You might need to integrate the DoTest body into the constructor.
 	constructor()
 	{
+		base.constructor()
 		if(
 #####################################################################
 		//set true to enable testing with SqRootScript features on script_reload
@@ -564,21 +596,19 @@ if (
 	DPerformanceTest.DoTest()
 	DPerformanceTest.DoTest()
 }
-
-
 ###################### TEST AREA###################
 
 		/*
 		// To not always look at two tables, caching the DesginNote string.
-		if (script == GetClassName()){
+		if (_script == GetClassName()){
 			local def = DefOn
 			local deff= DefOff
 			DefOn 	= {}
 			DefOff	= {}
 		}
 		// Caching the , nope nope defon not accessible anymore.
-		DefOn[script]  <- DGetParam(script+"On", DGetParam("DefOn", "TurnOn", this, kReturnArray),DN, kReturnArray)
-		DefOff[script] <- DGetParam(script+"Off", DGetParam("DefOff", "TurnOff", this, kReturnArray),DN, kReturnArray)
+		DefOn[_script]  <- DGetParam(_script+"On", DGetParam("DefOn", "TurnOn", this, kReturnArray),DN, kReturnArray)
+		DefOff[_script] <- DGetParam(_script+"Off", DGetParam("DefOff", "TurnOff", this, kReturnArray),DN, kReturnArray)
 		*/
 
 /*DrkInv.CapabilityControl(0,2)
@@ -586,3 +616,8 @@ DrkInv.CapabilityControl(3,2)
 DrkInv.CapabilityControl(1,2)
 DrkInv.CapabilityControl(2,2)
 DrkInv.CapabilityControl(4,2)*/
+
+local s = ~6&2
+print(::format("%05X",s))
+s = ~9&2 ;
+print(::format("%05X",s))
