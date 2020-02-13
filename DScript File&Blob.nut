@@ -3,12 +3,15 @@
 #include DScript.nut // File & Blob Library is standalone.
 
 
-##		/--		§		§File_&_Blob_Library§		§		--\
+##		/--		Â§		Â§File_&_Blob_LibraryÂ§		Â§		--\
 //
 //	This file contains tools to interact with files (read only) and blobs.
 //	Ultimately enabling the extraction of data/parameters from files. 
 //
-//#NOTE IMPORTANT! Getting parameters over line breaks might not work. Depending on what linebreak type is used in the file.
+//	Both are rather similar in use one point that could be overlooked easily:
+//	Files are streamed from the OS system, means changing the file, changes the output.
+//	 That's used for the cIngameLogOverlay for example.
+#NOTE IMPORTANT! Getting parameters over line breaks might not work. Depending on what linebreak type is used in the file.
 	#					For windows (CR LF) it does add +1 additional character per line! On Unix (LF) it works correctly.
 	#					see: https://en.wikipedia.org/wiki/Newline
 	#					Problem the pointer skips it, adding +2 to the position.
@@ -118,43 +121,65 @@ myblob = null								// As we will work more with the derived dblob class
 		if (end <= 0)
 			end = myblob.len() + end			// get absolute position
 		end = end - myblob.tell()				// end must be a length. So absolute position - current position
-		if (end < 0){							// string slice would throw an error now. We slice backwards here.
+		if (end < 0){							// Still < 0? String slice would throw an error now. We slice backwards then.
 			return slice(start + end, start)
 		} 
-		return dblob( myblob.readblob( end ))
+		return dblob( myblob.readblob(end))
 	}
 	
-	function find(pattern, start = 0){
+	function find(pattern, start = 0, stopString = null){	// stopCharacter could be used as a hard terminator beside EOS
 		if (pattern == "")
-			return 0
+			return 0								
 		myblob.seek( start, (start < 0)? 'e' : 'b')	// pointer to start or end.
+		local stopAt = stopString? stopString[0] : null
 		if (typeof pattern == "integer"){
+			local stopChar = stopString? stopString[0] : null;
 			while (true){
 				local c = readNext()
 				if (c == pattern)
 					return myblob.tell() - 1		// Start Position is 1 before.
+				if (c == stopAt){
+					local backup = myblob.tell()
+					local stop   = true
+					// check if next characters match the stopString
+					foreach (c in stopString.slice(1)){		// check if the next characters match. TODO this might be easier in a higher bit test.
+						if (c != myblob.readn('c')){
+							myblob.seek(backup)		// return the position of first found.
+							stop = false
+							break
+						}
+					}
+					if (stop)
+						return false				// If false you can slice to this position and then continue.
+					else return stopString[0]
+				}
 				if (!c)
-					return null						// EOS
+					return null
+				return c							// null is EOS, false is stopCharacter
 			}
 		} else {
 			local length = pattern.len()
 			if (length == 1)						// If the string has only length 1 we are done.
-				return find(pattern[0], myblob.tell())
+				return (pattern[0], myblob.tell())
 			while (true){
 				local first = find(pattern[0], myblob.tell())
-				if (first == null)
-					return null						// eos.
-
+				if (!first && first != 0)
+					return null						// EOS
+				
+				local done = true
 				foreach (c in pattern.slice(1))		// check if the next characters match. TODO this might be easier in a higher bit test.
 				{
 					if (c != myblob.readn('c')){
 						myblob.seek(first + 1)		// return the position of first found.
+						done = false
 						break
 					}
-					if (c == pattern[-1]){			// If c is the last character in the string we are done.
-						return first
-					}
-				}	
+					//if (c == pattern[-1]){		// If c is the last character in the string we are done.
+					//	return first				// TODO what about ABCDB ? return after loop
+					//}
+				}
+				if (done)
+					return first
 			}
 		}
 	}
@@ -301,8 +326,14 @@ class dblob extends dfile
 	
 	function _tostring(){
 		local str = ""
-		foreach (c in myblob)
+		for (local i = 0; i < myblob.len(); i++)	// TODO test, readn method or internal tostring again.
+			local c = myblob[i]
+			if (c == '\\'){							// escape Char, skip it and add next.
+				c = myblob[i+1]
+				i += 1
+			}
 			str += c.tochar()
+		}
 		return str
 	}		
 		
@@ -334,6 +365,82 @@ class dblob extends dfile
 			return myblob[key]
 		}
 		throw null
+	}
+	
+}
+
+class dCSV extends dblob
+{
+	useRowKey 	= null	// will turn this into a table then
+	stream	  	= null
+	lines		= null
+	entrytable	= null	
+		
+	constructor(str, useFirstColumnAsKey = true, separator = ";", commentstring ="//", streamFile = false){
+		if (stream && typeof str == file){
+			if (str instanceof dfile)
+				myblob = str.myblob
+			else
+				myblob = str
+		}
+		else
+			base.constructor()	
+
+		stream 	  = streamFile
+			
+		createCSVMatrix(separator)
+	}
+	
+	function open(filename, path = "", useFirstColumnAsKey = true, useHeader = false, stream = false){
+		return dcsv(::file(path+filename, "r"), useFirstColumnAsKey, useHeader, stream)
+	}
+	
+	function _get(key){						// metamethod, dCSV[0] or dCSV[myRow] => dCSV[line][#column]
+		if (typeof key == "integer") {
+			return lines[key]
+		}
+		if (useRowKey && key in useRowKey)
+			return entrytable[key]
+		// Alternative CSV like notation: dCSV[A1], #NOTE here that A is column, and 1 is row
+		return lines[key.slice(1).tointeger() - 1][key[0] - 65]	// 65 is the ASCII difference between A and 0
+	}
+	
+	function _call(line, column = null){
+		line = _get(line)
+		if (typeof column == "integer")
+			return line[column]
+		else return line[lines[0].find(column)]	// try to find header
+	}
+	
+	function createCSVMatrix(sepearator = ";", commentstring = "//"){
+		lines = [useHeader]
+		myblob.seek(0,'b')		// Make sure pointer is at start
+		local curLine = 0
+		do {
+			curLine++
+			local comment = false
+			local lineend = myblob.find('\n', myblob.tell(), commentstring)
+			if (lineend == false){
+				comment = true
+				lineend = myblob.tell()
+			}
+			local lineraw = myblob.slice(myblob.tell(), lineend).tostring()
+			// find problematic ' characters
+			if (lineraw.find("'")){
+				// TODO find and fix
+			}
+			lines.append(::split(lineraw, separator))
+			
+			if (comment)
+				myblob.find('\n', myblob.tell())		// and go to line end.
+			myblob.seek(1,'c') 							// jump into next line?
+		} while(!myblob.eos)
+		
+		if 	(useFirstColumnAsKey){
+			useRowKey = {}
+			foreach (line in lines)
+				useRowKey[line[0]] <- line		// line is added as reference, so memory wise this be not so expensive.
+		}
 	}
 	
 }
