@@ -3,7 +3,7 @@
 #include DScript.nut // File & Blob Library is standalone.
 
 
-##		/--		Â§		Â§File_&_Blob_LibraryÂ§		Â§		--\
+##		/--		§		§File_&_Blob_Library§		§		--\
 //
 //	This file contains tools to interact with files (read only) and blobs.
 //	Ultimately enabling the extraction of data/parameters from files. 
@@ -102,7 +102,7 @@ myblob = null								// As we will work more with the derived dblob class
 	
 	function readNext(separator = null){
 		if (myblob.eos())
-			return null
+			return print("isEOSS"),null
 		local c = myblob.readn('c')
 		if (c == '\\'){				// escape character
 			myblob.seek(1,'c')		// skip the next
@@ -129,16 +129,15 @@ myblob = null								// As we will work more with the derived dblob class
 	
 	function find(pattern, start = 0, stopString = null){	// stopCharacter could be used as a hard terminator beside EOS
 		if (pattern == "")
-			return 0								
+			return 0							
 		myblob.seek( start, (start < 0)? 'e' : 'b')	// pointer to start or end.
-		local stopAt = stopString? stopString[0] : null
 		if (typeof pattern == "integer"){
-			local stopChar = stopString? stopString[0] : null;
+			local stopChar = stopString? stopString[0] : -1;
 			while (true){
 				local c = readNext()
 				if (c == pattern)
 					return myblob.tell() - 1		// Start Position is 1 before.
-				if (c == stopAt){
+				if (c == stopChar){
 					local backup = myblob.tell()
 					local stop   = true
 					// check if next characters match the stopString
@@ -151,18 +150,16 @@ myblob = null								// As we will work more with the derived dblob class
 					}
 					if (stop)
 						return false				// If false you can slice to this position and then continue.
-					else return stopString[0]
 				}
-				if (!c)
-					return null
-				return c							// null is EOS, false is stopCharacter
+				if (!c)								// null is EOS, false is stopCharacter
+					return c
 			}
 		} else {
 			local length = pattern.len()
 			if (length == 1)						// If the string has only length 1 we are done.
-				return (pattern[0], myblob.tell())
+				return (pattern[0], myblob.tell(), stopString)
 			while (true){
-				local first = find(pattern[0], myblob.tell())
+				local first = find(pattern[0], myblob.tell(), stopString)
 				if (!first && first != 0)
 					return null						// EOS
 				
@@ -175,7 +172,7 @@ myblob = null								// As we will work more with the derived dblob class
 						break
 					}
 					//if (c == pattern[-1]){		// If c is the last character in the string we are done.
-					//	return first				// TODO what about ABCDB ? return after loop
+						//return first				// TODO what about ABCDB ? return after loop
 					//}
 				}
 				if (done)
@@ -283,10 +280,12 @@ class dblob extends dfile
 				break
 			case "file" :
 				// str.seek(0) let's not seek to make custom position possible.
-				if (str instanceof dfile)
+				if (str instanceof ::dfile){
 					myblob = str.myblob.readblob(str.len())
-				else
+					}
+				else {
 					myblob = str.readblob(str.len())
+					}
 				str.close()
 				break
 			case "blob" :
@@ -326,7 +325,7 @@ class dblob extends dfile
 	
 	function _tostring(){
 		local str = ""
-		for (local i = 0; i < myblob.len(); i++)	// TODO test, readn method or internal tostring again.
+		for (local i = 0; i < myblob.len(); i++){	// TODO test, readn method or internal tostring again.
 			local c = myblob[i]
 			if (c == '\\'){							// escape Char, skip it and add next.
 				c = myblob[i+1]
@@ -372,27 +371,28 @@ class dblob extends dfile
 class dCSV extends dblob
 {
 	useRowKey 	= null	// will turn this into a table then
-	stream	  	= null
+	useFile	  	= null
 	lines		= null
 	entrytable	= null	
 		
-	constructor(str, useFirstColumnAsKey = true, separator = ";", commentstring ="//", streamFile = false){
-		if (stream && typeof str == file){
-			if (str instanceof dfile)
+	constructor(str, useFirstColumnAsKey = true, separator = "\t", commentstring = "//", streamFile = false){
+		if (streamFile && typeof str == "file"){
+			if (str instanceof ::dfile)
 				myblob = str.myblob
 			else
 				myblob = str
 		}
 		else
-			base.constructor()	
-
-		stream 	  = streamFile
+			base.constructor(str)	
+		
+		useRowKey	  = useFirstColumnAsKey
+		useFile 	  = streamFile
 			
 		createCSVMatrix(separator)
 	}
 	
 	function open(filename, path = "", useFirstColumnAsKey = true, useHeader = false, stream = false){
-		return dcsv(::file(path+filename, "r"), useFirstColumnAsKey, useHeader, stream)
+		return dCSV(::file(path + filename, "r"), useFirstColumnAsKey, useHeader, stream)
 	}
 	
 	function _get(key){						// metamethod, dCSV[0] or dCSV[myRow] => dCSV[line][#column]
@@ -400,50 +400,104 @@ class dCSV extends dblob
 			return lines[key]
 		}
 		if (useRowKey && key in useRowKey)
-			return entrytable[key]
+			return useRowKey[key]
 		// Alternative CSV like notation: dCSV[A1], #NOTE here that A is column, and 1 is row
-		return lines[key.slice(1).tointeger() - 1][key[0] - 65]	// 65 is the ASCII difference between A and 0
+		if (key[0] < 91 && key[1] < 58)
+			return lines[key.slice(1).tointeger() - 1][key[0] - 65]	// 65 is the ASCII difference between A and 0
+		throw null
 	}
 	
-	function _call(line, column = null){
-		line = _get(line)
+	function _call(instance, line, column = null){
+		line = this[line]							// via _get
+		if (!column)
+			return line
 		if (typeof column == "integer")
 			return line[column]
-		else return line[lines[0].find(column)]	// try to find header
+		local idx = lines[0].find(column)
+		if (idx >= 0)
+			return line[idx]	// try to find header
+		throw "CSV [" + line[0] + " / " + column + "] does not exist."
 	}
 	
-	function createCSVMatrix(sepearator = ";", commentstring = "//"){
-		lines = [useHeader]
-		myblob.seek(0,'b')		// Make sure pointer is at start
-		local curLine = 0
-		do {
-			curLine++
-			local comment = false
-			local lineend = myblob.find('\n', myblob.tell(), commentstring)
-			if (lineend == false){
-				comment = true
-				lineend = myblob.tell()
+	function dump(raw = false){
+			print("Amount of CSV lines:" + lines.len())
+			if (useRowKey && !raw){
+				print("Lookup table with valid keys:\n\tKey\t:\tValues")
+				foreach (key, val in useRowKey){
+				local line = ""
+					foreach (entry in val)
+						line += "\t"+entry
+					print(key + "\t:" + line)
+				}
+			} else {
+				print("Stored Lines:")
+				foreach (key, val in lines){
+					local line = ""
+					foreach (entry in val)
+						line += "\t"+entry
+					print(key + ":" + line)
+				}
 			}
-			local lineraw = myblob.slice(myblob.tell(), lineend).tostring()
-			// find problematic ' characters
-			if (lineraw.find("'")){
-				// TODO find and fix
-			}
-			lines.append(::split(lineraw, separator))
-			
-			if (comment)
-				myblob.find('\n', myblob.tell())		// and go to line end.
-			myblob.seek(1,'c') 							// jump into next line?
-		} while(!myblob.eos)
 		
-		if 	(useFirstColumnAsKey){
+	}
+	
+	function createCSVMatrix(separator = "\t", commentstring = "//"){
+		lines = []
+		myblob.seek(0,'b')		// Make sure pointer is at start
+		do {
+			local comment = false
+			local lineraw = ""
+			while(true){
+				local c = readNext('\n')
+				if (c){
+					if (c == commentstring[0]){
+						for (local i = 1; i < commentstring.len(); i++)
+						{	
+							if (myblob[tell() + i -1] != commentstring[i]){
+								break
+							}
+							if (i == commentstring.len() -1){
+								comment = true
+							}
+						}
+						if (comment){
+							find('\n',tell())	// move pointer to end of line.
+							break
+						}
+					}
+					// comment fix from these alternative " used in spreadsheets.
+					switch (c){
+						case 108:
+						case 109:
+						case 124:
+							c = '"'
+					}
+					lineraw += c.tochar()
+				}
+				else
+					break
+			}
+			lineraw = ::split(lineraw, separator)
+			if (lineraw.len() != 0)
+				lines.append(lineraw)
+		} while(!myblob.eos())
+		
+		if 	(useRowKey){
 			useRowKey = {}
-			foreach (line in lines)
-				useRowKey[line[0]] <- line		// line is added as reference, so memory wise this be not so expensive.
+			foreach (line in lines){
+				if (line.len() && line[0] != "")
+					useRowKey[line[0]] <- line					// line is added as reference, so memory wise this be not so expensive.
+			}
 		}
+		// dump()
+		// dump(true)
 	}
 	
 }
+
+
+b <- dCSV(::file("./USERMODS/Untitled 1.csv","r"))
+print(b(0,1))
 
 ################################################################
 ##################    Game related scripts    ##################
@@ -502,7 +556,28 @@ DefOff = null
 
 }
 
-class DSaveHandler
+class cDCustomHandler
+{
+	constructor(){
+		ScriptHandlerHandshake()
+		::getroottable()[GetClassName()] <- this
+	}
+	
+	function GetClassName(){
+		error("Please add GetClassName to your CustomHandler class")
+	}
+	
+	function ScriptHandlerHandshake(){
+	/* Checks if other one has been constructed, if the Register will be done by the ::DHandler.
+		After Registration DoAfterRegistration is called.*/
+		if (::DHandler){
+			::DHandler.RegisterExternHandler(GetClassName(), this)
+		}
+	}
+	
+}
+
+class cDSaveHandler
 {
 	File	= null
 	rawdata	= null
@@ -511,14 +586,20 @@ class DSaveHandler
 	Slot	= null
 	MissData= null
 	
+	function GetClassName(){
+		return "DSaveHandler"
+	}
+	
 	constructor(){
-		// constructed during BeginScript
-		::DSaveHandler <- this
-		print("constr save")
-		// At Mission start create timestamp.
+		base.constructor()
 		if (!Quest.Exists("DTimestamp")){
-			Quest.Set("Timestamp", (date().yday<<11)+(date().hour<<6)+(date().min))
+			Quest.Set("DTimestamp", (date().yday<<11)+(date().hour<<6)+(date().min))
 		}
+	}
+	
+	function DoAfterRegistration(){
+	/* At this point DScriptHandler and DSaveHandler are initiated*/
+	
 	}
 	
 	function RegisterPrint(finger){
@@ -679,6 +760,7 @@ class DSaveHandler
 
 }
 
+
 class DPersistentSave extends DRelayTrap
 {
 DefOff  = null
@@ -686,7 +768,7 @@ EventID	= null
 
 	function OnBeginScript(){
 		// Create Handler if not present
-		if (typeof ::DSaveHandler == "class")
+		if (!("DSaveHandler" in getroottable()))
 			::DSaveHandler()
 	
 		// Register FingerPrint; if not set on this object, doesn't matter.
@@ -738,3 +820,4 @@ EventID	= null
 	}
 
 }
+

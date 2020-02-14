@@ -1,4 +1,4 @@
-##		--/					 Â§HEADER					--/
+##		--/					 §HEADER					--/
 
 #include DConfigDefault.nut
 // This file IS NECESSARY for DScript.nut to compile.
@@ -12,7 +12,7 @@
 // --------------------------------------------------------------------------
 
 
-##		/--		Â§#		Â§_INTRODUCTION__Â§		Â§#		--\
+##		/--		§#		§_INTRODUCTION__§		§#		--\
 //////////////////////////////////////////////////////////////////// 
 //					 	
 const DScriptVersion = 0.71 	// This is not a stable release!
@@ -31,7 +31,7 @@ const DScriptVersion = 0.71 	// This is not a stable release!
 //  To highlight code, special functions and constants and especially the use of custom fold points.
 //  An advanced text editor like notepad++ is recommended and necessary to use them. Like DromEd this file uses ANSI characters.
 //
-//		/--		Â§#		Â§_DEMO_CATEGORY_Â§		Â§#		--\
+//		/--		§#		§_DEMO_CATEGORY_§		§#		--\
 //			<-- fold it on the left
 //		|--			#		Paragraph		#			--|
 //			To fold the code into meaningful paragraphs.
@@ -43,42 +43,29 @@ const DScriptVersion = 0.71 	// This is not a stable release!
 Multi line comments normally contain a higher level explanation
 of what this specific script or functions does */
 /*
-
 // Single line comments are mostly used to describe what the current point of code is doing.
 // Or give very short information about the current section.
-
 # Comments are used to be a descriptive header for the following block. 
 	Or mark a special point like #DEBUG POINT or #NOTE
-
 ##		|--			#	Special Points		#			--|
-
 I marked certain points in the code to be easily found via the search function.
 #NOTE I'm not using a space here.
-
 						# #DEBUG #
-
 There are three categories of output prints in this file, labeled as these at the specific locations.
-
 - #DEBUG ERROR	: Fatal failure of a script. It will not execute and maybe a Squirrel error follows.
 					When you get a Squirrel error maybe scroll back a few lines in the Monolog to find information.
 - #DEBUG WARNING: Script will execute but maybe not as you want. For example a spelling mistake when using the @ operator or parameter not set.
 - #DEBUG POINT	: Only printed for a specific script when the [ScriptName]Debug parameter is set.
 					Used to track down logical mistakes when setting up wrong but valid parameters.
-
-
 						# #NOTES #
-
 #NOTE points contain various information about squirrel, this script, thief, the engine... 
 		which might be interesting to read or should be taken into account.
-
-
-
 The real scripts currently start at around line > 1000
 */
 /////////////////////////////////////////////////////////////////
 
 // ----------------------------------------------------------------
-##		/--		Â§#		Â§___CONSTANTS___Â§		Â§#		--\
+##		/--		§#		§___CONSTANTS___§		§#		--\
 // Adjustable Constants are in the DConfig*.nut files.
 // ----------------------------------------------------------------
 
@@ -123,7 +110,7 @@ enum eScriptTurn					// Used by the DBaseTrap checks
 
 // -----------------------------------------------------------------
 
-##		/--		Â§#	  	  Â§_VERSION_CHECK_Â§		Â§#		--\
+##		/--		§#	  	  §_VERSION_CHECK_§		§#		--\
 /* If a FanMission author defines a dRequiredVersion in a separate DConfig file this test will check if the 
 	current DScriptVersion of this file is sufficient or outdated and will display a ingame and monolog message to them. */
 
@@ -134,7 +121,7 @@ if (dRequiredVersion > DScriptVersion){
 }
 
 
-##		/--		Â§#	  Â§HELLO_&_HELP_DISPLAYÂ§	Â§#		--\
+##		/--		§#	  §HELLO_&_HELP_DISPLAY§	§#		--\
 ##		|--			#	   General_Help		#			--|
 
 if (!::Engine.ConfigIsDefined("dsnohello") && dHelloMessage && IsEditor() && DScriptVersion > 0.90)	// will be enabled in Version 0.7 onward.
@@ -166,7 +153,7 @@ if (::Engine.ConfigIsDefined("dhelp")) 		//TODO: Setup attributes.
 
 
 ##		|-- ------------------------------------------- /--
-##		/--		Â§# Â§______BASIC_METHODS_____Â§  Â§#		--\
+##		/--		§# §______BASIC_METHODS_____§  §#		--\
 //
 // 				String and Parameter analysis
 //
@@ -363,7 +350,7 @@ SubVersion 	= 0.72
 		throw null								// will now look in root table
 	}*/
 	
-	## |-- 	Â§Main_Analysis_Function		--|
+	## |-- 	§Main_Analysis_Function		--|
 	function DCheckString(str, returnInArray = false){		
 	/* 
 	Analysis of a given string parameter depending on its prefixed parameter.
@@ -444,7 +431,7 @@ SubVersion 	= 0.72
 					str = divide[1]
 				}
 				// normal behavior
-				if (str[kGetFirstChar] != '-' && str[kGetFirstChar] != '='){
+				if (str[kGetFirstChar] != '-' && str[kGetFirstChar] != '<'){
 					foreach ( link in ::Link.GetAll(str, anchor))
 						objset.append(LinkDest(link))
 					return ::DScript.FormatForReturn(objset,returnInArray)
@@ -508,12 +495,12 @@ SubVersion 	= 0.72
 					return ::DScript.FormatForReturn(DCheckString(value, returnInArray), returnInArray)
 				}
 				// yes no break.
-			case 'Â§': // Paragraph sign. #NOTE IMPORTANT this file needs to be saved with ANSI encoding!
+			case '§': // Paragraph sign. #NOTE IMPORTANT this file needs to be saved with ANSI encoding!
 				// replace with difficulty?
-				local another = str.find("Â§",1)
+				local another = str.find("§",1)
 				str = str.slice(kRemoveFirstChar)
 				if (another){
-					local ar = ::DScript.DivideAtNextChar(str,"Â§")
+					local ar = ::DScript.DivideAtNextChar(str,"§")
 					str = ar[0] + (::Quest.Exists(kReplaceQVarOperatorWith) ? ::Quest.Get(kReplaceQVarOperatorWith) : ::Quest.Get("difficulty")) + ar[1]
 				}
 				local customtable = ::split(str,".")
@@ -849,7 +836,6 @@ print("SHARED" + obj)
 	/* Function to return parameters if the parameter is not found returns given default value.
 	if returnInArray is set an array of entities will be returned.
 	By default works with the DesignNote table but can also work with other tables or even classes. */
-	
 		if(!DN){DN = userparams()}
 		if (par in DN)
 			return DCheckString(DN[par], returnInArray)			//Will return a single entity or all matching ones in an array(adv=1).
@@ -861,7 +847,6 @@ print("SHARED" + obj)
 	Q: How to carry over data from one Script to another when there is a delay? 
 	PROBLEM 1: The SourceObject is not carried over when the message gets delayed via a StandardTimer. Save as a global variable? NO!
 	PROBLEM 2: That data is LOST when the game gets closed and reloaded. 
-
 	These functions allows the sending and retrieving of multiple values via a timer, which is save game persistent.
 	*/
 
@@ -882,7 +867,7 @@ print("SHARED" + obj)
 		return ::split(data, separator)
 	}
 
-	#  |--  Â§Conditional_Debug_Print 	--|
+	#  |--  §Conditional_Debug_Print 	--|
 	function DPrint(dbgMessage = null, DoPrint = null, mode = 3) 	// default mode = ePrintTo.kMonolog | ePrintTo.kUI)
 	{
 		if (!DoPrint){
@@ -914,7 +899,7 @@ print("SHARED" + obj)
 }
 
 // ----------------------------------------------------------------
-##		/--		Â§# Â§____FRAME_WORK_SCRIPT____Â§	Â§#		--\
+##		/--		§# §____FRAME_WORK_SCRIPT____§	§#		--\
 //
 // The DBaseTrap is the framework for nearly all other scripts in this file.
 // It handles incoming messages and interprets the general parameters like Count, Delay, Repeat.
@@ -966,7 +951,7 @@ SourceObj 	  = null	//	The actual source of a message.
 				_script += 2
 			else {								// All above.
 				local current = _script[-1]		// Last character 2-9
-				if (current == DGetParamRaw(GetClassName() + "Copies", null, userparams()) + 48){  // 48 is the difference between normal integer to ASCII representation of the number.
+				if (current == DGetParam(GetClassName() + "Copies", null, userparams()) + 48){  // 48 is the difference between normal integer to ASCII representation of the number.
 					_script = GetClassName() 	// Reset.
 					return true					// Done for all copies.
 				}
@@ -1065,9 +1050,7 @@ SourceObj 	  = null	//	The actual source of a message.
 						DRelayTrap.DSendMessage.call(this, obj, replywith)		// Else a message will be sent
 				}
 			}
-		} 
-		else 
-		{													// No reply parameter
+		} else {													// No reply parameter
 			if (bmsg.data2){										// For the / operator: if the data2 slot is in use it reply the message in data2.
 				SendMessage(bmsg.data3? bmsg.data3 : SourceObj, bmsg.data2)
 				return												// Also the script can't react further to the DPingBack
@@ -1122,7 +1105,7 @@ SourceObj 	  = null	//	The actual source of a message.
 		RepeatForCopies(::callee())
 	}
 
-### |-- Â§_Main_Message_Handler_Â§ --| ###
+### |-- §_Main_Message_Handler_§ --| ###
 	function DBaseFunction(DN){
 	/* Handles and interprets all incoming messages. 
 		- Are they a valid Activating or Deactivating message? 
@@ -1174,7 +1157,7 @@ SourceObj 	  = null	//	The actual source of a message.
 		return RepeatForCopies(::callee(), DN)
 	}
 
-	# |-- 		Â§Pre_Activation_Checks 		--|
+	# |-- 		§Pre_Activation_Checks 		--|
 	/*Script activation Count and Capacitors are handled via Object Data, in this section they are set and controlled.*/
 	# |--	Custom Condition Parameter 	--|
 	function DCheckCondition(Condition){
@@ -1261,16 +1244,14 @@ SourceObj 	  = null	//	The actual source of a message.
 	function DCheckParameters(DN, func){
 	/* Does all the checks and delays before the execution of a Script.
 		Checks if a Capacitor is set and if its Threshold is reached with the function above. func=1 means a TurnOn
-
 		Strange to look at it with the null statements. But this setup enables that a On/Off capacitor can't interfere with the general one.
-
 		Abuses (null==null)==true, Once abort is false it can't be true anymore.
 		As a little reminder Capacitors should abort until they are full.
 	*/	
 	# |-- 		Fail Chance before		--|
-		if (DGetParam(_script+"FailChance", 0 , DN) > 0){
+		if (DGetParam(_script+"FailChance", FALSE, DN) > 0){
 			// yah I call this twice, but as it used vary rarely saves variable for all others.
-			if (DGetParam(_script+"FailChance", 0 ,DN) >= Data.RandInt(0,100)){return}
+			if (DGetParam(_script+"FailChance", FALSE,DN) >= Data.RandInt(0,100)){return}
 		}
 	
 	# |-- 		Is a Capacitor set 		--|
@@ -1285,30 +1266,28 @@ SourceObj 	  = null	//	The actual source of a message.
 		}
 		
 	# |-- 		  Is a Count set 		--|
-		if (IsDataSet(_script+"Counter")) //low prio todo: add DHub compatibility	
-			{
-			local CountOnly = DGetParam(_script+"CountOnly", 0, DN)	//Count only ONs or OFFs
-			if (CountOnly == 0 || CountOnly + func == 2)				//Disabled or On(param1+1)==On(func1+2), Off(param2+1)==Off(func0+2); 
+		if (IsDataSet(_script+"Counter")){
+			local CountOnly = DGetParam(_script + "CountOnly", FALSE, DN)	//Count only ONs or OFFs
+			if (CountOnly == FALSE || CountOnly + func == 2)				//Disabled or On(param1+1)==On(func1+2), Off(param2+1)==Off(func0+2); 
 			{
 				local Count = SetData(_script+"Counter",GetData(_script+"Counter")+1)
 				#DEBUG POINT 4A
 				DPrint("Stage 4A - Current Count: "+Count)
-				if (Count > DGetParam(_script+"Count",0,DN)){
+				if (Count > DGetParam(_script + "Count", FALSE, DN)){
 					// Over the Max abort.
 					#DEBUG POINT 4X
-					DPrint("Stage 4X - Not activated as current Count: "+Count+" is above the threshold of: "+DGetParam(_script + "Count"))
+					DPrint("Stage 4X - Not activated as current Count: " + Count + " is above the threshold of: " + DGetParam(_script + "Count"))
 					return
 				}
 			}	
 		}
 	# |-- 	 	Fail Chance after		--|
 		//Use a Negative Fail chance to increase Counter and Capacitor even if it could fail later.
-		if (DGetParam(_script+"FailChance", 0, DN) < 0) {
-			if ( DGetParam(_script+"FailChance", 0, DN) <= Data.RandInt(-100,0) )
+		if (DGetParam(_script+"FailChance", FALSE, DN) < 0) {
+			if (DGetParam(_script+"FailChance", FALSE, DN) <= Data.RandInt(-100,0) )
 				return
 		}
-		// All Checks green! Then Go or Delay it?
-
+	// All Checks green! Then Go or Delay it?
 #	 |-- 				Delay	 		--|
 		local delay = DGetParam(_script+"Delay", false, DN)
 		if (delay){		
@@ -1388,8 +1367,6 @@ SourceObj 	  = null	//	The actual source of a message.
 /*A Base script. Has no function on it's own but is the framework for nearly all others.
 Handles custom [ScriptName]ON/OFF parameters specified in the Design Note and calls the DoON/OFF actions of the specific script via the functions above.
 If no parameter is set the scripts normally respond to TurnOn and TurnOff, if you instead want another default activation message you can specify this with DefOn="CustomMessage" or DefOff="TurnOn" anywhere in your script class but outside of functions. Messages specified in the Design Note have priority.
-
-
 //}*/
 
 ############################################
@@ -1403,18 +1380,13 @@ class DRelayTrap extends DBaseTrap
 A relay with all the DBaseTrap features. Reacts to the messageS specified by DRelayTrapOn/Off and it will relay the messageS specified with DRelayTrapTOn. Respectively the on TurnOff to be sent messages can be specified with DRelayTrapTOff. By default these are "TurnOn" and "TurnOff".
 NWith the + operator you can define multiple On, TOn, Off and TOff messages!
 With DRelayTrap[On/Off]Target (Also [On/Off]TDest works as an alternative) you can specify where to sent the message(s) to. Default are ControlDevice linked objects. If a DRelayTrapOnTarget is specified then it will take priority over DRelayTrapTarget.
-
 As a TOn, TOff message you can also send a Stim to do this, first enter the intensity surrounded by square brackets, followed by the stim name. For example: [ScriptName]TOn="[5.00]WaterStim".
-
 NEW v.30:  DRelayTrapToQVar="QVarName"; will store the ObjectsID into the specified QVar. It then can for example be targeted via $QVarName. Useful to always sent a command to a specific but variable object.
-
 Design Note example:
 NVRelayTrapOn="+TurnOn+BashStimStimulus";NVRelayTrapTOn="+TurnOn+[5]FireStim";NVRelayTrapOnTarget="+player+^ZombieTypes"
-
 What will happen:
 On TurnOn or when bashed it will send a TurnOn and a FireStim with intensity 5 to the player and the closest Zombie.(relative to the object with the script)
 As nothing else is specified on TurnOff will send a TurnOff to all ControlDevice linked objects. 
-
 ________________
 SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages; DPostMessage functions. As an example see DStdButton.
 #################################################### */
@@ -1440,16 +1412,15 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 		#DEBUG Point
 		if (DPrint()){
 			::print("Targets")
-			DLowerTrap.DumpTable(targets)
+			DTestTrap.DumpTable(targets)
 			::print("Messages")
-			DLowerTrap.DumpTable(messages)
+			DTestTrap.DumpTable(messages)
 		}
 
-		local postIt = DGetParam(_script + "PostMessage", post)	// By default now, messages are posted.
 		foreach (msg in messages){
 			if (msg){	// not [null]
 				foreach (obj in targets)
-					DSendMessage(obj, msg, postIt, data, data2, data3)
+					DSendMessage(obj, msg, DGetParam(_script + "PostMessage", post), data, data2, data3)
 			}
 		}
 	}
@@ -1457,15 +1428,15 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 	function DRelayMessages(OnOff, DN, data = null, data2 = null, data3 = null){
 	/* Gets messages and Targets, then sends them. */
 				//Priority Order: [On/Off]Target > [On/Off]TDest > Target > TDest > Default: &ControlDevice
-				if (!DN) DN = userparams();
-				DMultiMessage(DGetParam(_script+OnOff+"Target", 
-								DGetParam(_script +OnOff+"TDest", 
-								DGetParam(_script + "Target", 
-								DGetParam(_script + "TDest",
-								"&ControlDevice", DN, kReturnArray), DN, kReturnArray), DN,kReturnArray), DN, kReturnArray),
-							DGetParam(_script+"T"+OnOff,"Turn"+OnOff, DN, kReturnArray),  //Determines the messages to be sent, TurnOn/Off is default.
-							data, data2, data3 
-							)
+		if (!DN) DN = userparams();
+		DMultiMessage(DGetParam(_script+OnOff+"Target", 
+						DGetParam(_script +OnOff+"TDest", 
+						DGetParam(_script + "Target", 
+						DGetParam(_script + "TDest",
+						"&ControlDevice", DN, kReturnArray), DN, kReturnArray), DN,kReturnArray), DN, kReturnArray),
+					  DGetParam(_script+"T"+OnOff,"Turn"+OnOff, DN, kReturnArray),  //Determines the messages to be sent, TurnOn/Off is default.
+					  data, data2, data3 
+					  )
 	}
 
 	function DoOn(DN)
@@ -1485,7 +1456,7 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 }
 
 
-// |-- Â§Handler_ObjectÂ§ --|
+// |-- §Handler_Object§ --|
 /* This creates one object named DScriptHandler, see the class below.
 	That script initializes some data at game time, like the PlayerID and handles the perFrame updates. */
 if (IsEditor()){
@@ -1509,6 +1480,7 @@ if (IsEditor()){
 }
 
 // |-- HandlerObject --|
+::DHandler <- null
 // One Object is created by DBasics, see PreInitialization 
 class DScriptHandler extends DRelayTrap
 {
@@ -1516,6 +1488,7 @@ class DScriptHandler extends DRelayTrap
 	PerFrame_database 	 = null
 	PerMidFrame_database = null
 	OverlayHandlers    	 = null
+	Extern				 = null	// Other Handlers that are not Overlays
 
 // |-- Set Up Constants and Init Messages.	
 	constructor(){
@@ -1528,8 +1501,33 @@ class DScriptHandler extends DRelayTrap
 			OverlayHandlers = {}
 			PerMidFrame_database = {}
 		}
-		
+		RegisterExternHandler("DSaveHandler")	// This one is actually not present before BeginScript
+
+			
 		base.constructor()
+	}
+	
+	function RegisterExternHandler(HandlerName, Instance = null, callFunction = "DoAfterRegistration"){
+	/* There are two ways for this action, depending on if the DHandler or the other one got constructed first.
+		Internal call on DScriptHandler: HandlerVariable as string: If the other Handler has been constructed before and stored in a global variable.
+		External called by the other handler.
+		
+		Lastly when we know that both Handlers have been initialized the callFunction will be called on the other instance. (if it is present in it's parent class.*/
+		
+		// Case other Handler not registered
+		local root = getroottable()
+		if (!Instance && !(HandlerName in root && typeof root[HandlerName] == "Instance"))
+			return
+		
+		
+		if (!Extern)
+			Extern = {}
+		if (Instance){
+			Extern[HandlerName] <- Instance
+		} else Extern[HandlerName] <- root[HandlerName]
+
+		if (callFunction in Extern[HandlerName].getclass())
+			Extern[HandlerName][callFunction]()
 	}
 	
 	function OnBeginScript(){
@@ -1714,143 +1712,120 @@ class DHub extends DRelayTrap
 	// DelayMax				// Enables a random delay between Delay and DelayMax
 	ExclusiveDelay=1		// Abort future messages
 	Repeat=					// -1 until the message is received again.		
-	Count=					//How often the script will work. Receiving ResetCounter will reset this
-	Capacitor=				//Will only relay when the messages is received that number of times
-	CapacitorFalloff=		//Every __ms reduces the stored capacitor by 1
-	FailChance				//Chance to fail a relay. if negative it will affect Count even if the message is not sent
-	Every Parameter can be set as default for every message with DHubParameterName or individualy for every message (have obv. priority)
-
-
+	Count=					// How often the script will work. Receiving ResetCounter will reset this
+	Capacitor=				// Will only relay when the messages is received that number of times
+	CapacitorFalloff=		// Every s reduces the stored capacitor by 1
+	FailChance				// Chance to fail a relay. if negative it will affect Count even if the message is not sent
+	
+	Every Parameter can be set as default for every message with DHubParameterName or individually for every message (have obv. priority)
 	Design Note example:
-	DHubYourMessage="TOn=RelayMessage;TDest=DestinationObject;Delay
-	DHubTurnOn="Relay=TurnOff;To=player;Delay=5000;Repeat=3"
+	DHubYourMessage		=	"TOn=RelayMessage;TDest=DestinationObject;Delay"
+	DHubTurnOn			=	"Relay=TurnOff;To=player;Delay=5;Repeat=3"
 	*/
 
 DefOn		= null
-DefOff		= null
-SubDN	    = null
+DefOff		= null			// could be specified 
 DelegateDN  = null
 
 // Allowed default parameters
-static DHubParameters = ["DHubTOn","DHubTarget","DHubCount","DHubCapacitor","DHubCapacitorFalloff","DHubFailChance","DHubDelay","DHubDelayMax","DHubRepeat","DHubExclusiveDelay","DHubDebug","DHubCondition","DHubExclusiveMessage"]
-
-// |-- DesignNote Hack --|
-	getter = function(key){
-		/* Checks if there is a default DHub parameter instead. */
-			// slice the _script part away and place DHub before.
-			// if (key in DelegateDN.cache){
-			//	return DelegateDN.cache[key]
-			//}
-			local baseDN = userparams(false)			
-			// if (key in baseDN)	// if GetClassName() was used; explicit base lookup.
-			//	return baseDN[key]
-			
-			// Get key
-			if (key.find(_script) >= 0)		// with the double delagate this should not be necessary
-				key = key.slice(_script.len())	
-			local rv = null
-			if (_script in baseDN){
-				rv = ::DScript.DGetStringParamRaw(key, null, baseDN[_script])
-			}
-			if (rv == null){
-				rv = "DHub" + key
-				if (rv in baseDN){
-					rv = baseDN[rv]
-				}
-				else return null // idx not found, will not throw but return null for defaultValue.
-			}
-			baseDN[_script + key] <- rv	// cache it in the DN, next time the delegate will handle it.
-			// DelegateDN.cache[_script + key] <- rv
-			return rv
-		}
+static DHubParameters = ["DHubTOn","DHubTarget","DHubTDest","DHubCount","DHubCapacitor","DHubCapacitorFalloff","DHubFailChance","DHubDelay","DHubDelayMax","DHubRepeat","DHubExclusiveDelay","DHubDebug","DHubCondition","DHubExclusiveMessage"]
 
 	function DGetParam(par, defaultValue = null, DN = null, returnInArray = false){
-		if(!DN){DN = userparams()}
-		if (!("IsFake" in DN)){			
-			return base.DGetParam(par, defaultValue, DN, returnInArray)
-		}
-		
-		local val = DN[par]		// Hacked version will not throw if not found.
-		if (val != null)
-			return DCheckString(val, returnInArray)
-		return DCheckString(defaultValue, returnInArray)
+		return DCheckString(DGetParamRaw(par, defaultValue, DN), returnInArray)
 	}
 
 	function DGetParamRaw(par, defaultValue = null, DN = null){
 		if(!DN){DN = userparams()}
-		if (!("IsFake" in DN)){
-			return base.DGetParamRaw(par, defaultValue, DN)
+		if (par in DN)
+			return DN[par]
+		if (par.find(_script) == 0){		// with the double delegate this should not be necessary
+			par = "DHub" + par.slice(_script.len())
+			if (par in DN)
+				return DN[par]
 		}
-		local val = DN[par]		// Hacked version will not throw if not found.
-		if (val != null)
-			return val
 		return defaultValue
 	}
 
-	function userparams(fake = true){	// Hack when SubDN is active.
-		if (fake)
-			return SubDN
-		return base.userparams()
-	}
-# End Hack
-/*
-or
-userprarams={}
-delegate={
-	_call return this
-	_get getter
-}
-delegate.delegate(base user)
-
-*/
-	
 	function DGetStringParam(param, defaultValue, str, returnInArray = false, separators = eSeparator.kStringData){
 	/* Finds and interprets a value in a param=value;... string */
 		return DCheckString(::DScript.DGetStringParamRaw(param, defaultValue, str, separators), returnInArray)
 	}
 
-	constructor() 					//Initializing Script Data
-	{
-		local DN  = base.userparams()
-		SubDN = {IsFake = true}
-		DelegateDN = {
-			cache = {}
-			 _get = getter.bindenv(this)
-		}
-		SubDN.setdelegate(DelegateDN)
-		DelegateDN.setdelegate(DN)		// So when a key is directly present it will be used.
-		_script = GetClassName()	
-		//print("Debug mode" + DGetParamRaw(GetClassName()+"Debug", false))
-		if (!IsEditor()){return}			// Data is set in the editor.
+	constructor(){ 							// Initializing Script Data
+		local DN  	= base.userparams()
+		local addDN	= {}
+		_script 	= GetClassName()
 		foreach (entry, StringDN in DN)		// Checks each Key,Value pair in the DesignNote and if they are a DHub Statement.
 		{
 			if (startswith(entry,"DHub"))	// TODO no general Count or Capacitor
 			{
-				if (DHubParameters.find(entry) == null)						// Not a default param.
-				{
-					// Does entry use Count?
-					if (DGetStringParam("Count", base.DGetParam(_script + "Count", FALSE, DN), StringDN))
-						SetData(entry + "Counter", 0)
-					else 
-						ClearData(entry+"Counter")
-			
-					// Does entry use Capacitor?
-					if (DGetStringParam("Capacitor", base.DGetParam(_script + "Capacitor", FALSE,DN), StringDN) > 1)
-						SetData(entry+"Capacitor", 0)			
-					else 
-						ClearData(entry+"Capacitor")
+				// For every subDN create a real DN entry
+				if (typeof StringDN != "string" || !StringDN.find("="))	// no string or no = present, skip
+					continue
+				local ar = ::split(StringDN, "=;")
+				for (local i = 0; i < ar.len(); i+=2){
+						ar[i] = ::strip(ar[i])
+					local val = ::strip(ar[i+1])
+					
+					// Int or float?
+					if (DScript.IntExp.match(val))
+						val = val.tointeger()
+					else if (DScript.FloatExp.match(val))
+						val = val.tofloat()
+					// Old Version compatibility :/
+					if (ar[i] == "Relay")
+						ar[i] = "TOn"
+					addDN[entry + ar[i]] <- val
 				}
+				// String is not needed anymore but for validation of an entry.
+				DN[entry] = null
+				// Count and Capacitor is set in Editor only
+				if (!IsEditor()){continue}
+				if (base.DGetParam(entry + "Count", base.DGetParam(_script + "Count", FALSE, DN), addDN))
+					SetData(entry + "Counter", 0)
+				else 
+					ClearData(entry+"Counter")
+		
+				// Does entry use Capacitor?
+				if (base.DGetParam(entry + "Capacitor", base.DGetParam(_script + "Capacitor", FALSE, DN), addDN) > 1)
+					SetData(entry+"Capacitor", 0)			
+				else 
+					ClearData(entry+"Capacitor")	
 			}
-		}	
+		}
+		foreach (entry, val in addDN)
+			DN[entry] <- val
+		// DumpTable(userparams())
 	}
 	##############
+	
+	function OnBeginScript(){
+		// Check if a PerFrame action is active and reregister it in the ::DHandler
+		foreach(entry, val in userparams()){
+			if (!val && IsDataSet(entry + "InfRepeat")){ 					// easy Precheck. DHubMessage <- null in constructor
+				local data = GetData(entry + "InfRepeat")
+				// Negative or positive LinkID was stored,
+				if (typeof data == "string"){
+					_script = entry
+					if (data[0] == 'F'){
+						local delay = DGetParam(_entry + "Delay")			// Delay is sent and is #Frames
+						delay = delay.slice(0, delay.find("F")).tointeger()
+						::DHandler.PerFrame_ReRegister(this, delay)
+					}
+					else
+						::DHandler.PerMidFrame_ReRegister(this)				// Is every frame.
+				}
+			}
+		}
+		OnMessage()
+	}
+
 
 	function OnTimer(){
 		local msgn = message().name
 		if (::endswith(msgn, "Falloff") || ::endswith(msgn, "Delayed")) {
-			_script = msgn.slice(0, -7)											// Both words have 7 characters.
-			local command = base.DGetParam(_script, false, userparams(false))	// Check if the found command is specified.
-			if (_script in userparams(false)){
+			_script = msgn.slice(0, -7)										// Both words have 7 characters.
+			if (_script in userparams()){
 				base.OnTimer()
 			}
 		}
@@ -1859,12 +1834,12 @@ delegate.delegate(base user)
 
 	["On" + kResetCountMsg] = function(){
 		// general message loop through all possible.
-		foreach (k, v in baseDN) {
-			if (::startswith(k,"DHub") && DHubParameters.find(k) < 0){	// null<0 is true, so only if a default param.
-				if (IsDataSet(k + "Counter"))
-					SetData(k + "Counter",0)
+		foreach (k, v in userparams()) {
+			if (!val && IsDataSet(k + "Counter")){							// Precheck. DHubMessage <- null in constructor
+				SetData(k + "Counter",0)
 			}
 		}
+		OnMessage()
 	}
 
 	function OnMessage(){
@@ -1886,7 +1861,7 @@ delegate.delegate(base user)
 				}
 			} else {
 				// general message loop through all
-				foreach (k, v in base.userparams()) {
+				foreach (k, v in userparams()) {
 					if (::startswith(k, "DHub") && DHubParameters.find(k) < 0){
 						if (IsDataSet(k + "InfRepeat")){
 							KillTimer(ClearData( k+ "DelayTimer"))
@@ -1897,31 +1872,34 @@ delegate.delegate(base user)
 			}
 		}
 # |-- SetUp		
-		local command   = ("DHub" + msg) in base.userparams()
-		if (command){
+		if (("DHub" + msg) in userparams()){
 			local sub_script = "DHub" + msg
 			local curCopy 	 = 1
-			local baseDN	 = base.userparams()
+			local baseDN	 = userparams()
 			DefOn			 = msg
 			_script			 = sub_script
 			do{
-				print("do for "+ _script)
-				DBaseFunction(SubDN)
+				DBaseFunction(baseDN)
 				
 				curCopy++
 				_script = sub_script + curCopy
 			} while(_script in baseDN && ~message().flags & 2)	// if message got blocked via ExclusiveMessage stop.
 		}
 	}
-
-// DRelayTrap.DoOn will do the actions.
 	
+	
+	/* function DoOn(DN){
+		// DRelayTrap.DoOn will do the actions.
+		base.DoOn(DN)
+	}*/	
 }
+
+
 ################################
 ## END of HUB
 ################################
 
-### 	/-- 	Â§	Button & Lever scripts				--\
+### 	/-- 	§	Button & Lever scripts				--\
 
 #########################################
 class SafeDevice extends SqRootScript{
@@ -1945,10 +1923,8 @@ class DStdButton extends DRelayTrap
 #########################################
 /*Has all the StdButton features - even TrapControlFlags work.
 as well as the DRelayTrap features, so basically this can save some script markers which only wait for a Button TurnOn.
-
 Additionally:
 Once will lock the Object. And if the button is LOCKED the joint will not activate and the Schema specified by DStdButtonLockSound will be played, by default "noluck" the wrong lockpick sound.
-
 NOTE: As this is a DRelayTrap script as well it can be activated via TurnOn; but the Default message is "DIOn" (I=Internal); sending this message will bypass the Lock check and TrapControlFlags.
 ######################################### */
 	{
@@ -2093,7 +2069,6 @@ class DHitScanTrap extends DRelayTrap
 ####################################################################
 /*When activated will scan if there is one object / solid between two objects. Imagine it as a scanning laser beam between two objects DHitScanTrapFrom and DHitScanTrapTo, the script object is used as default if none is specified. 
 If the From object is the player the camera position is used if the To object is also the player the beam will be centered at the players view - for example to check if hes exactly facing something.
-
 The Object that was hit will receive the message specified by DHitScanTrapHitMsg. By default when any object is hit a TurnOn will be sent to CD Linked objects. Of course these can be changed via DHitScanTrapTOn and DHitScanTrapTDest.
 Alternatively if just a special set of objects should trigger a TurnOn then these can be specified via DHitScanTrapTriggers.
 */
@@ -2158,14 +2133,10 @@ class DCopyPropertyTrap extends DBaseTrap
 /*
 Target default: &ScriptParams
 Source default: [me]
-
 Similar to S&R->SetProperty but can set multiple properties on multiple objects at the same time.
-
 Upon receiving TurnOn copies the properties specified by DCopyPropertyTrapProperty form the object DCopyPropertyTrapSource(default is [me]) to the objects specified through DCopyPropertyTrapTarget if not set ScriptParams linked objects will receive the propertie(s) by default.
 Multiple properties can be copied with the + operator.
-
 You use the script object as a sender or receiver.
-
 Design Note example:
 DCopyPropertyTrapProperty="+PhysControl+RenderAlpha";DCopyPropertyTrapSource="&Owns";DCopyPropertyTrapTarget="[me]"
 This will copy the Physics->Controls and Renderer->Transparency(Alpha) property from the object linked with an Owns linked to the object itself. 
@@ -2194,20 +2165,16 @@ class DWatchMe extends DBaseTrap
 {
 /*By default when this object is created or at game start (BeginScript) creates AIWatchObj Links from all Human(-14) to this object.
 Use DWatchMeTarget to specify another object, archetype or metaproperty. (see notes below)
-
 On TurnOff will remove any(!) AIWatchObj links to this object. You maybe want to set DWatchMeOff="Null".
-
 - Further (if set) copies!! the AI->Utility->Watch links default property of the archetype (or the closest ancestors with this property) and sets the Step 1 - Argument 1 to the Object ID of this object.
 - Alternatively if no ancestor has this property the property of the script object will be used and NO arguments will be changed. (So it will behave like the normal T1/PublicScripts WatchMe or NVWatchMeTrap scripts)
 TODO: If the object has a custom one it should take priority.
-
 ------------------------------
 Usefulness:
 If you have multiple objects in your map and want that AIs perform simple(?) actions with each of them under certain conditions.
 For example:
 You can use it to let guards relight every extinguished torches on their patrol path -> see Demo.
 Initially it was designed to be used with DPortal do force an alerted AI to follow the player through portals. Still not optimal but the basics are there.
-
 Tip:
 If you use a custom On command, multiple links could be created so you may want to set the Watch->"Kill like links" flag in that situation.
 ######################################### */
@@ -2242,13 +2209,10 @@ DefOn = "BeginScript" 		//By default reacts to BeginScript instead of TurnOn
 class DAddScript extends DBaseTrap
 /*#######################################
 SQUIRREL: Can be used as Root -> D[Add/Remove]ScriptFunc
-
 Adds the Script specified by DAddScriptScript to the objects specified by DAddScriptTarget. Default: &ControlDevice.
 Additionally it sets the DesignNote via DAddScriptDN. If the DAddScriptScript parameter is not set only the DesignNote is added/changed.
-
 On TurnOff will clear the Script 4 slot. Warning: This is not script specific BUT DromEd will dump an ERROR if it can not override it, so you should be aware of if there is any collision. And maybe you want to use it exactly because of that.
 TODO: Make this optional, dump warning
-
 NOTE:
 - It will try to add the Script in Slot 4. It will check if it is empty or else if the Archetype has it already, else you will get an error and should use a Metaproperty.
 - It is possible to only change the DesignNote with this script and so change the behavior of other scripts BUT this only works for NON-squirrel scripts OR if they have never been called since the last load.
@@ -2377,7 +2341,7 @@ class DTPBase extends DBaseTrap
 		local z = ("DTpZ" in DN)? x = DN.DTpZ : 0;
 		
 		if (x != 0 || y != 0 || z != 0)
-			return vector(x,y,z)
+			return ::vector(x,y,z)
 		return null
 	}
 
@@ -2409,11 +2373,9 @@ If any of the DTp_ parameters is specified and not 0 these have priority.
 class DTrapTeleporter extends DTPBase
 #########################################
 /*Target default: &Control Device
-
 Upon receiving TurnOn teleports a ControlDevice linked object to this object and keeps the original rotation of the object.
 Further by default currently non-moving or non-AI objects will be static at the position of the TrapTeleporter and not affected by gravity until their physics are enabled again - for example by touching them.
 By setting DTeleportStatic=0 in the Editor->Design Note they will be affected by gravity after teleportation. Does nothing if Controls->Location is set.
-
 Design Note Example, which would move the closest Zombie to this object.
 DTeleportStatic=0
 DTrapTeleporterTarget=^Zombie types 
@@ -2439,13 +2401,10 @@ class DPortal extends DTPBase
 /*
 DefOn ="PhysEnter"
 Default Target = Entering Object. (not [source]! with sPhysMsg upgrade now it is.)
-
 Teleports any entering object (PhysEnter).
 Either by x,y,z values specified in the Design Note (these have priority) via DTpX=;DTpY=;DTpZ= or to the object linked with ScriptParams.
 Unlike DTeleportPlayerTrap this script takes the little offset between the player and the portal center into account, which enables a 100% seamless transition - necessary if you want to trick the player.
-
 Tipp: If you use the ScriptParams link and want a seamless transition, place the destination object ~3 units above the ground.
-
 Design Note Example:
 DTpX=-3.5;DTpZ=10
 DPortalTarget="+player+#88+@M-MySpecialAIs"
@@ -2495,7 +2454,7 @@ DPortalTarget="+player+#88+@M-MySpecialAIs"
 ###################################End Teleporter Scripts###################################
 
 
-// 		|-- Â§Undercover / Â§Ignore_Player_until_Scripts		 --|
+// 		|-- §Undercover / §Ignore_Player_until_Scripts		 --|
 ###################################Undercover scripts###################################
 //Weapons scripts are in DUndercover.nut
 //TODO: Link the the detailed forum documentation.
@@ -2816,11 +2775,8 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 class DCompileTrap extends DBaseTrap
 /* compiles the string given via DCompileTrapCode, uses the _ operator Syntax, which is added automatically. */
 ######################################### 
-# TODO NOT present in game.exe
 {
 	function DoOn(DN){	
-		DCheckString("_"+DGetParamRaw(_script + "Code"))
-		// local func = compilestring(GetProperty("EdComment"))	// TODO works only in Editor
-		// func()
+		DCheckString("_" + DGetParamRaw(_script + "Code"))
 	}
 }

@@ -230,10 +230,8 @@ if (IsEditor()){	// All classes from NewDark
 
 
 
-local z = 2
-::Test <- false
 //This is just a script for testing purposes. ignore
-class DLowerTrap extends DEditorScripts						
+class DTestTrap extends DEditorScripts						
 {
 	DefOn = "Test"
 	
@@ -384,7 +382,12 @@ SQUIRREL> 0.000000, 0.000000, 2.600000
 	
 }
 
-class DTestTrap2 extends DLowerTrap{
+if (IsEditor())
+	::DumpTable <- DTestTrap.DumpTable
+
+
+
+class DTestTrap2 extends DTestTrap{
 
 }
 
@@ -616,8 +619,3 @@ DrkInv.CapabilityControl(3,2)
 DrkInv.CapabilityControl(1,2)
 DrkInv.CapabilityControl(2,2)
 DrkInv.CapabilityControl(4,2)*/
-
-local s = ~6&2
-print(::format("%05X",s))
-s = ~9&2 ;
-print(::format("%05X",s))
