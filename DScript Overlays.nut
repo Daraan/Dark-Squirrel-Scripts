@@ -17,7 +17,6 @@ if (kUseIngameLog) {
 		Y		= 0
 		SizeX 	= ::int_ref()
 		SizeY 	= ::int_ref()
-		maxX 	= 0
 		blackbg = null
 		
 		constructor(){
@@ -48,7 +47,7 @@ if (kUseIngameLog) {
 			}
 			
 			if (kGameLogAlpha){
-				blackbg = Service.CreateTOverlayItem(X, Y, 631, 640, (typeof kGameLogAlpha == "integer"? kGameLogAlpha : 64 ), true);
+				blackbg = Service.CreateTOverlayItem(X, Y, 631, 640, (typeof kGameLogAlpha == "integer"? kGameLogAlpha : 63 ), true);
 			}
 			
 			base.constructor()
@@ -104,7 +103,7 @@ class cDHandlerFrameUpdater extends Upperclass {
 	WidthToY 	= null
 	HeightToZ 	= null
 	NotChecked 	= true
-		 
+	
 	constructor(){
 		base.constructor()
 		// Engine.GetCanvasSize(W,H)
@@ -129,7 +128,7 @@ class cDHandlerFrameUpdater extends Upperclass {
 
 		// Service.GetObjectScreenBounds(430, X1, Y1, X2, Y2);
 		if (NotChecked)
-			ScreenToWorld()
+			::DScript.ScreenToWorld.call(this)
 	}
 	
 	function OnUIEnterMode(){

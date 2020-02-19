@@ -15,7 +15,7 @@
 ##		/--		§#		§_INTRODUCTION__§		§#		--\
 //////////////////////////////////////////////////////////////////// 
 //					 	
-const DScriptVersion = 0.71 	// This is not a stable release!
+const DScriptVersion = 0.73 	// This is not a stable release!
 //
 // While many aspects got improved and added. They have been only minimally been tested.
 //  The DHub script should not work in this version.
@@ -181,6 +181,17 @@ DScript <- {
 	// Keeping these alive.
 	IntExp 		= ::regexp(@"-?\d+ *")
 	FloatExp 	= ::regexp(@"-?\d+\.\d+ *")
+	
+	function IsNumber(d){
+		//precheck:
+		if ((d[0] <= '9' && d[0] >= '0') || d[0] == '-'){
+			if (IntExp.match(d))
+				return d.tointeger()
+			if (FloatExp)
+				return d.tofloat()
+		}
+		return null
+	}
 	
 	GetAllDescendants = function(from, objset, allowInherit = true){
 	/* '@' and '*' operator analysis. Gets all descending concrete objects of an archetype or meta property. */
@@ -1507,6 +1518,15 @@ class DScriptHandler extends DRelayTrap
 		base.constructor()
 	}
 	
+	/* function _get(key)	// You can Access the other Handlers via DHandler.DSaveHandler, DHandler.FrameUpdater for example.
+	{
+		if (key in Extern)
+			return Extern[key]
+		if (key in OverlayHandlers)
+			return OverlayHandlers[key]
+		throw null
+	} */
+	
 	function RegisterExternHandler(HandlerName, Instance = null, callFunction = "DoAfterRegistration"){
 	/* There are two ways for this action, depending on if the DHandler or the other one got constructed first.
 		Internal call on DScriptHandler: HandlerVariable as string: If the other Handler has been constructed before and stored in a global variable.
@@ -1515,13 +1535,16 @@ class DScriptHandler extends DRelayTrap
 		Lastly when we know that both Handlers have been initialized the callFunction will be called on the other instance. (if it is present in it's parent class.*/
 		
 		// Case other Handler not registered
-		local root = getroottable()
+		local root = ::getroottable()
 		if (!Instance && !(HandlerName in root && typeof root[HandlerName] == "Instance"))
 			return
 		
 		
-		if (!Extern)
+		if (!Extern){
+			print("HANDLER REGISTERED")
 			Extern = {}
+			__getTable.setdelegate(Extern)
+		}
 		if (Instance){
 			Extern[HandlerName] <- Instance
 		} else Extern[HandlerName] <- root[HandlerName]
@@ -1531,8 +1554,11 @@ class DScriptHandler extends DRelayTrap
 	}
 	
 	function OnBeginScript(){
-		::PlayerID		<- ObjID("Player") 	// Caches the PlayerID, faster, and easier wo write.
+		::PlayerID		<- ObjID("Player") 				// Caches the PlayerID, faster, and easier wo write.
 		
+
+
+		// Well Player is not present before DarkGameModeChange
 		#NOTE If the player object does not exist, check a frame later.
 		if (!::PlayerID)										
 			return PostMessage(self, "BeginScript")		// TODO check if there is a conflict with the later declaration. it's 1ms

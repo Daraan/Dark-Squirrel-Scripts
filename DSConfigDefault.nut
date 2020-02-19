@@ -26,24 +26,41 @@
 
 //	/-- 		§For_FM_Authors			--\ 
 #	|--	Display Hello & Help Message?	--|
-
 const dHelloMessage		= true			// If it annoys you turn it off here.
 		
-
 #	|-- 	Required User Version		--|
 // Set this if your FM uses features that are only available from a certain DScript version onward.
 //	It will print an UI Warning if the DScript.nut version of the user is below this one.
 const dRequiredVersion	= 0
 
-#	|-- 			Debugging			--|
+#	|-- 		Debugging				--|
 // DSpy registers only: Collision(1), Contact(2), Enter/Exit(4), the other types hold not that much useful information.
 const kDSpyPhysRegister	= 7				// Bitwise; see ePhysScriptMsgType reference. 
 
 // If enabled ports the newest part of the monolog.txt(editor.exe) or game.log(game.exe) directly ingame onto the screen.
-const kUseIngameLog = true			// same as "-480/0"
-// const kUseIngameLog = "20/30"	// use this as an alternativ to define the X/Y position from the upper left corner. Use negative values for right/bottom
+const kUseIngameLog 	= true			// same as "-480/0"
+// const kUseIngameLog = "20/30"		// use this as an alternativ to define the X/Y position from the upper left corner. Use negative values for right/bottom
+const kGameLogAlpha 	= true			// 0 or false is Off, 255 is full black. true is equal to 63.
 
-const kGameLogAlpha = true			// Default is 0/Off, 255 is full black.
+# |--	 Auto Texture Replacement		--|
+// DAutoTxtRepl automatically sets the Shape->TxtRepl fields out of a predefined set.
+enum eDAutoTxtRepl
+{
+	kFile		= "DAutoTxtRepl.csv"	// Filename which holds the model to texture references.
+	kSeparator 	= ';'					// By which separator are the cells separated after export. Use '\t' for tab.
+
+	// 0 or false: Textures are set once in the editor. 
+		#NOTE: In this case the script will be completely absent in the game.exe and use less memory.
+	// 1 Once in the editor + once at mission start, to add a little variation.
+		# Here the script will only be compiled during the mission start. After a save game load it is absent.
+	// 2 Will be done after each reload, in game and in editor.
+		# With the DAutoTextReplLock parameter you can disable this manually on the objects.
+		# This option is the only method which allows the AutoTxtRepl to be used on newly created objects during game time after a save game load.
+	kUseInGame	= false
+}
+
+// Squirrel Internal; for you of no concern.
+::enabledebuginfo(null)
 
 #	|-- 	Operator Adjustments		--|
 // The { operator makes use of an modified vector class to make the xyz values accessible by index: v[0] = v.x
@@ -60,7 +77,7 @@ const kSharedBinTable			= "SharedBinTable"
 
 // function GetRandomValue() {	return Data.RandFlt0to1()}
 getconsttable().MissionConstants <-{
-	/* if you want to access non integer values via $QVar you can specify them here. 
+	/* if you want to access non integer values via $QVar you can specify them here.
 	 
 	// To get special characters like $ into the QVar name use one these two syntaxes:
 	"MyVar$" : 6
@@ -74,7 +91,7 @@ getconsttable().MissionConstants <-{
 	// And can also be outside this table / file, as long they are above it!
 	Random = GetRandomValue()
 	
-	*/
+	*/ // NOT This is commented out.
 }
 
 #	|-- 	Script specific Adjustments		--|
@@ -121,7 +138,6 @@ enum eSeparator
 	kTimerKeyValue	= "+="		// How if they come as Key = Value pairs.
 	
 	kStringData		= ";="		// Used by DGetStringParam. The order is important the first indicates a new key the second the value. key=value;nextkey
-	// TODO: new = operator not useable for DHub.
 	
 	// Not implemented in the code:
 	/* 

@@ -61,7 +61,7 @@ myblob = null								// As we will work more with the derived dblob class
 			}
 		}
 		#DEBUG
-		// DPrint(param + " or seperator " + separator + "not found.")
+		// DPrint(param + " or separator " + separator + "not found.")
 		return def
 	}
 
@@ -78,12 +78,12 @@ myblob = null								// As we will work more with the derived dblob class
 			return rv
 		}
 		#DEBUG
-		// DPrint(param + " or seperator " + separator + "not found.")
+		// DPrint(param + " or separator " + separator + "not found.")
 		return def
 	}
 
 	/*
-	function getParamOld(param, seperator = '"', offset = 0){
+	function getParamOld(param, separator = '"', offset = 0){
 	// Old slim version. Throws if not found. New ones should be faster as well, as it writes 
 		return slice(
 				find(separator, find(param, offset)) +1 ,
@@ -126,6 +126,17 @@ myblob = null								// As we will work more with the derived dblob class
 		} 
 		return dblob( myblob.readblob(end))
 	}
+	function CheckIfSubstring(str){
+	/* Checks if the next characters in the blob match to the given substring.
+		Assumes that you already have prechecked the first character. readn == str[0]*/
+		for (local i = 1; i < str.len(); i++)
+		{	
+			if (myblob[tell() + i -1] != str[i]){
+				return false	// One char does not match
+			}
+		}
+		return true				// All matched
+	}
 	
 	function find(pattern, start = 0, stopString = null){	// stopCharacter could be used as a hard terminator beside EOS
 		if (pattern == "")
@@ -137,19 +148,9 @@ myblob = null								// As we will work more with the derived dblob class
 				local c = readNext()
 				if (c == pattern)
 					return myblob.tell() - 1		// Start Position is 1 before.
-				if (c == stopChar){
-					local backup = myblob.tell()
-					local stop   = true
+				if (c == stopChar && CheckIfSubstring(stopString)){
 					// check if next characters match the stopString
-					foreach (c in stopString.slice(1)){		// check if the next characters match. TODO this might be easier in a higher bit test.
-						if (c != myblob.readn('c')){
-							myblob.seek(backup)		// return the position of first found.
-							stop = false
-							break
-						}
-					}
-					if (stop)
-						return false				// If false you can slice to this position and then continue.
+					return false
 				}
 				if (!c)								// null is EOS, false is stopCharacter
 					return c
@@ -163,19 +164,7 @@ myblob = null								// As we will work more with the derived dblob class
 				if (!first && first != 0)
 					return null						// EOS
 				
-				local done = true
-				foreach (c in pattern.slice(1))		// check if the next characters match. TODO this might be easier in a higher bit test.
-				{
-					if (c != myblob.readn('c')){
-						myblob.seek(first + 1)		// return the position of first found.
-						done = false
-						break
-					}
-					//if (c == pattern[-1]){		// If c is the last character in the string we are done.
-						//return first				// TODO what about ABCDB ? return after loop
-					//}
-				}
-				if (done)
+				if (CheckIfSubstring(pattern))
 					return first
 			}
 		}
@@ -282,10 +271,10 @@ class dblob extends dfile
 				// str.seek(0) let's not seek to make custom position possible.
 				if (str instanceof ::dfile){
 					myblob = str.myblob.readblob(str.len())
-					}
+				}
 				else {
 					myblob = str.readblob(str.len())
-					}
+				}
 				str.close()
 				break
 			case "blob" :
@@ -315,9 +304,10 @@ class dblob extends dfile
 	}
 
 //	|-- Blob like function --|
-	function writec(str)
+	function writec(str){
 		foreach (char in str)
 				myblob.writen(char,'c')
+	}
 	
 //	|-- Metamethods -- |
 	function toblob()
@@ -373,9 +363,10 @@ class dCSV extends dblob
 	useRowKey 	= null	// will turn this into a table then
 	useFile	  	= null
 	lines		= null
-	entrytable	= null	
-		
-	constructor(str, useFirstColumnAsKey = true, separator = "\t", commentstring = "//", streamFile = false){
+	static default_args = {path = "", useRowKey = true, stream = false,separator = '\t', delimiter = '\'', commentstring = "//", streamFile = false}
+
+// |-- Constructor --|	
+	constructor(str, useFirstColumnAsKey = true, separator = '\t', delimiter = '\'', commentstring = "//", streamFile = false){
 		if (streamFile && typeof str == "file"){
 			if (str instanceof ::dfile)
 				myblob = str.myblob
@@ -387,14 +378,24 @@ class dCSV extends dblob
 		
 		useRowKey	  = useFirstColumnAsKey
 		useFile 	  = streamFile
-			
+		lines 		  = []	
 		createCSVMatrix(separator)
+		//return //this
 	}
 	
-	function open(filename, path = "", useFirstColumnAsKey = true, useHeader = false, stream = false){
-		return dCSV(::file(path + filename, "r"), useFirstColumnAsKey, useHeader, stream)
+	// open uses optional inputs via a list!
+	function open(filename, args = null){
+		if (!args)
+			args = default_args
+		else {
+			if (typeof args != "table")
+				throw "DScript ERROR: For dCSV.open(filename, path = \"\", args = null). args must be provides as a {parameter = value} table."
+			args.setdelegate(default_args)	// look up defaults if not present.
+		}
+		return dCSV(::file(args.path + filename, "r"), args.useRowKey, args.separator, args.delimiter, args.commentstring, args.streamFile)
 	}
-	
+
+// |-- Extract Data --|
 	function _get(key){						// metamethod, dCSV[0] or dCSV[myRow] => dCSV[line][#column]
 		if (typeof key == "integer") {
 			return lines[key]
@@ -413,91 +414,131 @@ class dCSV extends dblob
 			return line
 		if (typeof column == "integer")
 			return line[column]
-		local idx = lines[0].find(column)
+		local idx = lines[0].find(column)			// try to find header
 		if (idx >= 0)
-			return line[idx]	// try to find header
+			return line[idx]			
 		throw "CSV [" + line[0] + " / " + column + "] does not exist."
 	}
-	
-	function dump(raw = false){
-			print("Amount of CSV lines:" + lines.len())
-			if (useRowKey && !raw){
-				print("Lookup table with valid keys:\n\tKey\t:\tValues")
-				foreach (key, val in useRowKey){
-				local line = ""
-					foreach (entry in val)
-						line += "\t"+entry
-					print(key + "\t:" + line)
-				}
-			} else {
-				print("Stored Lines:")
-				foreach (key, val in lines){
-					local line = ""
-					foreach (entry in val)
-						line += "\t"+entry
-					print(key + ":" + line)
-				}
+
+// |-- Output --|
+// remember print() uses tostring() and will print the raw context of the file/blob	
+	function dump(unformatted = false){
+	/* unformatted = true will dump two tables for tables that have been created with useRosKey*/
+		print("Amount of CSV lines:" + lines.len())
+		if (useRowKey){
+			print("Lookup table with valid keys:\n\tKey\t:\tValues")
+			foreach (key, val in useRowKey){
+			local line = ""
+				foreach (entry in val)
+					line += "\t"+entry
+				print(key + "\t:" + line)
 			}
-		
+			print("==============\n")
+		} else unformatted = true
+		if(unformatted){
+			print("Stored Raw Data:")
+			foreach (key, val in lines){
+				local line = ""
+				foreach (entry in val)
+					line += "\t"+entry
+				::Debug.MPrint(key + ":" + line)
+			}
+		}
 	}
 	
-	function createCSVMatrix(separator = "\t", commentstring = "//"){
-		lines = []
+	function GetMatrix(){
+		return lines
+	}
+
+// |-- Input Interpretation --|
+	function createCSVMatrix(separator = '\t', commentstring = "//", delimiter = '\''){
+		print("separator is " + separator.tochar())
 		myblob.seek(0,'b')		// Make sure pointer is at start
-		do {
-			local comment = false
-			local lineraw = ""
-			while(true){
-				local c = readNext('\n')
-				if (c){
-					if (c == commentstring[0]){
-						for (local i = 1; i < commentstring.len(); i++)
-						{	
-							if (myblob[tell() + i -1] != commentstring[i]){
-								break
-							}
-							if (i == commentstring.len() -1){
-								comment = true
-							}
-						}
-						if (comment){
-							find('\n',tell())	// move pointer to end of line.
-							break
-						}
-					}
-					// comment fix from these alternative " used in spreadsheets.
-					switch (c){
-						case 108:
-						case 109:
-						case 124:
-							c = '"'
-					}
-					lineraw += c.tochar()
-				}
-				else
-					break
+		do {									// This loop is a line
+			local c = myblob[tell()]
+			if (c == '\n' || c == '\r'){
+				myblob.seek(1,'c')
+				continue
 			}
-			lineraw = ::split(lineraw, separator)
-			if (lineraw.len() != 0)
-				lines.append(lineraw)
+			local curline 		  	= []
+			local delimiteractive 	= null
+			local lineraw 			= ""
+			while(true){				// This loops a cell
+				local c = myblob.readn('c')
+				if (c == delimiter){
+					// check if next character is delimiter again, if it is it will be added if not sets delimiter = false and continue with next char.
+					if (delimiteractive){
+						c = myblob.readn('c')
+						if (c != delimiter)
+							delimiteractive = false
+					} else if (delimiteractive == null){	// Turn on the delimiter
+							delimiteractive = true
+							c = myblob.readn('c')
+					}
+				} else if (delimiteractive == null)		// Disable Delimiter for this cell
+							delimiteractive = false
+				// comment fix from these alternative " used in spreadsheets.
+				if (!delimiteractive){
+					if (c == separator){
+						// if active treat as char but if not seperate here.
+						#DEBUG POINT
+						// print(lineraw)
+						curline.append(lineraw)
+						lineraw = ""
+						delimiteractive = null
+						continue
+					}
+					if (c == '\n'){ 	// A newline can be added if within a delimiter
+						curline.append(lineraw)
+						lineraw = ""
+						break
+					}
+				}
+				if (c == commentstring[0]){
+					if (CheckIfSubstring(commentstring)){
+						if (lineraw != "")
+							curline.append(lineraw)
+						find('\n',tell())	// move pointer to end of line.	
+						break
+					}
+				}
+				switch (c){
+				// this fixes the string like „“ to be a "
+					case 108 - 255:
+					case 109 - 255:
+					case 124 - 255:
+						c = '"'
+				}
+				lineraw += c.tochar()
+				// lineraw = ::split(lineraw, separator)
+				if (myblob.eos() && lineraw!=""){
+					curline.append(lineraw)
+					break
+				}
+			}
+			if (curline.len())
+				lines.append(curline)
+			
 		} while(!myblob.eos())
 		
 		if 	(useRowKey){
 			useRowKey = {}
 			foreach (line in lines){
 				if (line.len() && line[0] != "")
-					useRowKey[line[0]] <- line					// line is added as reference, so memory wise this be not so expensive.
-			}
+					useRowKey[line[0]] <- line					// Line is added as reference, so memory wise this be not so expensive.
+			}													// Not because of that the key is still present in the line.
 		}
-		// dump()
-		// dump(true)
 	}
 	
+	function refresh(separator = '\t',delimiter = '\'', commentstring = "//"){
+		if (typeof myblob != "file")
+			throw "dCSV not initialized as stream. Can't refresh."
+		createCSVMatrix(separator, commentstring)
+	}
+
 }
 
-
-b <- dCSV(::file("./USERMODS/Untitled 1.csv","r"))
-print(b(0,1))
+//::dCSV.open("Untitled 1.csv",{path = "./usermods/"}).dump(true)
 
 ################################################################
 ##################    Game related scripts    ##################
@@ -564,7 +605,9 @@ class cDCustomHandler
 	}
 	
 	function GetClassName(){
-		error("Please add GetClassName to your CustomHandler class")
+		if (!("ClassName" in this)) 
+			error("Please add a ClassName slot to your CustomHandler class")
+		return ClassName
 	}
 	
 	function ScriptHandlerHandshake(){
@@ -577,19 +620,15 @@ class cDCustomHandler
 	
 }
 
-class cDSaveHandler
+class cDSaveHandler extends cDCustomHandler
 {
-	File	= null
-	rawdata	= null
-	MPrint  = null
-	Saves	= null
-	Slot	= null
-	MissData= null
-	
-	function GetClassName(){
-		return "DSaveHandler"
-	}
-	
+	ClassName 	= "DSaveHandler"
+	File		= null
+	rawdata		= null
+	MPrint  	= null
+	Saves		= null
+	MissData	= null
+		
 	constructor(){
 		base.constructor()
 		if (!Quest.Exists("DTimestamp")){
@@ -598,28 +637,29 @@ class cDSaveHandler
 	}
 	
 	function DoAfterRegistration(){
-	/* At this point DScriptHandler and DSaveHandler are initiated*/
+	/* At this point DScriptHandler and DSaveHandler are initiated.*/
+		
+		// Register FingerPrint; value is get from DHandler
+		RegisterPrint(::DHandler.DGetParamRaw("DMissionFingerPrint", "[auto]"))
 	
 	}
 	
 	function RegisterPrint(finger){
 	/* Author can register a custom print or use a automatic one. */
-		if (!finger || MPrint)	// Set on some other handler or already set.
-			return
 	
-		if (typeof finger != "string" && finger.len() != 6)
-			throw "DMissionFingerPrint must be a string of length 6"
+		if (typeof finger != "string" || finger.len() > 9)
+			throw "DMissionFingerPrint must be a string of length 9 or fewer."
 			
 		if (finger.tolower() == "[auto]")
 			GetMissionPrint()
 		else
-			MPrint  = "$"+finger
+			MPrint  = "$" + finger
+		
 		// Init data
 		Saves = {}
 		GetSaveRaw()	// MissData now set
-		if (!Slot)
-			print("NOT GOOD")
-		// Now OnSim data can be catched
+		if (::DHandler.DGetParamRaw("DMissionDebug") && !::DHandler.DGetParamRaw("DMissionFingerPrint", null))
+			print("DScript: DPersistentSave [auto]Mission FingerPrint is:" + MPrint)
 	}
 	
 	function GetMissionPrint(){
@@ -638,89 +678,89 @@ class cDSaveHandler
 		print("name :" + name)
 
 		local stamp = ""
-		// first two name characters
+		// first 4 name characters
 		if (name != "" && !IsEditor()){
-			if (::startswith(name.tolower(),"the") && name.len() > 6)	// to make this more unique, filter out missions starting with the.
-				stamp = name.slice(4,6)
+			if (::startswith(name.tolower(),"the") && name.len() > 7)	// to make this more unique, filter out missions starting with the.
+				stamp = name.slice(4,7)
 			else
-				stamp = name.slice(0,2)
+				stamp = name.slice(0,3)
 		} else {
 			if (!IsEditor())
-				print("DScript WARNING: DPersistentSave: FM Name not set - hopefully still playtest.", kDoPrint, ePrintTo.kLog | ePrintTo.kUI)
+				print("DScript Warning: DPersistentSave: FM Name not set - hopefully still playtest.", kDoPrint, ePrintTo.kLog | ePrintTo.kUI)
 		}
-		
-		// Last character of miss file
-		stamp += map.slice(-6,-4)
-		// And some checksum via both names
-		local key = -50
-		for (local i = 1; i < name.len(); i++)
+		// Last 3 character of miss file
+		stamp += map.slice(-6,-4)	// last 4 are '.mis'
+		// And some check characters via both names
+		local key = 0
+		for (local i = 1; i < name.len(); i++)	// probably 0 in editor.
 			key += name[i]
-		for (local i = 1; i < map.len(); i++)
+		MPrint = "$" + stamp + (key % 126 + 33).tochar()
+		for (local i = 1; i <  map.len(); i++)
 			key += map[i]
+		MPrint += (key % 63 + 33).tochar()
 		
-		// And combine
-		MPrint = "$" + stamp + (key % 99)	// only make it 2 digits. Stamp:$ + 6 characters; 5 characters timestamp; - 63-7 = 57 characters left for saves.
-		print(MPrint)
+		// 4 name characters, 3 mis characters, 2 checksums + $ = 10 characters for the stamp.
+		// 53 characters / bytes left for data
 		return MPrint
 	}
 	
 	function GetSaveRaw(){
 		if (!Engine.FindFileInPath("install_path", eDLoad.kFile, string())){
 			print("DUMP FILE")
-			Debug.Command("dump_tagblocks_vals", "generate.txt") 		// file not present create it.
+			Debug.Command("dump_tagblocks_vals") 					// file not present create it.
 		}
 		
-		File = ::dfile(eDLoad.kFile)
+		File 	= ::dfile(eDLoad.kFile)
 		rawdata = File.slice(File.find(eDLoad.kStart), File.find(eDLoad.kEnd))
-		// File.myfile.close()
-		// print(rawdata)
-		
-		for (local i = 63; i > 9; i--){
+		local slot = null
+		for (local i = 63; i > 55; i--){
 			local param = rawdata.getParam2("Env Zone "+i, null, 2)
 			// print("P" + i + "=" + param + "'")
-			if (::startswith(param, GetMissionPrint())){
-				Slot 	 = i
-				MissData = param
-				// Saves[i] = param
-			}
-			if (param == ""){
-				if (!Slot){
-					Slot = i
-					MissData = "---------------------------------------------------------"
+			if (param == ""){	// store first found empty slot.
+				if (!slot){
+					slot = i
 				}
-			} else if (param[0] == '$')	// Save data from other missions.
+			} else if (param[0] == '$'){							// Save data from other missions.
+				if (::startswith(param, GetMissionPrint())){		// Save for this mission found
+					slot 	 = i
+					MissData = param
+				}
 				Saves[i] <- param
+			}
 		}
-		if (Slot) {
-			// current mission shall always be slot 63
-			if (Slot != 63){
+		if (slot || Saves.len() < 63){						// Check if all are really saves.
+			if (!slot){
+			// All slots were used by EnvMaps or other missions.
+				// Check if a slot is not used by a save.
+				for (local i = 63; i > 0; i--){
+					if (!(i.tostring() in Saves)){
+						slot = i
+					}
+				}
+			}
+			// For the current mission the slot shall always be 63
+			if (slot != 63){
+				local temp = {} 	// deleting and shifting during a foreach, bad idea use a new table.
 				foreach (idx, save in Saves){
 					// lower number by 1
-					if (idx == Slot)
-						continue	// Else stored twice.
-					Saves[idx - 1] <- save
+					if (idx == slot)	// Else stored twice.
+						continue	
+					temp[idx.tointeger() - 1] <- Saves[idx]
 				}
-				Slot = 63
-				Saves[Slot] <- MissData
-			}
-			return Slot
-		}
-
-		// Else all were used... really? Lot's of Env maps prolly
-		print("WARNING all")
-		if (Saves.len() < 63 ){
-			// Well not all as saves slot at least, just lot's of Env maps cool.
-			for (local i = 63; i > 0; i--){
-				if (!(i.tostring() in Saves)){
-					Slot = i
-					return i
-				}
+				Saves 		= temp
 			}
 		} else {
-			// wow this chance is low..., clean data.
-			return null
+			// No empty slot and all used by saves wow. Remove older saves.
+			local temp = {}
+			for (local i = 2; i < 64; i++){
+				temp[i - 1] <- Saves[i]
+			}
+			Saves = temp
 		}
-		
+		if (!MissData)
+			MissData = ::blob() 
+		Saves[63] <- MissData
+		return MissData
 	}
 	
 	function SaveFile(){
@@ -751,6 +791,16 @@ class cDSaveHandler
 			SaveFile()
 	}
 	
+	function HexCharToInt(c){
+	/* Squirrel seams to have no function to turn a string like "0xF" into a number.
+		This very very dirty while 0-F are 0-15 it will continue with G = 16,... a = 42*/
+		if (c <= '9')
+			c -= '0'
+		else
+			c -= 55 // 'A' + 10
+		return c
+	}
+	
 	function GetEvent(event_id){
 		if (MissData[- event_id] != '-')
 			return ::DMath.CompileExpressions("0x",MissData[- event_id].tochar()) // HEX to int. # TODO is there really no easy way for hexstring to int???
@@ -765,16 +815,18 @@ class DPersistentSave extends DRelayTrap
 {
 DefOff  = null
 EventID	= null
+	constructor(){
+		if (IsEditor() == 1)
+			OnBeginScript()
+		base.constructor()
+	}
 
 	function OnBeginScript(){
 		// Create Handler if not present
-		if (!("DSaveHandler" in getroottable()))
-			::DSaveHandler()
-	
-		// Register FingerPrint; if not set on this object, doesn't matter.
-		::DSaveHandler.RegisterPrint(DGetParamRaw("DMissionFingerPrint"))		
-
-		base.OnBeginScript()
+		if (!("DSaveHandler" in getroottable()) || !::DSaveHandler)	// not set or null
+			::cDSaveHandler()
+		if (IsEditor() != 1)
+			base.OnBeginScript()
 	}
 	
 	function OnSim(){
@@ -807,7 +859,7 @@ EventID	= null
 		}
 		
 		// Repeat
-		if (RepeatForCopies(callee()))
+		if (RepeatForCopies(::callee()))
 			base.OnMessage()
 	}
 	
@@ -820,4 +872,3 @@ EventID	= null
 	}
 
 }
-
