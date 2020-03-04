@@ -1,0 +1,95 @@
+class DTool extends DToolDest
+{
+	DefOn = "+FrobInvEnd+FrobToolEnd"
+
+
+
+}
+
+class cDToolHandler extends cDCustomHandler
+{
+  data = null
+  
+  function OnBeginScript(){
+    path = string()
+    Engine.FindFileInPath("resname_base","DToolSetup.csv",path)
+    data = dCSV.open(path)
+  }
+  
+}
+  
+
+
+class DToolDest extends DRelayTrap
+{
+	DefOn = "+FrobWorldEnd+" //Lockpick message
+	DefOff = null
+
+	function DoInteraction(Source,Dest){
+	   local actions = cDToolHandler.data.get(Source,Dest)
+	   if (!actions)
+		return null
+		if (actions == ""){
+			if (Source != "default")
+				return DoInteraction("default",Dest)
+			return	// default == "", skip
+		}
+
+		actions = ::split(action,";")
+		for (local i = 0; i < actions.len();i++){
+			if (::startswith(actions[i],"MsgDest"))
+				SendMessage(Dest,actions[i].slice(8))
+			else if (::startswith(actions[i],"MsgObj")){
+				DMultiMessage(DCheckString(actions[i].slice(7),kReturnArray), DCheckString(actions[i+1],kReturnArray))
+				i++
+			} else if (::startswith(actions[i],"MsgTool"))
+				SendMessage(Source,actions[i].slice(8))
+			else if (::startswith(actions[i],"DispMsg"){
+				local rgb = actions[i].find("::")
+				if (rgb){
+					local buffer = actions[i]					// gets copied
+					actions[i] = buffer.slice(0,rgb)
+					print(actions[i])
+					rgb = buffer.slice(rgb + 1).tointeger()
+					print(rgb)
+					//rgb  = ::split(actions[i].slice(rgb),",")	// rgb to Thief text?
+				}
+				DarkUI.TextMessage(actions[i].slice(8))
+			} else if (actions[i].tolower() == "block")
+				BlockMessage()		// When for example used on a door/switch will block the frob.
+			else if (actions[i].tolower() == "tooldefault")		// If none is given the Destdefault value is used.
+				DoInteraction(Source,"default")
+			else if (actions[i].tolower() == "fail") 			// #NOTE; fail and success must be last!
+				return false									// all other outcomes return null
+			else if (actions[i].tolower() == "success")
+				return true
+			else if (actions[i].tolower() != "skip"){			// Anything else.
+				DoInteraction("default",Dest)
+			}
+		}
+  }
+
+  function OnBeginScript(){
+    if (!("DToolHandler" in ::DHandler.Extern))
+      ::DHandler.RegisterExternHandler(cDToolHandler)
+  }
+
+	function DoOn(){
+		local item = DarkUI.InvItem()
+		local type = DGetParam(_script + "Type", null)
+		if (!type)
+		  type = DScript.GetObjectName(self)
+
+		local result =  ::DHandler.Extern.cDToolHandler.DoInteraction(item,type)
+		if (result){
+			DRelayMessaged("On")
+		} else if (result == false){	// Failure and not null.
+			disp = DGetParam(_script + "DisplayOnFail",null)
+			if (disp)
+				DarkUI.TextMessage(disp)
+			DRelayMessages("Off")
+		}
+	}
+
+
+}
