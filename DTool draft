@@ -1,8 +1,13 @@
+// The type of an object is defined via:
+// Parameter DTool(Dest)Type > ObjectName > Archetype name
+
 class DTool extends DToolDest
 {
-	DefOn = "+FrobInvEnd+FrobToolEnd"
+	DefOn = "+FrobToolEnd+FrobInvEnd" 	// PlayerFrobTool?
 
-
+	function DoOn(){
+	
+	}
 
 }
 
@@ -10,41 +15,58 @@ class cDToolHandler extends cDCustomHandler
 {
   data = null
   
-  function OnBeginScript(){
-    path = string()
-    Engine.FindFileInPath("resname_base","DToolSetup.csv",path)
-    data = dCSV.open(path)
+  function GetClassName(){		// TODO something like this.
+  	return "cDToolHandler"
+  }
+  
+	constructor(){
+		path = string()
+    	Engine.FindFileInPath("resname_base","DToolSetup.csv",path)
+    	data = dCSV.open(path)
   }
   
 }
-  
-
+  // cDToolHandler = dCSV.open should be suffient.
 
 class DToolDest extends DRelayTrap
 {
 	DefOn = "+FrobWorldEnd+" //Lockpick message
 	DefOff = null
 
+  function OnBeginScript(){
+    if (!("DToolHandler" in ::DHandler.Extern))
+		local path = string()
+		Engine.FindFileInPath("resname_base","DToolSetup.csv",path)
+    	// data = 
+      ::DHandler.RegisterExternHandler("cDToolHandler", dCSV.open(path))		// init
+  }
+
 	function DoInteraction(Source,Dest){
-	   local actions = cDToolHandler.data.get(Source,Dest)
-	   if (!actions)
+	   local actions = cDToolHandler.get(Source,Dest)	// this is a CSV
+	   if (!actions)				// no match
 		return null
-		if (actions == ""){
+		if (actions == ""){			// Empty field, return default dest action.
 			if (Source != "default")
 				return DoInteraction("default",Dest)
-			return	// default == "", skip
+			return null				// if dest default == "" as well, skip
 		}
-
+		local condition = null
 		actions = ::split(action,";")
 		for (local i = 0; i < actions.len();i++){
-			if (::startswith(actions[i],"MsgDest"))
+			if (condition == false){
+				 if (actions[i].tolower() != endif)
+				 	continue
+				condition = null
+				continue
+			}
+			if (::startswith(actions[i],"MsgDest:")) {
 				SendMessage(Dest,actions[i].slice(8))
-			else if (::startswith(actions[i],"MsgObj")){
+			} else if (::startswith(actions[i],"MsgObj:")){
 				DMultiMessage(DCheckString(actions[i].slice(7),kReturnArray), DCheckString(actions[i+1],kReturnArray))
 				i++
-			} else if (::startswith(actions[i],"MsgTool"))
+			} else if (::startswith(actions[i],"MsgTool:")) {
 				SendMessage(Source,actions[i].slice(8))
-			else if (::startswith(actions[i],"DispMsg"){
+			} else if (::startswith(actions[i],"DispMsg:"){
 				local rgb = actions[i].find("::")
 				if (rgb){
 					local buffer = actions[i]					// gets copied
@@ -55,39 +77,79 @@ class DToolDest extends DRelayTrap
 					//rgb  = ::split(actions[i].slice(rgb),",")	// rgb to Thief text?
 				}
 				DarkUI.TextMessage(actions[i].slice(8))
-			} else if (actions[i].tolower() == "block")
+			} else if (actions[i].tolower() == "block") {
 				BlockMessage()		// When for example used on a door/switch will block the frob.
-			else if (actions[i].tolower() == "tooldefault")		// If none is given the Destdefault value is used.
-				DoInteraction(Source,"default")
-			else if (actions[i].tolower() == "fail") 			// #NOTE; fail and success must be last!
-				return false									// all other outcomes return null
-			else if (actions[i].tolower() == "success")
-				return true
-			else if (actions[i].tolower() != "skip"){			// Anything else.
-				DoInteraction("default",Dest)
+			} else {
+				actions[i] = actions[i].tolower()
+				if (actions[i] == "tool default"){		// If none is given the Destdefault value is used.
+					local rv = DoInteraction(Source,"default")
+					if (rv != null)
+						return rv
+				}
+				if (actions[i] == "if"){
+					condition = DCheckCondition(actions[i+1])
+					print("cond is "+condition)
+					if (!condition)
+						condition = false
+					i++
+					continue
+				}
+			 	if (actions[i] == "turnoff" || actions[i] == "0" ) 		// #NOTE; fail and success must be last!
+					return "Off"
+			 	if (actions[i] == "turnon"  || actions[i] == "1" )
+					return "On"
+				if (actions[i] == "default" || actions[i] == "-")
+					return DoInteraction("default",Dest)
+				if (actions[i] == "skip")
+					return null
+				print(GetClassName() + " WARNING: " + actions[i] + " no valid entry.")
+				return actions[i]										// TCustom event possible.
 			}
 		}
   }
 
-  function OnBeginScript(){
-    if (!("DToolHandler" in ::DHandler.Extern))
-      ::DHandler.RegisterExternHandler(cDToolHandler)
-  }
-
 	function DoOn(){
-		local item = DarkUI.InvItem()
-		local type = DGetParam(_script + "Type", null)
-		if (!type)
-		  type = DScript.GetObjectName(self)
+		local item = null					// get custom item type?
+		local dest = null
+		if (GetClassName() == "DTool"){
+			item = self
+			dest = message().ScrDest		// todo
+		}
+		else
+		{
+			item = DarkUI.InvItem()
+			dest = self
+		}
+		local item_type = null
+		local dest_type = null
+		if (item == self){
+			item_type = DGetParam(_script + "Type")
+			if (Property.Possesed(dest,"DesignNote")){
+				dest_type = DScript.DGetStringParam("DToolType",null,Property.Get(dest,"DesignNote"))
+			}
+		}
+		else 
+		{
+			if (Property.Possesed(item,"DesignNote")){
+				item_type = DScript.DGetStringParam("DToolType",null,Property.Get(item,"DesignNote"))
+			}
+			dest_type = DGetParam(_script + "Type")
+		}
+		if (!item_type)
+			item_type = DScript.GetObjectName(item)
+		if (!dest_type)
+			dest_type = DScript.GetObjectName(dest)
 
-		local result =  ::DHandler.Extern.cDToolHandler.DoInteraction(item,type)
-		if (result){
-			DRelayMessaged("On")
-		} else if (result == false){	// Failure and not null.
-			disp = DGetParam(_script + "DisplayOnFail",null)
-			if (disp)
-				DarkUI.TextMessage(disp)
-			DRelayMessages("Off")
+		// Now check for interaction
+		local result = DoInteraction(item_type, dest_type)
+		// DO we have a result?
+		if (result){					// can be On or Off
+			if (result == "fail"){
+				disp = DGetParam(_script + "DisplayOnFail",null)
+				if (disp)
+					DarkUI.TextMessage(disp)
+			}
+			DRelayMessages(result)
 		}
 	}
 
