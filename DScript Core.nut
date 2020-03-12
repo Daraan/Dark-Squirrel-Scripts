@@ -1,4 +1,4 @@
-##		--/					 §HEADER					--/
+##		--/					 Â§HEADER					--/
 
 #include DConfigDefault.nut
 // This file IS NECESSARY for DScript.nut to compile.
@@ -12,10 +12,10 @@
 // --------------------------------------------------------------------------
 
 
-##		/--		§#		§_INTRODUCTION__§		§#		--\
+##		/--		Â§#		Â§_INTRODUCTION__Â§		Â§#		--\
 //////////////////////////////////////////////////////////////////// 
 //					 	
-const DScriptVersion = 0.73 	// This is not a stable release!
+const DScriptVersion = 0.75 	// This is not a stable release!
 //
 // While many aspects got improved and added. They have been only minimally been tested.
 //  The DHub script should not work in this version.
@@ -31,7 +31,7 @@ const DScriptVersion = 0.73 	// This is not a stable release!
 //  To highlight code, special functions and constants and especially the use of custom fold points.
 //  An advanced text editor like notepad++ is recommended and necessary to use them. Like DromEd this file uses ANSI characters.
 //
-//		/--		§#		§_DEMO_CATEGORY_§		§#		--\
+//		/--		Â§#		Â§_DEMO_CATEGORY_Â§		Â§#		--\
 //			<-- fold it on the left
 //		|--			#		Paragraph		#			--|
 //			To fold the code into meaningful paragraphs.
@@ -64,7 +64,7 @@ There are three categories of output prints in this file, labeled as these at th
 /////////////////////////////////////////////////////////////////
 
 // ----------------------------------------------------------------
-##		/--		§#		§___CONSTANTS___§		§#		--\
+##		/--		Â§#		Â§___CONSTANTS___Â§		Â§#		--\
 // Adjustable Constants are in the DConfig*.nut files.
 // ----------------------------------------------------------------
 
@@ -72,12 +72,12 @@ const kDegToRad			= 0.01745	// DegToRad PI/180
 
 ##		|--			#	For Readability		#			--|	
 
-const OBJ_NULL			= 0			// Const name often used by LG, to describe none or all objects (wildcard), depending on the context.
-const OBJ_WILDCARD		= 0
+const OBJ_NULL			= 0			// Const name often used by LG, to describe that no object has been found. Archetypes < OBJ_NULL < Concrete Objects.
+const OBJ_WILDCARD		= 0			// Used for example for links, to return all objects that match a second condition.
 
 const kDoPrint			= true		// DPrint guarantee error prints outside of DebugMode. Sometimes this has been replaced directly by the error condition.
 const kDebugOnly		= false		// Used rarely but to point it out.
-enum ePrintTo						// DPrint mode options. used bitwise.
+enum ePrintTo						// DPrint mode options. bitwise.
 {
 	kMonolog 			= 1			// Editor monolog.txt
 	kUI	 				= 2			// Ingame Interface Message. TODO: Not Shock compatible. What is the function???
@@ -93,7 +93,7 @@ const kRemoveFirstChar	= 1
 
 const kInfiteRepeat		= -1		
 
-enum eScriptTurn					// Used by the DBaseTrap checks
+enum eScriptTurn
 {
 	Off								// = 0
 	On								// = 1
@@ -108,7 +108,7 @@ enum eScriptTurn					// Used by the DBaseTrap checks
 // -----------------------------------------------------------------
 // -----------------------------------------------------------------
 
-##		/--		§#	  	  §_VERSION_CHECK_§		§#		--\
+##		/--		Â§#	  	  Â§_VERSION_CHECK_Â§		Â§#		--\
 /* First will check if the users NewDark API version is sufficient - some script might not work.
 	Then also if a FanMission author defines a dRequiredVersion in a separate DConfig file this test will check if the 
 	current DScriptVersion of this file is sufficient or outdated and will display a ingame and monolog message to them. */
@@ -116,17 +116,17 @@ enum eScriptTurn					// Used by the DBaseTrap checks
 // NewDark Version
 if (GetAPIVersion() < 11){		// Currently max used API functions are from 11 = NewDark T2 v1.27 / SS2 v2.48
 		local warning = ::format("!WARNING!\a\n\tThis FM uses DScript which needs NewDark Version %d to work properly.\n\tYou are using only version %d. Please upgrade your installation to the newest version.", 11, GetAPIVersion())
-		DarkUI.TextMessage(	warning, 255, 60000)
+		DarkUI.TextMessage(warning, 255, 60000)
 		print(warning)
 } 
 // DScript Version
 if (dRequiredVersion > DScriptVersion){
 		local warning = ::format("!WARNING!\a\n\tThis FM requires DScript version: %.2f.\n\tYou are using only version %.2f. Please upgrade your DScript.nut files.", dRequiredVersion, DScriptVersion)
-		DarkUI.TextMessage(	warning, 255, 60000)
+		DarkUI.TextMessage(warning, 255, 60000)
 		print(warning)
 }
 
-##		/--		§#	  §HELLO_&_HELP_DISPLAY§	§#		--\
+##		/--		Â§#	  Â§HELLO_&_HELP_DISPLAYÂ§	Â§#		--\
 ##		|--			#	   General_Help		#			--|
 
 if (!::Engine.ConfigIsDefined("dsnohello") && dHelloMessage && IsEditor() && DScriptVersion > 0.90)	// will be enabled in Version 0.7 onward.
@@ -158,7 +158,7 @@ if (::Engine.ConfigIsDefined("dhelp")) 		//TODO: Setup attributes.
 
 
 ##	|-- ------------------------------------------- --|
-##	/--		§# §_____DSCRIPT_LIBRARY_____§  §#		--\
+##	/--		Â§# Â§_____DSCRIPT_LIBRARY_____Â§  Â§#		--\
 ##	|-- ------------------------------------------- --|
 // 
 // The table DScript acts as library, it contains various universal functions which don't need access to script or instance specific methods like self, message, userparams, ... and can so be used by different script classes.
@@ -171,7 +171,7 @@ DScript <- {
 	_FloatExp 	= ::regexp(@" *-?\d+\.\d+ *")
 	
 	function IsNumber(d){
-		if (d[kGetFirstChar] <= '9'){					// precheck for performance. regexp is slow.
+		if (d[kGetFirstChar] <= '9'){					// precheck for performance. regexp is slow. '-' is < '9' 
 			if (::DScript._IntExp.match(d))
 				return d.tointeger()
 			if (::DScript._FloatExp.match(d))
@@ -314,55 +314,54 @@ DScript <- {
 		}
 	}
 	
-#	/--	 	§Geometry		--\
+#	/--	 	Â§Geometry		--\
 	/* How to interpret your return values in DromEd:
 		First in DromEd there are the Position:HPB values you see in your normal editor view and the Model->State:Facing XYZ Values.
 		The return functions are always based on the Facing XYZ Values, misleading is the reversed order H=Z, P=Y and B=X of the axes.
 
 		PolarCoordinates
 		<distance, theta, phi>
-		theta: 	below  pi/2 (90°) means below the object, above above
+		theta: 	below  pi/2 (90Â°) means below the object, above above
 
 		phi: Negative Values mean east, positive west.
-		Absolute values above 90° mean south, below north:
+		Absolute values above 90Â° mean south, below north:
 	
 	Object.Facing and Camera.GetFacing()
 		Y							Z
-	Above270°						N180°			
+	Above270Â°						N180Â°			
 	/							 	|	
-	X---0°/360° 			W--270°-X--90°--E
+	X---0Â°/360Â° 			W--270Â°-X--90Â°--E
 	\								| 	
-	Below90°						S0°
+	Below90Â°						S0Â°
 
 	DScript.PolarCoordinates(from, to)	
 	Theta							Phi
-	Above180°						N0°			
+	Above180Â°						N0Â°			
 	/					(0,90)	 	| 	(  0, -90)	
-	X---90° 				W++++90°X-- -90°--E
+	X---90Â° 				W++++90Â°X-- -90Â°--E
 	\					(90,180)	| 	(-90, -180)
-	Below0°						180°S-180°	
+	Below0Â°						180Â°S-180Â°	
 
 	DScript.RelativeAngles(from, to)
 	Corrected Values:
 	Theta							Phi
-	Above90°						N0°			
+	Above90Â°						N0Â°			
 	/								|	
-	X---0° 				  W- +90°---X-- -90°--E
+	X---0Â° 				  W- +90Â°---X-- -90Â°--E
 	\								|	
-	Below-90°					180°S-180°
+	Below-90Â°					180Â°S-180Â°
 	
 	#NOTE these might now look different, but if you take a closer look, these are mirrored.
 		Swapping the order: RelativeAngles(to,from) will result in the expected:
 		
 	DScript.RelativeAngles(to, from)
-	Inverse Corrected Values matches Object.Facing() only with negative values above 180°.
+	Inverse Corrected Values matches Object.Facing() only with negative values above 180Â°.
 	Theta							Phi
-	Above -90°				   -180°N 180°			
+	Above -90Â°				   -180Â°N 180Â°			
 	/							 	|	
-	X---0° 					W- -90° -X-- 90°--E
+	X---0Â° 					W- -90Â° -X-- 90Â°--E
 	\								| 	
-	Below 90°						S0°
-	
+	Below 90Â°						S0Â°
 	*/	
 
 	function VectorBetween(from, to, UseCamera = true){
@@ -391,7 +390,7 @@ DScript <- {
 
 	function RelativeAngles(from, to, UseCamera = true){
 	/* Uses the standard PolarCoordinates, and transforms the values to be more DromEd like, we want 
-		Z(Heading)=0° to be south and Y(Pitch)=0° horizontal.
+		Z(Heading)=0Â° to be south and Y(Pitch)=0Â° horizontal.
 		Returns the relative XYZ facing values with B=X = 0. */
 		local v = PolarCoordinates(from, to, UseCamera)
 		v.x  = 0
@@ -588,7 +587,7 @@ DScript <- {
 //DScript.setdelegate(::getroottable()) possible to fix errors if :: is not used, as this is the DScript table.
 
 ##		|-- ------------------------------------------- --|
-##		/--		§# §______DSCRIPT_BASICS_____§  §#		--\
+##		/--		Â§# Â§______DSCRIPT_BASICS_____Â§  Â§#		--\
 ##		|-- ------------------------------------------- --|
 // 				String and Parameter analysis
 //
@@ -620,7 +619,7 @@ SubVersion 	= 0.72
 		throw null								// will now look in root table
 	}*/
 	
-	## |-- 	§Main_Analysis_Function		--|
+	## |-- 	Â§Main_Analysis_Function		--|
 	function DCheckString(str, returnInArray = false){		
 	/* 
 	Analysis of a given string parameter depending on its prefixed parameter.
@@ -770,12 +769,12 @@ SubVersion 	= 0.72
 					return ::DScript._FormatForReturn(DCheckString(value, returnInArray), returnInArray)
 				}
 				// yes no break.
-			case '§': // Paragraph sign. #NOTE IMPORTANT this file needs to be saved with ANSI encoding!
+			case 'Â§': // Paragraph sign. #NOTE IMPORTANT this file needs to be saved with ANSI encoding!
 				// replace with difficulty?
-				local another = str.find("§",1)
+				local another = str.find("Â§",1)
 				str = str.slice(kRemoveFirstChar)
 				if (another){
-					local ar = ::DScript.DivideAtNext(str,"§")
+					local ar = ::DScript.DivideAtNext(str,"Â§")
 					str = ar[0] + (::Quest.Exists(kReplaceQVarOperatorWith) ? ::Quest.Get(kReplaceQVarOperatorWith) : ::Quest.Get("difficulty")) + ar[1]
 				}
 				local customtable = ::split(str,".")
@@ -1132,7 +1131,7 @@ print("SHARED" + obj)
 		return ::split(data, separator)
 	}
 
-	#  |--  §Conditional_Debug_Print 	--|
+	#  |--  Â§Conditional_Debug_Print 	--|
 	function DPrint(dbgMessage = null, DoPrint = null, mode = 3) 	// default mode = ePrintTo.kMonolog | ePrintTo.kUI)
 	{
 		if (!DoPrint){
@@ -1166,7 +1165,7 @@ print("SHARED" + obj)
 }
 
 // ----------------------------------------------------------------
-##		/--		§# §____FRAME_WORK_SCRIPT____§	§#		--\
+##		/--		Â§# Â§____FRAME_WORK_SCRIPT____Â§	Â§#		--\
 //
 // The DBaseTrap is the framework for nearly all other scripts in this file.
 // It handles incoming messages and interprets the general parameters like Count, Delay, Repeat.
@@ -1374,7 +1373,7 @@ SourceObj 	  = null	//	The actual source of a message.
 		RepeatForCopies(::callee())
 	}
 
-### |-- §_Main_Message_Handler_§ --| ###
+### |-- Â§_Main_Message_Handler_Â§ --| ###
 	function DBaseFunction(DN){
 	/* Handles and interprets all incoming messages. 
 		- Are they a valid Activating or Deactivating message? 
@@ -1426,7 +1425,7 @@ SourceObj 	  = null	//	The actual source of a message.
 		return RepeatForCopies(::callee(), DN)
 	}
 
-	# |-- 		§Pre_Activation_Checks 		--|
+	# |-- 		Â§Pre_Activation_Checks 		--|
 	/*Script activation Count and Capacitors are handled via Object Data, in this section they are set and controlled.*/
 	# |--	Custom Condition Parameter 	--|
 	function DCheckCondition(Condition){
@@ -1723,7 +1722,7 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 }
 
 
-// |-- §Handler_Object§ --|
+// |-- Â§Handler_ObjectÂ§ --|
 /* This creates one object named DScriptHandler, see the class below.
 	That script initializes some data at game time, like the PlayerID and handles the perFrame updates. */
 if (IsEditor()){
@@ -2210,61 +2209,86 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubTDest","DHubCount","DHubCap
 
 class DTrapSetQVar extends DBaseTrap
 {
+	
+static eDQVarType = {
+	kTypeAuto			= null
+	kNonScalarMission	= -4	// Own Table in Campaign storage but should only be used for Mission.
+								// This is needed if a whole table needs to be stored. TODO: Store some reference to mission table names.
+	kNonScalarCampaign  = -3	// Has it's own table
+	kScalarMission		= -2	// Stored in DHandler; vectors might not be scalar in Squirrel but for Thief/SS they are and can be stored.
+	kScalarCampaign		= -1	// In kSharedBinTable
+	kIntegerMission		= eQuestDataType.kQuestDataMission
+	kIntegerCampaign	= eQuestDataType.kQuestDataCampaign
+	kIntegerUnknown		= eQuestDataType.kQuestDataUnknown
+}
+	
 	function GetQVarType(name){
 		if (::DHandler.IsDataSet("QVar" + name))
-			return -2
+			return eDQVarType.kScalarMission
 		if (name in Quest.BinGetTable(kSharedBinTable))
-			return -1
-		if (Quest.Exists(name))
-			return eQuestDataType.kQuestDataUnknown				// 2
-		if (Quest.BinExists(name))
-			return -3
-		return 0
-	}
-
-    function GetQVar(name){
-		if (::DHandler.IsDataSet("QVar" + name))				// Call after constructors
-			return ::DHandler.GetData("QVar" + name)
-        if (Quest.BinExists(kSharedBinTable)){
-			local quest_table = Quest.BinGet(kSharedBinTable)	// To be compatible with other authors a fixed table name is used.
-			if (name in quest_table)
-				return quest_table[name]
+			return eDQVarType.kScalarCampaign
+		if (Quest.BinExists(name)){
+			if ("_MissionOnly" in Quest.BinGet(name){	// TODO: Check blob table difference
+				return eDQVarType.kNonScalarMission
+			}
+			return eDQVarType.kNonScalarCampaign		// TODO: check for blob
 		}
 		if (Quest.Exists(name))
-            return Quest.Get(name)
-        return null	// not set.
-    }
-    
-	function GetQVar(name, type, bin_as_table = true){
-		switch (type){
-			case -2: return (::DHandler.IsDataSet("QVar" + name))? ::DHandler.GetData("QVar" + name) : null
-			case -1: 
+			return eQuestDataType.kQuestDataUnknown		// 2 so if(GetQVarType) works	
+		return 0										// and < 0 < can be used to see the type.
+	}
+
+    function GetQVar(name, type = null, bin_as_table = true){
+		// if type is not given determine it in the order: kScalarMission > kScalarCampaign > kNonScalar > kIntegerUnknown
+		if (type == kTypeAuto){				// so eQuestDataType.kQuestDataMission will work.
+			type = GetQVarType(name)
+			if(!type)
+				return null
+		}
+		
+		swtich(type){
+			case(eDQVarType.kScalarMission): 
+				if (::DHandler.IsDataSet("QVar" + name))				// Call after constructors
+					return ::DHandler.GetData("QVar" + name)			// low prio todo: check for changed type to nonscalar.
+				return
+			case(eDQVarType.kScalarCampaign): 
 				if (Quest.BinExists(kSharedBinTable)){
 					local quest_table = Quest.BinGet(kSharedBinTable)	// To be compatible with other authors a fixed table name is used.
 					if (name in quest_table)
 						return quest_table[name]
-					if (bin_as_table == null)
-						return null
 				}
-			case -3:
+				return
+			case(eDQVarType.kNonScalarMission):
+			case(eDQVarType.kNonScalarCampaign):
 				if (Quest.BinExists(name)){
-					if (bin_as_table)
+					if (bin_as_table){
+						if (typeof bin_as_table == "string")
+							return Quest.BinGetTable(name)[bin_as_table]		// get subentry
 						return Quest.BinGetTable(name)
-					else return Quest.BinGet(name)
+					}
+					else return Quest.BinGet(name)								// as blob
 				}
 				return null
-			default: 
+			default:
 				if (Quest.Exists(name))
-					return Quest.Get(name)
+            		return Quest.Get(name)
+        		return null	// not set.
 		}
-		return null							// not set.
     }
 	
+	function SetQVar(name, value, type, subdata = null){
+		
+		
+	}
+				
     function SetQVar(action){
-		local var_name = DGetParam(_script + action + "Name", DGetParam(_script + "Name", ::Property.Get(self, "QuestVar")))   // DSetQVarOnName > QVarName
-		local eventraw = DGetParam(_script + action + "Action", DGetParam(_script + "Action"))
-		DPrint("QVarName is " + var_name +". Action is " + eventraw)
+		local DN = userparams()
+		local var_name  = DGetParam(_script + action + "Name", DGetParam(_script + "Name", ::Property.Get(self, "QuestVar")),DN)   // DSetQVarOnName > QVarName
+		local eventraw  = DGetParam(_script + action + "Action", DGetParam(_script + "Action"),DN)
 
+		// local subdata	= DGetParam(_script + "BinField", null, DN)
+		DPrint("QVarName is " + var_name +". Action is " + eventraw)
+			
 		// replace %s with current value
 		local count = 0
 		local pos = 0
@@ -2273,7 +2297,7 @@ class DTrapSetQVar extends DBaseTrap
             pos += 2
 		}
 		print(count)
-		local curval = GetQVar(var_name)
+		local curval = GetQVar(var_name,type)
 		if (curval == null)
 			curval = "0"
 		if (curval.find("var."))
@@ -2290,6 +2314,7 @@ class DTrapSetQVar extends DBaseTrap
 			return Quest.Set(var_name,result,type)
         }
         // no integer can't use standard system.
+		local type		= DGetParam(_script + "Type", eDQVarType.kTypeAuto, DN)
 		local type = DGetParam(_script + "Type",eQuestDataType.kQuestDataMission)
 		if (::abs(type == 1)){ // || typeof result == "array" || typeof result == "blob"
 			// Campaign Var
@@ -2298,6 +2323,7 @@ class DTrapSetQVar extends DBaseTrap
 			if (!table)
 				table = {var_name = result}
 			else table[var_name] <- result
+				#test
 			local table2 = Quest.BinGetTable(kSharedBinTable)
 			print(table)
 			print(table2)
