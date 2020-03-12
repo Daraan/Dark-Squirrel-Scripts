@@ -29,7 +29,7 @@ myblob = null								// As we will work more with the derived dblob class
 					myblob = ::file(path+filename, "r")
 					break
 				} catch(notfound) {
-					print("DScript ERROR!: "+filename+" not found. Necessary file for this script.")
+					error("DScript ERROR!: "+filename+" not found. Necessary file for this script.")
 					return
 				}
 			case "file" :
@@ -41,7 +41,6 @@ myblob = null								// As we will work more with the derived dblob class
 	}
 
 // |-- Special functions --|
-
 	function getParam(param, def = "", separator = '"', offset = 0){
 	/* There it is the extract a parameter function. Yay :)
 		First scans until it finds the parameter, then looks for the next separator and the next behind it. Then returns the slice between these two.*/
@@ -102,7 +101,7 @@ myblob = null								// As we will work more with the derived dblob class
 	
 	function readNext(separator = null){
 		if (myblob.eos())
-			return print("isEOSS"),null
+			return null
 		local c = myblob.readn('c')
 		if (c == '\\'){				// escape character
 			myblob.seek(1,'c')		// skip the next
@@ -115,7 +114,7 @@ myblob = null								// As we will work more with the derived dblob class
 
 //	|-- String like functions --|
 	function slice(start, end = 0){
-	/* returns a copy containing only the elements from start to the end point.
+	/* Returns a copy containing only the elements from start to the end point.
 		If start is negative it begins at the end of the stream; same for a negative end value it will take that value from the end of the stream.*/
 		myblob.seek( start, start < 0? 'e' : 'b')
 		if (end <= 0)
@@ -126,8 +125,9 @@ myblob = null								// As we will work more with the derived dblob class
 		} 
 		return dblob( myblob.readblob(end))
 	}
+	
 	function CheckIfSubstring(str){
-	/* Checks if the next characters in the blob match to the given substring.
+	/* Subfunction for find: Checks if the next characters in the blob match to the given substring.
 		Assumes that you already have prechecked the first character. readn == str[0]*/
 		for (local i = 1; i < str.len(); i++)
 		{	
@@ -171,7 +171,6 @@ myblob = null								// As we will work more with the derived dblob class
 	}
 	
 	//	|-- Metamethods --|
-		
 	function _typeof()
 		return typeof myblob
 		
@@ -373,14 +372,19 @@ class dCSV extends dblob
 			else
 				myblob = str
 		}
+		else if (typeof str == "string"){
+			try
+				base.constructor(::file(str, "r"))
+			catch (notfound)
+				throw "DScript (dCSV) ERROR!: "+str+" not found. Necessary file for this script."
+		}
 		else
-			base.constructor(str)	
+			base.constructor(str)				// file or blob
 		
 		useRowKey	  = useFirstColumnAsKey
 		useFile 	  = streamFile
 		lines 		  = []	
 		createCSVMatrix(separator)
-		//return //this
 	}
 	
 	// open uses optional inputs via a list!
@@ -483,13 +487,15 @@ class dCSV extends dblob
 						// if active treat as char but if not seperate here.
 						#DEBUG POINT
 						// print(lineraw)
-						curline.append(lineraw)
+						if (lineraw != "")
+							curline.append(lineraw)
 						lineraw = ""
 						delimiteractive = null
 						continue
 					}
 					if (c == '\n'){ 	// A newline can be added if within a delimiter
-						curline.append(lineraw)
+						if (lineraw != "")
+							curline.append(lineraw)
 						lineraw = ""
 						break
 					}
@@ -511,7 +517,7 @@ class dCSV extends dblob
 				}
 				lineraw += c.tochar()
 				// lineraw = ::split(lineraw, separator)
-				if (myblob.eos() && lineraw!=""){
+				if (myblob.eos() && lineraw != ""){
 					curline.append(lineraw)
 					break
 				}
@@ -599,9 +605,10 @@ DefOff = null
 
 class cDCustomHandler
 {
+	/* Handler archetype which is not a SqRootScript */
 	constructor(){
 		ScriptHandlerHandshake()
-		::getroottable()[GetClassName()] <- this
+		::getroottable()[GetClassName()] <- this		// can't be inited twice. Not it is the instance.
 	}
 	
 	function GetClassName(){
@@ -706,17 +713,16 @@ class cDSaveHandler extends cDCustomHandler
 	
 	function GetSaveRaw(){
 		if (!Engine.FindFileInPath("install_path", eDLoad.kFile, string())){
-			print("DUMP FILE")
 			Debug.Command("dump_tagblocks_vals") 					// file not present create it.
 		}
 		
 		File 	= ::dfile(eDLoad.kFile)
-		rawdata = File.slice(File.find(eDLoad.kStart), File.find(eDLoad.kEnd))
+		rawdata = File.slice(File.find(eDLoad.kStart), File.find(eDLoad.kEnd))	// blobs are way faster than doing this in the stream. More memory though.
 		local slot = null
-		for (local i = 63; i > 55; i--){
+		for (local i = 63; i > 55; i--){							// While possible to check all slots. Limiting it to 8 slots.
 			local param = rawdata.getParam2("Env Zone "+i, null, 2)
 			// print("P" + i + "=" + param + "'")
-			if (param == ""){	// store first found empty slot.
+			if (param == ""){										// Store first found empty slot.
 				if (!slot){
 					slot = i
 				}
@@ -728,11 +734,12 @@ class cDSaveHandler extends cDCustomHandler
 				Saves[i] <- param
 			}
 		}
-		if (slot || Saves.len() < 63){						// Check if all are really saves.
+		if (slot || Saves.len() <= 8){								// Check if all are really saves.
 			if (!slot){
 			// All slots were used by EnvMaps or other missions.
 				// Check if a slot is not used by a save.
-				for (local i = 63; i > 0; i--){
+				print("Found no slot, but saves avaliable")
+				for (local i = 63; i > 55; i--){
 					if (!(i.tostring() in Saves)){
 						slot = i
 					}
@@ -740,19 +747,20 @@ class cDSaveHandler extends cDCustomHandler
 			}
 			// For the current mission the slot shall always be 63
 			if (slot != 63){
-				local temp = {} 	// deleting and shifting during a foreach, bad idea use a new table.
+				print("mission save not in 63, moving others down by 1.")
+				local temp = {} 									// Deleting and shifting during a foreach, bad idea use a new table.
 				foreach (idx, save in Saves){
 					// lower number by 1
 					if (idx == slot)	// Else stored twice.
 						continue	
-					temp[idx.tointeger() - 1] <- Saves[idx]
+					temp[idx.tointeger() - 1] <- Saves[idx]			// Oldest in Slot 56 now not valid anymore.
 				}
 				Saves 		= temp
 			}
 		} else {
 			// No empty slot and all used by saves wow. Remove older saves.
 			local temp = {}
-			for (local i = 2; i < 64; i++){
+			for (local i = 56; i < 64; i++){
 				temp[i - 1] <- Saves[i]
 			}
 			Saves = temp
@@ -803,7 +811,7 @@ class cDSaveHandler extends cDCustomHandler
 	
 	function GetEvent(event_id){
 		if (MissData[- event_id] != '-')
-			return ::DMath.CompileExpressions("0x",MissData[- event_id].tochar()) // HEX to int. # TODO is there really no easy way for hexstring to int???
+			return ::DScript.CompileExpressions("0x",MissData[- event_id].tochar()) // HEX to int. # TODO is there really no easy way for hexstring to int???
 		return null
 	}
 
@@ -849,7 +857,7 @@ EventID	= null
 			// DataMatch does allow some advanced comparison.
 			local test = DGetParam(_script + "DataMatch", null)				// gives a test string like "%d == 4"
 			if (test){
-				if (DMath.CompileExpressions(::format(test, event_data)))	// Does the test return true?
+				if (::DScript.CompileExpressions(::format(test, event_data)))	// Does the test return true?
 					base.RelayMessages("On", userparams(), _script, event_data)
 			} else {
 			// Just differentiate between TRUE > 0 and FALSE == 0

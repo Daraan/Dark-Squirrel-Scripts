@@ -1,152 +1,3 @@
-# /--	 	§Math_Library		--\
-DMath <- 
-{
-	function Max(...){
-	/* directly sorting the array is faster*/
-		if (typeof vargv[0] == "array")	// will also work for arrays.
-			vargv = vargv[0]
-		vargv.sort()
-		return vargv.top()
-	}
-	
-	function SetFacingForced(obj, newface){
-	/* This sets the rotation, even on unrotatable objects: OBBs and Controlled*/
-		::Property.Set(obj,"PhysState", "Facing", newface)										// This won't hurt even if it fails.
-		if (::Property.Get(obj,"PhysControl", "Controls Active") & 16 || ::Physics.IsOBB(obj)){		// Controls Rotation or OBB
-			::Property.Set(obj,"Position","Heading", newface.z * 182)								// 182 is nearly the difference between angle and the hex representation in Position
-			::Property.Set(obj,"Position","Pitch",   newface.y * 182)
-			::Property.Set(obj,"Position","Bank",    newface.x * 182)	
-		}
-	}
-	
-	function CompileExpressions(...){
-	/* Little but powerful.
-		It might be helpfull to .call(this,...) this function or use bindenv. */
-		if (typeof vargv[0] == "array")
-			vargv = vargv[0]
-		local s = "return ("
-		foreach (val in vargv){
-			s += val
-		}
-		return ::compilestring(s + ")").call(this)
-	}
-
-# |-- 		Geometry		--|
-	
-	/* How to interpret your return values in DromEd:
-		First in DromEd there are the Position:HBP values you see in your normal editor view and the Model->State:Facing XYZ Values.
-		The return functions are always based on the Facing XYZ Values, misleading is the reversed order H=Z, P=Y and B=X-Axis rotations.
-
-		DPolarCoordinates
-		<distance, theta, phi>
-		theta: 	below  pi/2 (90°) means below the object, above above
-
-		phi: Negative Values mean east, positive west.
-		Absolute values above 90° mean south, below north:
-
-
-	Native return Values:	
-	Theta							Phi
-	Above180°						N0°			
-	/					(0,90)	 	| 	(  0, -90)	
-	X---90° 				W++++90°X-- -90°--E
-	\					(90,180)	| 	(-90, -180)
-	Below0°						180°S-180°	
-
-	DRelativeAngles
-	Corrected Values:
-	Theta							Phi
-	Above90°						N180°			
-	/								|	
-	X---0° 				  W--270°---X---90°--E
-	\								|	
-	Below-90°						S0°	
-
-
-	Camera.GetFacing() / Facing of the player object: The Y pitch values are a little bit different, the Z(heading) is like the corrected values:
-		Y							Z
-	Above270°						N180°			
-	/							 	|	
-	X---0°/360° 			W--270°-X--90°--E
-	\								| 	
-	Below90°						S0°
-	*/	
-
-	function DVectorBetween(from, to, UseCamera = true){
-	/*Returns the Vector between the two objects.
-		If UseCamera=True it will use the camera position instead of the player object.
-		DVectorBetween(player, player, true) will get you the distance to the camera.*/
-		if (UseCamera){
-			if (::PlayerID == to)
-				return ::Camera.GetPosition()- ::Object.Position(from)
-			if (::PlayerID == from)
-				return ::Object.Position(to) - ::Camera.GetPosition()
-		}
-		return ::Object.Position(to) - ::Object.Position(from)
-	}
-
-	function DPolarCoordinates(from, to, UseCamera = true){
-	/* Returns the SphericalCoordinates in the ReturnVector (r,\theta ,\phi )
-		The geometry in Thief is a little bit rotated so this theoretically correct formulas still needs to be adjusted.
-	*/
-		local v = ::DMath.DVectorBetween(from, to , UseCamera)
-		local r = v.Length()
-
-		return ::vector(r, ::acos(v.z / r)/ kDegToRad, ::atan2(v.y, v.x) / kDegToRad) // Squirrel note: it is atan2(Y,X) in squirrel.
-	}
-
-	function DRelativeAngles(from, to, UseCamera = true){
-		/* Uses the standard DPolarCoordinates, and transforms the values to be more DromEd like, we want 
-			Z(Heading)=0° to be south and Y(Pitch)=0° horizontal.
-			Returns the relative XYZ facing values with x = 0. */
-		local v = ::DMath.DPolarCoordinates(from, to, UseCamera)
-		return ::vector(0, v.y - 90, v.z)
-	}
-	
-	function DGetModelDims(obj, scale = false){
-	/*Returns the size of the objects model, equal to the DWH values in the DromEd Window
-
-		By default this will return the the size of the Shape->Model no matter the physics or scaling the object.
-		- Scale = true will take the objects scaling into account.
-		- object can also be an explicit model filename like stool.bin.
-		For Example: DGetPhysDims(stool.bin , false), will take the model and not the model on the stool archetype.
-	*/
-	
-		// From what I know the BBox values can't be accessed directly.	:(
-		// Workaround: We need an archetype with PhysModel OBB but no PhysDims and change its model to the objects model.
-		// after creating it we can get its PhysDims which will match the model bounds.
-		// I'm abusing the Sign Archetype here marker here, declared as a constant. TODO: set phys on marker.
-		
-		local model = null
-		if (typeof obj == "string" && ::endswith(obj, ".bin")){
-			model = obj.slice(0, -4)
-		} else
-			model = ::Property.Get(obj,"ModelName")	
-		
-		//Set and create dummy
-		local dummy = ::Object.BeginCreate("Marker")		// Need an archetype with an model to net get errors.
-		::Property.SetSimple( dummy,"ModelName", model)
-		::Property.Add(dummy,"PhysType")
-		::Property.Set(dummy,"PhysType","Type",0)			// PhysDims will be initialized if a model is set
-		local PhysDims	= ::Property.Get(dummy,"PhysDims","Size")
-		::Object.EndCreate(dummy)
-		::Object.Destroy(dummy)
-		
-		if (scale)
-			PhysDims = PhysDims * ::Property.Get(obj, "Scale")
-		
-		return PhysDims
-	}
-
-	function DScaleToMatch(obj, MaxSize = 0.25){
-		local Dim  = DGetModelDims(obj)
-		local ar = [Dim.x, Dim.y, Dim.z]
-		ar.sort()											// top index is max.
-		::Property.SetSimple(obj, "Scale", ::vector(MaxSize / ar.top()))
-	}
-	
-}
-
 ####################################################################
 class DRay extends DBaseTrap
 ####################################################################
@@ -175,7 +26,7 @@ Each parameter can target multiple objects also more than one special effect can
 		local toset   = DGetParam(_script + "To",	self,DN,kReturnArray)
 		local type    = DGetParam(_script + "Scaling",0 , DN)
 		local attach  = DGetParam(_script + "Attach", false, DN)
-		foreach (sfx in DGetParam("DRaySFX","ParticleBeam",DN,kReturnArray))
+		foreach (sfx in DGetParam(_script + "SFX","ParticleBeam",DN,kReturnArray))
 		{
 			local vel_max 	= Property.Get(sfx,"PGLaunchInfo","Velocity Max").x
 			local time_max 	= Property.Get(sfx,"PGLaunchInfo","Max time")
@@ -198,7 +49,7 @@ Each parameter can target multiple objects also more than one special effect can
 					//Checking if a SFX is already present or if it should be updated.
 					foreach (link in Link.GetAll("ScriptParams", from)){				// This is slow.
 						if (LinkDest(link) == to){
-							local data = split(LinkTools.LinkGetData(link, ""), "+")	//See below. SFX Type and created SFX ObjID is saved
+							local data = split(LinkTools.LinkGetData(link, null), "+")	//See below. SFX Type and created SFX ObjID is saved
 							if (data[1].tointeger() == sfx){
 								sfxobj = data[2].tointeger()
 								break
@@ -210,7 +61,7 @@ Each parameter can target multiple objects also more than one special effect can
 					if (!sfxobj){
 						sfxobj = Object.Create(sfx)
 						//Save SFX Type and created SFX ObjID inside the Link.
-						LinkTools.LinkSetData(Link.Create("ScriptParams",from,to),"","DRay+"+sfx+"+"+sfxobj)	
+						LinkTools.LinkSetData(Link.Create("ScriptParams",from,to),null,"DRay+"+sfx+"+"+sfxobj)	
 					}
 
 					//Here the fancy stuff: Adjust SFX size to distance.
@@ -242,7 +93,7 @@ Each parameter can target multiple objects also more than one special effect can
 							Property.Set(sfxobj, "PGLaunchInfo", "Box Max", box_max)
 							Property.Set(sfxobj, "PGLaunchInfo", "Box Min", box_min)
 								
-							vfrom+=(vconnect/2)				//new Box center coordiantes
+							vfrom += vconnect / 2				//new Box center coordiantes
 								
 							//Scale up the amount of needed particles
 							local n = vel_max*time_max + abs(box_min.x) + box_max.x //Absolute length of the area the particles can appear
@@ -277,11 +128,11 @@ Each parameter can target multiple objects also more than one special effect can
 
 	function DoOff(DN)
 	{
-		foreach (from in DGetParam("DRayFrom",self,DN,1))
+		foreach (from in DGetParam("DRayFrom",self,DN,kReturnArray))
 		{
 			foreach (link in Link.GetAll("ScriptParams", from))
 			{
-				local data = split(LinkTools.LinkGetData(link,""),"+")
+				local data = split(LinkTools.LinkGetData(link,null),"+")
 				if (data[0] == "DRay"){
 					//DEBUG print("destroy:  "+data[2]+"   "+Object.Destroy(data[2].tointeger()))
 					Link.Destroy(link)
@@ -328,14 +179,14 @@ DefOn = "InvSelect"
 		if (message().name == "Equip"){ 
 			local DN		= userparams()
 			local sfxdummy 	= null
-			local usedummy	= DGetParam(_script+"UseObject", 0, DN)
+			local userealobj= DGetParam(_script+"UseObject", FALSE, DN)
 			local model 	= DGetParam(_script+"Model", self, DN)
 
 			// print("m1 = "+model)
-			if (model == self && !usedummy)
+			if (model == self && !userealobj)
 				model = Property.Get(self,"ModelName")
 
-			if (usedummy){
+			if (userealobj){
 				sfxdummy = Object.BeginCreate(model)		// Changed
 				Property.SetSimple(sfxdummy,"RenderType",0)
 			} else {
@@ -345,21 +196,33 @@ DefOn = "InvSelect"
 				DPrint("Model is: " + Property.Get(sfxdummy,"ModelName"))
 			}
 
-			if (usedummy < 2)
+			if (userealobj < 2)
 				Physics.DeregisterModel(sfxdummy)
-			//if (usedummy != 3)
-				Property.SetSimple(sfxdummy,"HasRefs",0)
+			//if (userealobj != 3)								// TODO
+				Property.SetSimple(sfxdummy,"HasRefs",FALSE)
 			//Weapon.Equip(self)
-			local ar  = split(DGetParam(_script + "Rot","0,0,0",DN),",")		// TODO? take vector directly?
-			local ar2 = split(DGetParam(_script + "Pos","0.1,-0.6,-0.43",DN),",")
-			local vr  = vector(ar[0].tofloat() , ar[1].tofloat(),  ar[2].tofloat())
-			local vp  = vector(ar2[0].tofloat(), ar2[1].tofloat(), ar2[2].tofloat())
+			local v_relrot  = DGetParam(_script + "Rot",null,DN)
+			if (typeof v_relrot == "string"){					// Compatibility with old version
+				v_relrot  = ::split(ar,",")					
+				v_relrot  = ::vector(v_relrot[0].tofloat() , v_relrot[1].tofloat(),  v_relrot[2].tofloat())
+			}
+			else if (typeof ar != "vector")
+				v_relrot = ::vector()
+				
+			local v_relpos  = DGetParam(_script + "Pos",null,DN)
+			if (typeof v_relpos == "string"){
+				v_relpos  = ::split(ar,",")
+				v_relpos  = ::vector(v_relpos[0].tofloat() , v_relpos[1].tofloat(),  v_relpos[2].tofloat())
+			}
+			else if (typeof ar != "vector")
+				v_relpos = ::vector(0.1,-0.6,-0.43)	
+
 
 			local l = Link.Create("DetailAttachement", sfxdummy, Object.Named("PlyrArm"))
 			LinkTools.LinkSetData(l,"Type", 2)
 			LinkTools.LinkSetData(l,"joint",10)
-			LinkTools.LinkSetData(l,"rel pos",vp)
-			LinkTools.LinkSetData(l,"rel rot",vr)
+			LinkTools.LinkSetData(l,"rel pos",v_relpos)
+			LinkTools.LinkSetData(l,"rel rot",v_relrot)
 			Object.EndCreate(sfxdummy)
 		}
 		
@@ -372,22 +235,23 @@ DefOn = "InvSelect"
 
 #########################################
 class DObjectFaceTarget extends DBaseTrap
-/*
+/* Rotates a set of objectss to face a specific target.
 
 */
 #########################################
 {
 	function ResizeArrayToArray( ar1, ar2, fill){
+		if (ar1.len() == ar2.len())
+			return
 		if (ar1.len() == 1)
 			ar1.resize(ar2.len(), ar1[0])
-		if (ar1.len() != ar2.len()){
-			print("uncool")
+		else if (ar1.len() < ar2.len()){	// if more offsets than viewers no worry.
 			ar1.resize(ar2.len(), fill)
 		}
 	}
 
-	function SetObjectFaceTarget(obj, to, correction = 0){	// correction is a vector
-		DMath.SetFacingForced(obj, DMath.DRelativeAngles(obj, to) + correction)
+	function ObjectFaceTarget(obj, to, correction = 0){	// correction is a vector
+		::DScript.SetFacingForced(obj, ::DScript.RelativeAngles(obj, to) + correction)
 	}
 
 	function DoOn(DN)
@@ -398,21 +262,22 @@ class DObjectFaceTarget extends DBaseTrap
 		
 		ResizeArrayToArray(offset, Viewers, 0)	// each object can has it's own offset.
 		foreach (i, obj in Viewers){
-			SetObjectFaceTarget(obj, target, offset[i])
+			ObjectFaceTarget(obj, target, offset[i])
 		}
 	}
 }
 
 class DObjectPanTo extends DRelayTrap
 {
-	target		= null
+/* In effect similar to DObjectFaceTarget but gradually over time. */
+	target		= null			// TODO test for multiple instances running parallel, these are not constructed.
 	offset		= null
 	speed		= null
 	Viewers	 	= null
-	// removeViewer= null		// #BUG fix store to remove item in extra array and remove them from Viewers after iteration.
+	// removeViewer= null		// #BUG fix: store to be removed items in extra array and remove them from Viewers after iteration.
 	
-	function DPanToTarget(obj, target, speed, correction){
-		local full_change = DMath.DRelativeAngles(obj, target) + correction
+	function PanToTarget(obj, target, speed, correction){
+		local full_change = ::DScript.RelativeAngles(obj, target) + correction
 			//full_change.z += 180
 		local facing = Object.Facing(obj)
 		// Fix for 0° <-> 360° gap
@@ -422,49 +287,49 @@ class DObjectPanTo extends DRelayTrap
 			full_change.z += 360
 		if (::abs(full_change.y - facing.y) > 180)
 			full_change.y += 360
-		
 		local difference  = (full_change - facing)
 		
-		/* if (false){
+		/* if (false){					#DEBUG POINT
 			print(Object.Facing(obj))
 			print(full_change)
 			print(difference)
 			print(difference.Length())
-		} */
-		
+		} */										// This won't hurt even if it fails.
+
 		if ((difference).Length() < speed){
-			::DMath.SetFacingForced(obj, full_change)		// Fix to end point.
+			::DScript.SetFacingForced(obj, full_change)		// Fix to end point.
 			// Extra relay messages
 			if (_script + "TSingleOff" in userparams()){
-				SourceObj = obj							// [source] will be this object.
+				SourceObj = obj								// [source] will be this object.
 				base.DRelayMessages("SingleOff", userparams(), obj)
 			}
 			// Auto Remove item from queue?
 			if (DGetParam(_script + "AutoOff", true)){
-				Viewers.remove(Viewers.find(obj))		// low prio todo. #BUG: One item will be skipped in the loop, but just for one step.
+				local idx = Viewers.find(obj)
+				Viewers.remove(idx)			// low prio todo. #NOTE BUG: One item will be skipped in the loop, but just for one frame.
+				offset.remove(idx)
 				if (Viewers.len() == 0){
 					// Sent message?
 					if (_script + "TOff" in userparams()){
-						SourceObj = obj							// message that finished it's facing queue.
+						SourceObj = obj						// message that finished it's facing queue.
 						base.DRelayMessages("Off", userparams(), obj)
 					}
-					return DoOff()						// LastObj, no last timer
+					return DoOff()							// LastObj, no last timer
 				}
 			}
 			return true
 		}
-		
 		difference.Normalize()
 		// (difference) normalized to 1 degree * speed in degrees per frame + current facing.
-		::DMath.SetFacingForced(obj, difference * speed + facing)
+		::DScript.SetFacingForced(obj, difference * speed + facing)
 	}
 
 #	|-- Message Handlers --|
 	function FrameUpdate(script = null){
-		if (!target)						// on reload.
+		if (!target)						// on Reload.
 			return DoOn(userparams())	
 		foreach (i, viewer in Viewers){		// all objects done.
-			DPanToTarget(viewer, target, speed, offset[i])
+			PanToTarget(viewer, target, speed, offset[i])
 		}
 		return true
 	}
@@ -486,8 +351,7 @@ class DObjectPanTo extends DRelayTrap
 		}	
 		base.OnBeginScript()
 	}
-
-
+	
 #	|-- On Off --|
 	function DoOn(DN){
 		target	= DGetParam(_script + "Target", self, DN)
@@ -496,8 +360,8 @@ class DObjectPanTo extends DRelayTrap
 		Viewers = DGetParam(_script + "Viewer", self, DN, kReturnArray)
 		
 		::DObjectFaceTarget.ResizeArrayToArray(offset, Viewers, 0)
-		foreach (i, viewer in Viewers){
-			DPanToTarget(viewer, target, speed, offset[i])
+		foreach (i, viewer in Viewers){						// TODO #BUG When a viewer gets removed offset index will be wrong.
+			PanToTarget(viewer, target, speed, offset[i])
 		}
 		
 		if (!IsDataSet("Active")){
@@ -543,15 +407,12 @@ DHudModel is independent of the scaleing of the original object.*/
 #########################################
 {
 DefOn		= "FrobInvEnd"
-DefOff		= "[null]"
+DefOff		= null
 loc_offset	= vector()
 rot_offset	= null
 AttachLink 	= null // Faster to store it in the instance instead of getting the data twice per frame.
-
-
 SpinBase 	= null
 spin	 	= null
-
 
 	function GetRotation(){
 		local v = Camera.GetFacing()
@@ -560,7 +421,7 @@ spin	 	= null
 		if (SpinBase){
 			v += (SpinBase * spin)
 			spin++
-			if (spin == 360)
+			if (spin >= 360)
 				spin = 0
 		}	
 		return v + rot_offset
@@ -606,29 +467,28 @@ spin	 	= null
 	*/
 	function FrameUpdate(script = null){
 		LinkTools.LinkSetData(AttachLink, "rel rot", GetRotation())
-		local v 	 = vector()
-		local rot=vector()
-		Object.CalcRelTransform(::PlayerID, ::PlayerID, v, rot, 4, 0)	// nearly constant, can't access PlayerMode (stand, crouch) in Thief :/
-		print(rot)
+		local v 	= vector()
+		local rot	= vector()
+		Object.CalcRelTransform(::PlayerID, ::PlayerID, v, rot, 4, 0)	// Offset to camera. Camera.Position is not sufficient!
 		LinkTools.LinkSetData(AttachLink, "rel pos",
 								Object.WorldToObject(::PlayerID, Camera.CameraToWorld(loc_offset)) + v)	// CameraToWorld nearly constant for all Copies.
 	}
 
  	function CreateHudObj(ObjType, usedummy){
 		local obj = null
-		if (usedummy >= 0){								// Use Dummy or usedummy
+		if (usedummy >= 0){								// Use Dummy or real
 			if (usedummy){
-				obj = Object.BeginCreate(-1)
+				obj = Object.BeginCreate(-1)			// TODO model error?
 				Property.SetSimple(obj, "ModelName", Property.Get(ObjType,"ModelName"))
 			} else
 				obj = Object.BeginCreate(ObjType)		// Create Selected item
 			Object.EndCreate(obj)
 		} else
 			obj = ObjType								// Use the object directly
-		Physics.DeregisterModel(obj)					//We want no physical interaction with anything.
+		Physics.DeregisterModel(obj)					// We want no physical interaction with anything.
 		local link = Link.Create("DetailAttachement", obj, ::PlayerID)
-		LinkTools.LinkSetData(link,"Type", 3)		// Type: Submod
-		LinkTools.LinkSetData(link,"vhot/sub #", 0) // Submod 0, the camera.
+		LinkTools.LinkSetData(link,"Type", 3)			// Type: Submod
+		LinkTools.LinkSetData(link,"vhot/sub #", 0) 	// Submod 0, the camera.
 
 		// Save the CreatedObj and LinkID to update them in the timer function and destroy it in the DoOff
 		SetData("Compass", obj)						
@@ -636,12 +496,11 @@ spin	 	= null
 		return obj
 	}
 
-#	|-- On	 Off --|
+#	|-- DoOn Off --|
 	function DoOn(DN, item = null, onreload = null){
 	// Off or ON? Toggling item
-		if (IsDataSet("Active") && !onreload)							//TODO: Make toggle optional
+		if (IsDataSet("Active") && !onreload)					// TODO: Make toggle optional
 			{return DoOff(DN)}
-		
 		if (!rot_offset){									
 			rot_offset = DGetParam(GetClassName() + "Rotation", vector(0,0,0), DN)
 			if (typeof(rot_offset) != "vector")
@@ -650,15 +509,13 @@ spin	 	= null
 		SpinBase   = DGetParam(GetClassName() + "Spin", null, DN)
 		if (SpinBase)
 			spin = 0
-
-		PostMessage(self, "CalcLocOffset")	// necessary info not available before next 1.1 frames
+		PostMessage(self, "CalcLocOffset")						// Necessary info not available before next 1.1 frames
 		if (onreload)
 			return
-		
-		if (!item)					// base.DoOn from child.
+		if (!item)												// base.DoOn from child.
 			item = DGetParam(_script, DarkUI.InvItem(), DN)
-		item = CreateHudObj(item, DGetParam(_script+"UseDummy", 1))
-		DMath.DScaleToMatch(item, DGetParam(_script + "MaxSize", 0.20, DN))
+		item = CreateHudObj(item, DGetParam(_script+"UseDummy", true))
+		::DScript.ScaleToMaxSize(item, DGetParam(_script + "MaxSize", 0.20, DN))
 		
 		::DHandler.PerMidFrame_Register(this)
 		SetData("Active")
@@ -691,7 +548,7 @@ Use X,Y 180° Rotation to imitate a Z 180° rotation.
 		if (SpinBase){
 			v += (SpinBase * spin)
 			spin++
-			if (spin == 360)
+			if (spin >= 360)
 				spin = 0
 		}
 		return rot_offset - v
@@ -700,12 +557,304 @@ Use X,Y 180° Rotation to imitate a Z 180° rotation.
 	function DoOn(DN, onreload = null){
 		rot_offset = DGetParam(_script + "Rotation", vector(0,0,90))
 		if (typeof(rot_offset) != "vector")
-			rot_offset = vector(0, 0, rot_offset)
+			rot_offset = ::vector(0, 0, rot_offset)
 
 		base.DoOn(DN, null, onreload)
 	}
 	
 }
+
+if (GetDarkGame() != 1){
+// DInventoryMaster, DSubInventory, DInventoryDummy and DUseInventoryMaster are Thief only, SS has a nice management system.
+
+#########################################
+class DInventoryMaster extends DBaseTrap
+#######################################
+{
+DefOn 			= "+InvSelect+FrobInvEnd+InvFocus"
+DefOff 			= "InvDeSelect"
+v_zero			= ::vector()			// as a few vectors are needed, lets ruse them instead of creating lots of instances frequently.
+rot				= ::vector(0,0,90)
+pos				= ::vector(1,0,0)
+pos_offset 		= null
+rot_offset 		= null
+anchor_offset 	= null
+anchor_rotation = null
+
+	function OnBeginScript(){
+		if (GetClassName() == "DInventoryMaster"){					// Not DSubInventory
+			if (!("DInventoryMaster" in ::DHandler.Extern)){
+				::DHandler.RegisterExternHandler("DInventoryMaster", this)
+				//::getroottable()[GetClassName()] <- this					// this looks a bit dangerous but it's on a Squirrel level only.
+			}
+		}
+		pos_offset 		= DGetParam(_script + "ItemPosition", v_zero)
+		rot_offset 		= DGetParam(_script + "ItemRotation", v_zero)
+		anchor_offset 	= DGetParam(_script + "AnchorPosition",::vector(0.2,0,0))
+		anchor_rotation = DGetParam(_script + "AnchorRotation",v_zero)
+		base.OnBeginScript()
+	}
+
+	function CreateHolder(){
+		// Create a Holder; the anchor item the dummys will be attached to.
+		if (IsDataSet("DInvAttacher"))								// Already active
+			return GetData("DInvAttacher")
+		// Create Holder, it will also be a semi archetype for the dummy objects.
+		local holder = SetData("DInvAttacher",Object.BeginCreate("Marker"))
+		local model = DGetParam(_script + "AnchorModel",false)
+		if (model){
+			if (typeof model == "integer")
+				model = ::Property.Get(self,"ModelName")
+			::Property.SetSimple(holder,"RenderType", 0)
+			::Property.SetSimple(holder,"ModelName", model)
+			::Property.SetSimple(holder,"Scale", DGetParam(_script + "AnchorScale",vector(1,1,1)))
+			if ("DInventoryMaster" in ::DHandler.Extern)			// This is esp for sub inventories. Frobbing the holder will select the master.
+				::Link.Create("ScriptParams", holder, ::DHandler.Extern.DInventoryMaster.self)
+		}
+		::Property.Add(holder,"ExtraLight")
+		::Property.Set(holder,"ExtraLight","Amount (-1..1)",0.35)
+		::Property.Set(holder,"FrobInfo","World Action",2)				// Enable FrobWorld
+		::Property.SetSimple(holder,"PickBias",7)						// higher focus priority.
+		::Property.Add(holder,"Scripts")
+		::Property.Set(holder,"Scripts","Script 0", "DInventoryDummy")	// Add subscript for selection.
+		Object.EndCreate(holder)
+		return holder
+	}
+
+	function Update(){
+	/* Creates the in world dummys */
+		local items = []
+		if (GetClassName() == "DInventoryMaster"){					// DSubInventory ignores this.
+			foreach (link in Link.GetAll("Contains",::PlayerID)){
+				items.append(LinkDest(link))
+			}
+		}
+		foreach (link in Link.GetAll("Contains", self)){			// Items that are stored externally.
+			items.append(LinkDest(link))
+		}
+		if (kDInvMasterExtraInfo){	// Display extra info via overlay.
+			::DHandler.OverlayHandlers.DWorldInvOverlay.items.clear()
+		}
+		local holder = GetData("DInvAttacher")
+		// Category counters.
+		local itm_count = 0
+		local wpn_count = 0
+		local mle_count = 0	
+		local key_count = 0
+		local lp_count	= 0
+		local bk_count	= 0
+		foreach (item in items){
+			if (item == self)
+				continue
+			local dummy = ::Object.BeginCreate(holder)
+			::Physics.DeregisterModel(dummy)
+			::Property.SetSimple(dummy, "ModelName",Property.Get(item,"ModelName"))
+			::Link.Create("ScriptParams", dummy, item)	// dummy -> item relation for selection.
+			::Property.Set(dummy,"RenderType",null,0)
+			// Depending on the item type place it in the world. Weapons left, Keys top, others right.
+			if (kDInvMasterExtraInfo > 2){
+				local name = null
+				if (Link.AnyExist("Contains",item))
+					 name = "[" + DScript.GetObjectName(item, true) + "]"
+				else name = DScript.GetObjectName(item, true)
+				::Property.Add(dummy,"DesignNote")
+				::Property.SetSimple(dummy,"DesignNote", name)
+			}
+			if (::Property.Get(item,"InvType") == 2){			// Weapon
+				if (::Object.InheritsFrom(item, "Weapon")){		// Melee
+					pos.x = 0.1 - (mle_count / 4) * 0.3
+					pos.y = 1
+					pos.z = 1 	 - (mle_count % 4) * 0.3
+					mle_count++
+					::DScript.ScaleToMaxSize(dummy, 0.3)
+				} else {										// Arrow
+					pos.x = 0.8 - (wpn_count / 5) * 0.16
+					pos.y = 0.5 + 0.45 * (wpn_count / 5)
+					pos.z = 1 - (wpn_count % 5) * 0.25
+					rot.z = 90 + (wpn_count / 5) * 36
+					wpn_count++
+					::DScript.ScaleToMaxSize(dummy, 0.45)
+				}
+			} else {											// Item
+				if (::Property.Possessed(item,"KeySrc")){		// Keys
+					pos.y = 0.6 - key_count * 0.2
+					pos.z = 1.4
+					rot.y = 90
+					key_count++
+					//DScript.ScaleToMaxSize(dummy, 0.25)
+					if (kDInvMasterExtraInfo > 1){
+						::Property.Add(dummy,"DesignNote")
+						::Property.SetSimple(dummy,"DesignNote",DScript.GetObjectName(item, true))
+					}
+				}
+				else if (::Property.Possessed(item,"PickSrc")){	// Lockpick
+					pos.y = 0.2 - lp_count * 0.4
+					pos.z = 1.15
+					lp_count++
+					if (kDInvMasterExtraInfo < 4){		// Lock pick names are long, remove them.
+						::Property.Remove(dummy,"DesignNote")
+					}
+				}
+				else if (::Property.Possessed(item,"Book"))		// Books placed at the bottom.
+				{
+					pos.x = 0.3 - (bk_count / 5) * 0.28
+					pos.y = 0.5 - (bk_count % 5) * 0.28			// 5 per row
+					pos.z = 0.1
+					bk_count++
+				}
+				else 
+				{	// Normal Item
+					pos.x = 0.8 - (itm_count % 4) * 0.25 - (itm_count / 16) * 1.1	// move them slightly forward
+					//if (itm_count > 15)
+						//pos.x = 0 - (itm_count % 4) * 0.25
+					pos.y = -0.2 - (itm_count % 4) * 0.25 //+ ((itm_count / 16) % 4) * 0.5
+					if (itm_count > 15)
+						pos.y = -2.2 + (itm_count / 16) + (itm_count % 4) * 0.25 // continues behind the player.
+					pos.z = 0.9 - ((itm_count / 4) % 4) * 0.34
+					itm_count++
+				}
+				::DScript.ScaleToMaxSize(dummy, 0.25)
+			}
+			local link = ::Link.Create("DetailAttachement", dummy, holder)
+			::LinkTools.LinkSetData(link, "rel pos", pos + pos_offset)
+			::LinkTools.LinkSetData(link, "rel rot", rot + rot_offset)
+			rot.y = 0
+			rot.z = 90
+			pos.x = 1
+			Object.EndCreate(dummy)
+			if (kDInvMasterExtraInfo){	// Display extra info via overlay.
+				::Property.CopyFrom(dummy,"StackCount",item)
+				::DHandler.OverlayHandlers.DWorldInvOverlay.items.append(dummy)
+			}
+		}
+	}
+
+#	|-- Message Handlers --|	
+	function OnTimer(){
+		if (message().name == "DCheckDistance" && IsDataSet("DInvAttacher")){
+			if ((Object.Position(::PlayerID) - Object.Position(GetData("DInvAttacher"))).Length() > 3)
+				DoOff()
+			else
+				SetOneShotTimer("DCheckDistance", 1)
+		}
+		base.OnTimer()
+	}
+	
+# |-- DoOn & DoOff --|	
+	function DoOn(DN){												
+		if (!::PlayerID)													// Each item gets selected during load.
+			return
+		if (message().message == "FrobInvEnd" && IsDataSet("DInvAttacher"))	// Toggle
+			return DoOff()
+			
+		local v = vector()
+		Object.CalcRelTransform(::PlayerID, ::PlayerID, v, v_zero, 4, 0)	// vector from camera to player, so negate it. v_zero will stay 0
+		// Rotation, Position to allow user offset.
+		Object.Teleport(CreateHolder(), -v + anchor_offset, anchor_rotation,::PlayerID)
+		if (kDInvMasterExtraInfo)											// Display Stack
+			::DHandler.NewOverlay("DWorldInvOverlay", cDWorldInvOverlay)
+		Update()
+		//::Property.Set(CreateHolder(),"Scripts","Script 1", "DSpy")	// Add subscript for selection.
+		SetOneShotTimer("DCheckDistance", 1)
+	}
+
+	function DoOff(DN = null){
+		if (kDInvMasterExtraInfo)
+			::DHandler.EndOverlay("DWorldInvOverlay")
+		// Object.Teleport(::DHandler.GetData("DInvAttacher"),v_zero,v_zero)	// move it away, less destroy n create method
+		::Object.Destroy(ClearData("DInvAttacher"))
+	}
+}
+
+#############################################
+class DSubInventory extends DInventoryMaster
+/* Same as InventoryMaster but only displays its own contents. */
+{
+	function OnBeginScript(){	// Making sure ::DHandler is constructed
+		if (DGetParam(_script + "Name", false)){
+			::DHandler.RegisterExternHandler("SubInv" + DGetParam(_script + "Name"),this)
+		}
+		base.OnBeginScript()
+	}
+}
+#############################################
+class DInventoryDummy extends SqRootScript
+/* Selects the real item. If the item has DUseInventoryMaster it will be moved to the player. */
+{
+	OnFrobWorldEnd = function(){
+		local real = LinkDest(Link.GetOne("ScriptParams",self))
+		SendMessage(real,"Selecting")											// For Subcontainers.
+		DarkUI.InvSelect(real)
+		//::DInventoryMaster.DoOff()
+	}	
+}
+############################################
+class DUseInventoryMaster extends DBasics
+/* Moves the item into a SubInventory. */
+{
+exception = null						// Fixes deselection. If an item is picked up that does belong in an inventory but the inventory is not held.
+
+	function GetInventory(){
+		local sub = DGetParam("DUseSubInventory", null)
+		if (sub){
+			if (typeof sub == "string"){
+				// Check if category:
+				if ("SubInv" + sub in ::DHandler.Extern)
+					 sub = ::DHandler.Extern["SubInv" + sub].self
+				else {
+					sub = DScript.StringToObjID(sub)		// Can also be a concrete item name if it was not a category.
+				}
+			}
+		}
+		if (sub <= OBJ_NULL){								// In case it's not found or an archetype.
+			sub = ::DHandler.Extern.DInventoryMaster.self
+		}
+		return sub
+	}
+//	|-- Message Handlers --|
+	function OnDarkGameModeChange(){
+		if (!message().resuming && !message().suspending){ 	// Game mode Init, doing it OnContained is messier.
+			OnCheckStatus()
+		}
+	}
+	
+	function OnContained(){
+		if (message().event == eContainsEvent.kContainAdd && message().container == ::PlayerID){
+			local sub = GetInventory()
+			if (Container.IsHeld(OBJ_WILDCARD,sub) == eContainType.ECONTAIN_NULL){		// If the subinventory is not held, move it to the player.
+				//DoOn()
+				exception = true
+				Container.Add(sub, ObjID("player"))							// Even if sub sub, this should be fine.
+				OnSelecting()
+				DarkUI.InvSelect(self)
+			}
+		}
+	}
+	
+	function OnInvDeSelect(){
+		PostMessage(self,"CheckStatus")		// Can't differentiate between drop->deselect or simple deselect. Need to check back later.
+	}
+	
+	function OnInvDeFocus()
+		OnInvDeSelect()
+
+//	|-- Custom Messages
+	function OnSelecting(){					// Send from dummy.
+		Container.Add(self, ::PlayerID)
+	}
+	
+	function OnCheckStatus(){
+		if (exception)
+			return exception = null
+		if (Container.IsHeld(ObjID("player"),self) != eContainType.ECONTAIN_NULL){	// Values from -3 to 0, Generic Contents should be 0. PlayerID not present.
+			Container.Add(self, GetInventory())
+		}
+	}
+
+}
+
+}	// END OF DInventory scripts.
+
 
 #######################################
 class DRenameItem extends DRelayTrap {
@@ -798,7 +947,7 @@ class DRenameItem extends DRelayTrap {
 			_script = data[0]
 			local append = GetData(_script + "Ticks") - 1
 			if (append == 0){
-				if (DGetParam(_script + "NoRestart", null, DN) <= 1)	// #NOTE null < anything = true
+				if (DGetParam(_script + "NoRestart", null) <= 1)	// #NOTE null < anything = true
 					ClearData(_script + "Ticks")
 				DoOff(userparams())
 				base.DRelayMessages("Off", userparams())
@@ -824,9 +973,77 @@ class DRenameItem extends DRelayTrap {
 	}
 
 }
-
-
 #########################################
+
+## |-- DTweqDevice --| ##
+class DTweqDevice extends DBaseTrap
+{
+	DefOn = "FrobWorldEnd"
+	# |-- Constructor --|
+	constructor(){
+		//Start reverse joints in reverse position.
+		if (!_script)				//_script is not yet set.
+			base.constructor()
+		
+		local DN 	 = userparams()
+		// Don't adjust point pos.
+		if ( DGetParam(_script+"NoFix",false,DN) )
+			return
+		local objset  =         DGetParam(_script+"Target", self, DN, kReturnArray)
+		local joints  = ::split(DGetParam(_script+"Joints","1,2,3,4,5,6",DN).tostring(),"[,]") // All, overkill but why not.
+		local control = 	    DGetParam(_script+"Control", false, DN)
+		
+		// Skip if not used for Joint Tweq
+		if ( control && control != eTweqType.kTweqTypeJoints)
+			return
+		// will set the Tweq start position if Reverse		
+		foreach (obj in objset)
+		{
+			if (!Property.Possessed(obj,"CfgTweqJoints"))
+			{
+				#DEBUG WARNING
+				DPrint("WARNING: Object " + obj +" has no Tweq->Joints property")
+				continue
+			}
+			Property.Add(obj, "JointPos")	// is also set by tweq on BeginsSript.
+			foreach (j in joints)
+			{
+				// rate-low-high(1) has no number.	// TODO test for 0
+				if (j[0] == '-')
+					Property.Set(obj, "JointPos", "Joint "+j.slice(1), Property.Get(obj,"CfgTweqJoints","    rate-low-high"+(j=="-1"?"":j.slice(1))).z)
+				else
+					Property.Set(obj, "JointPos", "Joint "+j		 , Property.Get(obj,"CfgTweqJoints","    rate-low-high"+(j=="1"?"":j)).y) 							//TODO check this for rotating.
+			}
+		}
+		RepeatForCopies(::callee())
+	}
+	
+//	|-- DoOn --|
+	function DoOn(DN)
+	{
+		local objset  = 		DGetParam(_script+"Target", self, DN, kReturnArray)
+		local joints  = ::split(DGetParam(_script+"Joints", "1,2,3,4,5,6", DN).tostring(), "[,]" )
+		local TweqType = 		DGetParam(_script+"Control", false, DN)	// see eTweqType in API-reference or DScript documentation. 2 for example is joints.
+		
+		foreach (obj in objset)
+		{
+			local primjoin = Property.Get(obj,"CfgTweqJoints","Primary Joint")
+			local current  = Property.Get(obj,"StTweqJoints","Joint"+primjoin+"AnimS")
+			foreach (j in joints)
+			{
+				if (j[kGetFirstChar] == '-'){
+					current = current^TWEQ_AS_REVERSE // XOR reverses the reverse
+					j = j.slice(kRemoveFirstChar)
+				}
+				Property.Set(obj, "StTweqJoints", "Joint"+j+"AnimS", current | TWEQ_AS_ONOFF)	//is always On.
+			}
+			
+			// By default is does not control the tweqs to not interfere with activation via nativ StdController scripts.
+			if (TweqType != false)
+				ActReact.React("tweq_control", TRUE, obj, obj, TweqType , eTweqDo.kTweqDoContinue, TWEQ_AS_ONOFF)		
+		}
+	}
+}
 
 #########################################
 class DDrunkPlayerTrap extends DBaseTrap
@@ -940,8 +1157,157 @@ static eDrunkData =
 }
 
 
+// |-- Seamless Teleport Scripts --|
+####################  Portal Scripts ###################################
+class DTPBase extends DBaseTrap
+/*Base script. Has by itself no ingame use.*/
 #########################################
-class DModelByCount extends DStackToQVar {
+{
+
+	function DTeleportation(who, where){	
+		if (Property.Possessed(who, "AI_Patrol")){				// If we are teleporting an AI that is patrolling, we start a new patrol path. Sadly a short delay is necessary here
+			Property.SetSimple(who,"AI_Patrol", false);
+			Link.Destroy(Link.GetOne("AICurrentPatrol",who));
+			SetOneShotTimer("AddPatrol", 0.2, who);
+		}
+		Object.Teleport(who, where, Object.Facing(who), 0);		// Where takes absolute world positions, keeps rotation.
+	}
+
+	function OnTimer(){
+		if (message().name == "AddPatrol"){
+				Property.SetSimple(message().data, "AI_Patrol", true);	
+			//Link.Create("AICurrentPatrol", msg.data, Object.FindClosestObjectNamed(msg.data,"TrolPt"));		//Should not be necessary to force a patrol link.
+		}
+		base.OnTimer()
+	}	
+		
+	function GetTeleportVector(){
+		//New parameter grabbing [ScriptName]XYZ=<x,y,z.
+		local DN = userparams();
+		local v = DGetParam( _script + "XYZ", false, DN)
+		if (v)
+			return v
+
+//Is one of my first scripts and still uses old non Standard Parameter fetching.
+		local x = ("DTpX" in DN)? x = DN.DTpX : 0;
+		local y = ("DTpY" in DN)? x = DN.DTpY : 0;
+		local z = ("DTpZ" in DN)? x = DN.DTpZ : 0;
+		
+		if (x != 0 || y != 0 || z != 0)
+			return ::vector(x,y,z)
+		return null
+	}
+
+}
+
+#########################################
+class DTeleportPlayerTrap extends DTPBase
+#########################################
+{
+/*
+Player is moved to the triggered object OR moved by x,y,z values specified in Editor->Design Note via DTpX=,DTpY=,DTpZ= For example DTpX=-3.5,DTpZ=10)
+If any of the DTp_ parameters is specified and not 0 these have priority.
+*/
+	function DoOn(DN){
+		local victim = ::PlayerID
+		local dest = GetTeleportVector()
+		
+		if (!dest)
+			dest =(Object.Position(victim) + dest);
+		else
+			dest = Object.Position(self);
+		
+		DTeleportation(victim,dest);
+	}
+	
+}
+
+#########################################
+class DTrapTeleporter extends DTPBase
+#########################################
+/*Target default: &Control Device
+Upon receiving TurnOn teleports a ControlDevice linked object to this object and keeps the original rotation of the object.
+Further by default currently non-moving or non-AI objects will be static at the position of the TrapTeleporter and not affected by gravity until their physics are enabled again - for example by touching them.
+By setting DTeleportStatic=0 in the Editor->Design Note they will be affected by gravity after teleportation. Does nothing if Controls->Location is set.
+Design Note Example, which would move the closest Zombie to this object.
+DTeleportStatic=0
+DTrapTeleporterTarget=^Zombie types 
+#########################################*/
+{
+	function DoOn(DN){
+		local dest   = Object.Position(self)
+		local target = DGetParam( _script + "Target", "&ControlDevice", DN, kReturnArray)
+		foreach (t in target){
+			DTeleportation(t, dest);
+			if (!DGetParam("DTeleportStatic", true, DN)){
+				Physics.SetVelocity(t, vector(0,0,1)); 		//There might be a nicer way to re enable physics
+				Physics.Activate(t)
+			}
+		}
+	}
+	
+}
+
+#########################################
+class DPortal extends DTPBase
+#########################################
+/*
+DefOn ="PhysEnter"
+Default Target = Entering Object. (not [source]! with sPhysMsg upgrade now it is.)
+Teleports any entering object (PhysEnter).
+Either by x,y,z values specified in the Design Note (these have priority) via DTpX=;DTpY=;DTpZ= or to the object linked with ScriptParams.
+Unlike DTeleportPlayerTrap this script takes the little offset between the player and the portal center into account, which enables a 100% seamless transition - necessary if you want to trick the player.
+Tipp: If you use the ScriptParams link and want a seamless transition, place the destination object ~3 units above the ground.
+Design Note Example:
+DTpX=-3.5;DTpZ=10
+DPortalTarget="+player+#88+@M-MySpecialAIs"
+#########################################*/
+{
+	DefOn	= "PhysEnter"
+
+	function OnBeginScript(){	//The Object has to react to Entering it.
+		Physics.SubscribeMsg(self, ePhysScriptMsgType.kEnterExitMsg)
+		base.OnBeginScript()
+	}
+
+	function OnEndScript(){
+		Physics.UnsubscribeMsg(self, ePhysScriptMsgType.kEnterExitMsg)
+	}
+
+	function DoOn(DN){
+		//As PhysEnter sometimes fires twice and so a double teleport occures we make a small delay here, the rest is handled in the base script. As OnTimer() is there. :/
+		if(IsDataSet("PortalTimer")){
+			KillTimer(GetData("PortalTimer"));
+		}
+		SetData("PortalTimer", 
+				SetOneShotTimer("GoPortal", 0.1, 
+					::DScript.ArrayToString(
+						DGetParam("DPortalTarget", message().transObj, DN, kReturnArray)
+				)));
+	}
+
+	function OnTimer(){
+		if (message().name == "GoPortal"){
+			local dest = GetTeleportVector();
+			if (dest == false){	
+				dest = (Object.Position( LinkDest(Link.GetOne("ScriptParams", self))) - Object.Position(self));
+			}
+			local targets = DGetTimerData(message().data)
+			foreach (obj in targets){
+				obj = obj.tointeger()
+				DTeleportation(obj, Object.Position(obj) + dest)
+			}
+		}
+		
+		base.OnTimer()
+	}
+	
+}
+###################################End of Teleporter Scripts###################################
+
+#########################################
+class DModelByCount extends DStackToQVar
+{
 /* Will change the model depending on the stacks an object has. The Models are stored in the TweqModels property and thus limited to 5 different models. Model 0,1,2,3,4 will be used for Stack 1,2,3,4,5 and above.
 #########################################*/
 	constructor()		//If the object has already more stacks. TODO: Check Create statement and Constructor do the same thing twice.
@@ -950,10 +1316,9 @@ class DModelByCount extends DStackToQVar {
 		if (stack > 5)
 			stack = 5		
 		Property.SetSimple(self, "ModelName", GetProperty("CfgTweqModels","Model "+stack))
-		
 		base.constructor()
 	}
-########
+//	|-- DoOn --|
 	function DoOn(DN)
 	{
 		local stack = ::StackToQVar() - 1	// -1 for Tweq Slot.

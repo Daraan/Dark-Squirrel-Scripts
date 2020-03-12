@@ -161,7 +161,6 @@ static isObject = [
 			foreach (ignore in ignoreparam){
 				if (typeof(ignore)=="integer")
 				{
-
 					if (ignore & 1)
 						ignoreset.extend(["Timer"])
 					if (ignore & 2)
@@ -206,261 +205,359 @@ static isObject = [
 	
 }
 
-if (::IsEditor() || (kUseAutoTexReplInGame == 1 && !::Quest.Exists("DAutoTxtReplDone"))){
-	// If Ingame and const == 1, don't complie next time.
-	if (!::IsEditor() && kUseAutoTexReplInGame == 1)
-		Quest.Set("DAutoTxtReplDone", 1, eQuestDataType.kQuestDataUnknown)
+# /-- Optional Ingame scripts --\
+if (::IsEditor() || (eDAutoTxtRepl.kUseInGame == 1 && !::Quest.Exists("DAutoTxtReplDone"))){
+	// If Ingame and const == 1, don't compile next time.
+	if (!::IsEditor() && eDAutoTxtRepl.kUseInGame == 1)
+		Quest.Set("DAutoTxtReplDone", 1, eQuestDataType.kQuestDataMission)
 
 #########################################
-class DAutoTxtRepl extends DBaseTrap
+class DAutoTxtRepl extends DEditorScripts
 #########################################
 {
-DefOn  = "+TurnOn+test";
-Tables = {}
-
-function ImportData(filename = eDAutoTxtRepl.kFile){
-	/* Grabs data from (csv) file and readies it to be used by the other parser functions.
-		Not very efficient. Parsing could be done here.*/
-	if (Tables.len())
-		return print("Data already set")
-	local currentTable = Tables.ModTable <- {}
-	Tables.TexTable <- {}
-	
-	local fullpath = ::string()
-	if (!::Engine.FindFileInPath("resname_base",filename, fullpath))
-		return DPrint("DScript ERROR: " + filename + " not found!", kDoPrint, ePrintTo.kMonolog | ePrintTo.kUI | ePrintTo.kLog)
-	local data = ::dCSV.open(fullpath.tostring(),{separator = DGetParam("Separator",";")[0],useRowKey=false})
-	data.dump(true)
-	
-	local RowKey	= null
-	foreach (line in data.lines){
-		if (line[0] == "TEXTURES"){
-			currentTable = Tables.TexTable
-			continue
-		}
-		currentTable[line.remove(0)] <- line
-		foreach (idx, cell in line){
-			local removethese = null
-			local sub = ::split(cell,",")
-			if (!sub.len())							// no comma present, default, continue
-				continue
-			line[idx] = []
-			// local modname = sub[0]	
-			for (local i = 1; i < sub.len();i++){
-				if (sub[i] == ""){
-					return DPrint("ERROR: Wrong comma in line " +idx)
-				}
-				if (sub[i][0] == '\n')
-					sub[i] = sub[i].slice(kRemoveFirstChar)
-				if (sub[i][0] == '['){
-					removethese = []
-					local replace = [sub[i].slice(kRemoveFirstChar)]
-					local j = i + 1
-					while(!::endswith(sub[j],"]")){		// add next [ chars ]
-						replace.append(sub[j])
-						removethese.append(j)
-						j++
+DefOn  		= "+TurnOn+test";
+TexTable 	= {_DataTable	= ::gDTexTable}
+ModTable 	= {_DataTable 	= ::gDModTable}
+delegator 	= {
+				// These are some special functions for the Tex/ModTable to overwrite some of the Squirrel standard behavior.
+				ParseDone	= null
+				_newslot = function(key, val){
+					if (key in _DataTable){
+						if (typeof _DataTable[key] != "table")
+							_DataTable[key].extend(val)
+						else
+							_DataTable[key] = val				// TODO: Subtables always get overwritten
 					}
-					replace.append(sub[j].slice(0,-1))
+					else
+						_DataTable[key] <- val
+				}
+				_set = function(key, val){
+					if (key in _DataTable){
+						_DataTable[key] = val
+					}
+					else
+						_DataTable[key] <- val
+				}
+				_get = function(key){
+					if (key in _DataTable)
+						return _DataTable[key]
+					throw null
+				}
+				_del = function(key){							// delete TexTable["Category:value"] will delete a single entry.
+					local cat_val = ::slice(key.tolower(),":")
+					if (cat_val.len() > 1){
+						local ar = _DataTable[cat_val[0]]
+						ar.remove(ar.find(cat_val[1]))
+					}
+					else
+						delete _DataTable[key]
+				}
+				function write(key, val, overwrite){
+					if (overwrite)
+						_DataTable.key = val
+					else
+						_DataTable.key <- val
+				}
+				
+			  }
+# 	|-- CSV Analysis --|
+	function AnalyzeCell(cell){
+		local removethese = null
+		local sub = ::split(cell, ",\n")
+		if (!sub.len())								// no comma present, default, continue
+			return null
+		// local modname = sub[0]	
+		for (local i = 1; i < sub.len();i++){
+			if (sub[i] == ""){sub.remove(i)}		//;if (i == sub.len()) break}	// remove and straight continue with the next idx, why this never gives oor error?
+			//	continue
+			if (sub[i][kGetFirstChar] == '['){
+				removethese = []
+				local replace = [sub[i].slice(kRemoveFirstChar)]
+				local j = i + 1
+				while(!::endswith(sub[j],"]")){		// add next [ chars ]
+					//print("J is" + j + sub[j])
+					replace.append(sub[j])
 					removethese.append(j)
-					sub[i] = replace
+					j++
 				}
+				//j--
+				replace.append(sub[j].slice(0,-1))
+				removethese.append(j)
+				sub[i] = replace
+			} else {	// [] are literal the others could be numbers
+				local isnumber = ::DScript.IsNumber(sub[i])
+				if (isnumber)
+					sub[i] = isnumber
 			}
-			if (removethese)
-				for (local i = removethese.len() - 1; i >= 0; i--)
-					sub.remove(removethese[i])
-			line[idx] = sub
 		}
-	}
-	::ParseDone <- false
-	foreach (table in Tables)
-	foreach (key,line in table){
-		local t = []
-		foreach (cell in line)
-			foreach (entry in cell)
-				t.append(entry)
-		table[key] = t
-	}
-	DumpTable(currentTable.Model5)
-}
-
-function DChangeTxtRepl(texarray, field = 0, i = -1, obj = null, path = "obj\\txt16\\")
-{
-	if (!obj)
-		obj = self
-	if (i == -1)			 //If same index is desired
-		i = Data.RandInt(0, texarray.len()-1)
-	local tex = texarray[i]					
-	if (startswith(tex,"fam\\"))
-		{path = ""}	
-	Property.Add(obj,"OTxtRepr"+field)
-	if (!(DGetParam(GetClassName()+"Lock",false) && Property.Get(obj,"OTxtRepr" + field) != ""))	//Should work without !=, Archetype definitions will be kept.
-		Property.SetSimple(obj,"OTxtRepr"+field, path+tex)
-	return i
-}
-
-function DParseTexArray(texarray)
-{
-	local rem = []
-	foreach (i, tv in texarray)
-	{	
-		if (this == "ModTable" && typeof(tv) == "string")
-		{
-			texarray[i] = tv.tolower()
-			continue
-		}
-			
-		if (typeof(tv) == "array")
-		{
-			local tname = split(texarray[i-1],"$")
-			foreach (idx,char in tv)
-			{
-				char = char.tolower()
-				if (tname.len()>1)
-					texarray.append(tname[0]+char+tname[1])
-				else
-					texarray.append(tname[0]+char)
-				if (typeof(texarray[i+1]) == "integer" || typeof(texarray[i+1]) == "float")	//Will parse numbers separatly later
-				{
-					texarray.append(texarray[i+1])
-					if (typeof(texarray[i+2])=="integer")	//Will parse numbers separately later	"#$Worstcase",["a","b","c"],2.4,2
-					{
-						//print
-						texarray.append(texarray[i+2])
-						if (idx==tv.len()-1)
-							{
-							rem.append(i+2)		//trash 1st generation
-							}
-					}
-					if (idx==0)								//float XOR int trash
-						rem.append(i+1)
-				}
+		if (removethese){
+			for (local i = removethese.len() - 1; i >= 0; i--){
+				sub.remove(removethese[i])
 			}
-			rem.append(i)									//trash array and original
-			rem.append(i-1)
-			continue
 		}
-		local j = 1
-		local ModInt=false
-		local noarbefore = (i==0||typeof(texarray[i-1])!="array")
-		if (typeof(tv)=="float"&&noarbefore)
-		{
-			tv=split(tv.tostring(),".")
-			j=tv[0].tointeger()
-			tv=tv[1].tointeger()
-			ModInt=true
-		}
-		if (typeof(tv)=="integer"&&(this=="TexTable"||ModInt)) //don't want to Parse for example Model-Leaves[1aTree,1]
-		{
-			local x=1
-			if (!noarbefore)
-				{
-				x=2
-				}
+		return sub
+	} 
+
+	function ImportCSVData(filename = eDAutoTxtRepl.kFile, overwrite = false){
+		/* Grabs data from (csv) file and readies it to be used by the other parser functions.
+			Not very efficient. Parsing could be done here.*/
+		local currentTable = ModTable
+		
+		local fullpath = ::string()
+		if (!::Engine.FindFileInPath("resname_base",filename, fullpath))
+			return DPrint("DScript ERROR: " + filename + " not found!", kDoPrint, ePrintTo.kMonolog | ePrintTo.kUI | ePrintTo.kLog)
+		local data = ::dCSV.open(fullpath.tostring(),{separator = eDAutoTxtRepl.kSeparator, useRowKey = false})
+		//data.dump(true)
+		
+		local RowKey	= null
+		foreach (line in data.lines){
+			if (line[0] == "_TEXTURES_"){
+				currentTable = TexTable
+				continue
+			}
+			local category = ::strip(line.remove(0))
+			if (category in currentTable){				// Category already present?
+				currentTable[category].extend(line)
+				category = null							// bool to avoid doubles.
+			}
 			else
-				{
-				rem.append(i-x)
-				rem.append(i)
+				currentTable[category] <- line
+			for (local idx = 0; idx < line.len(); idx++){
+				local cell = line[idx]
+				if (cell[kGetFirstChar] == '{'){
+					// wanna replace the cell with a subtable, this is wanted for models with multiple fields.
+					local subtable = {}
+					local subcells = ::split(cell,"{=}\n")
+					
+					for (local i = 1; i < subcells.len(); i++){
+						if (subcells[i] != ""){
+							if (subcells[i] != "KeepIndex"){
+								currentTable.write(subcells[i], AnalyzeCell(subcells[i+1]), overwrite)
+							}
+							else
+								currentTable.write(subcells[i], AnalyzeCell(subcells[i+1])[0], overwrite)
+							i++
+						}
+					}
+					line[idx] = subtable
+					//print(typeof line[idx])
 				}
-			local tname=split(texarray[i-x],"#")
-			for (j; j <= tv; j++)
-			{
-				if (tname.len()>1)
-					texarray.append(tname[0]+j+tname[1])
-				else
-					texarray.append(tname[0]+j)
-				if (typeof(texarray[i+1])=="integer")	//ModTable Beds=["Bed#",1.12,2]  Parsing and a Field specified
+				else // Normal cell
 				{
-					texarray.append(texarray[i+1])
-					if (j==tv)							//trash 2nd generation
+					local result = AnalyzeCell(cell)	// result is an array
+					if (result){
+						if (result.len() == 1)
+							line[idx] = result[0]
+						else
+						{
+							foreach (i,res in result){
+								line.insert(idx, res)
+								idx++
+							}
+							line.remove(idx)
+							idx--
+						}
+					} else {
+						line.remove(idx)
+						idx--
+					}
+				}
+
+			}
+		}
+		//DumpTable(Tables.ModTable)
+	}
+
+#	|-- Array Analysis / Sugar Code --|
+	function DParseTexArray(whichtable, texarray){
+		local rem = []
+		foreach (i, entry in texarray)
+		{	
+			if (whichtable == "ModTable" && typeof(entry) == "string")
+			{
+				texarray[i] = entry.tolower()						// Models should be, as .find is case dependent.
+				continue
+			}
+			if (typeof(entry) == "array")
+			{
+				local tname = ::split(texarray[i-1], "$")
+				foreach (idx, char in entry)
+				{
+					char = char.tolower()
+					if (tname.len() > 1)						// $ not at the end.
+						texarray.append(tname[0] +char+tname[1])
+					else
+						texarray.append(tname[0] +char)
+					if (typeof(texarray[i+1]) == "integer" || typeof(texarray[i+1]) == "float")	//Will parse numbers separately later
+					{
+						texarray.append(texarray[i+1])
+						if (typeof(texarray[i+2]) == "integer")	// Will parse numbers separately later	"#$Worstcase",["a","b","c"],2.4,2
+						{
+							//print
+							texarray.append(texarray[i+2])
+							if (idx == entry.len()-1)
+							{
+								rem.append(i+2)					// trash 1st generation
+							}
+						}
+						if (idx == 0)							// float XOR int trash
+							rem.append(i+1)
+					}
+				}
+				rem.append(i)									// trash array and original
+				rem.append(i-1)
+				continue
+			}
+			local j = 1											// TexTable only
+			local ModInt = false
+			local noarbefore = (i == 0 || typeof(texarray[i-1]) != "array")
+			if (typeof(entry) == "float" && noarbefore)
+			{
+				entry		= ::split(entry.tostring(),".")
+				j			= entry[0].tointeger()		// first
+				entry		= entry[1].tointeger()		// .second
+				ModInt	= true
+			}
+			if (typeof(entry) == "integer" && (whichtable == "TexTable" || ModInt)) // Don't parse ModTable, Leaves[1aTree,1] where 1 is TxtRepl slot.
+			{
+				local x = 1
+				if (!noarbefore)
+				{
+					x = 2
+				}
+				else
+				{
+					rem.append(i-x)
+					rem.append(i)
+				}
+				local tname=split(texarray[i-x],"#")
+				for (j; j <= entry; j++)
+				{
+					if (tname.len()>1)
+						texarray.append(tname[0]+j+tname[1])
+					else
+						texarray.append(tname[0]+j)
+					if (typeof(texarray[i+1])=="integer")		//ModTable Beds=["Bed#",1.12,2]  Parsing and a Field specified
+					{
+						texarray.append(texarray[i+1])
+						if (j == entry)							//trash 2nd generation
 						{
 							rem.append(i+1)
 						}
-				}
-			}
-		}
-	}
-		
-	//Trash preparsed entries
-	rem.sort()
-	for (local r = rem.len() - 1; r >= 0; r--){
-		texarray.remove(rem[r])
-	}
-
-	// Print result for control
-	
-	foreach (i,tv in texarray)	
-		{
-		print(texarray+"["+i+"]="+tv)
-		}
-		
-	
-	return texarray
-}
-	
-	
-############################################
-	function DoOn(DN)						//TexTable={k=v[index i=tv] }
-	{
-		ImportData("DumpModels.txt")
-		//Parse TexTablefor easier random use
-		if (!::ParseDone){		//needs only be done once per Session
-			foreach (k,v in Tables.ModTable)	
-				DParseTexArray.call("ModTable",v)
-			foreach (k,v in Tables.TexTable){
-				if (typeof(v) == "array")
-					DParseTexArray.call("TexTable",v)
-				else { //another table TexTable={	k= v={	k2=v2[index i=tv]	} }
-					foreach (v2 in v)
-					{
-						if (typeof(v2) != "array")	//KeepIndex. THIS IS THE PARSER
-							continue
-						DParseTexArray.call("TexTable",v2)
 					}
 				}
 			}
-			::ParseDone = true
-		}	
-	########### Actual Selection
+		}
+		//Trash preparsed entries
+		rem.sort()
+		for (local r = rem.len() - 1; r >= 0; r--){
+			texarray.remove(rem[r])
+		}
+		return texarray
+	}
+
+//	|-- Set Property --|
+	function DChangeTxtRepl(texarray, field = 0, i = -1, obj = null, path = "obj\\txt16\\")
+	{
+		if (!obj)
+			obj = self
+		if (i == -1)			 // If same index is desired
+			i = Data.RandInt(0, texarray.len()-1)
+		local tex = texarray[i]					
+		if (startswith(tex,"fam\\"))
+			path = ""
+		Property.Add(obj,"OTxtRepr"+field)
+		if (!(DGetParam(GetClassName()+"Lock", false) && Property.Get(obj,"OTxtRepr" + field) != ""))	//Should work without !=, Archetype definitions will be kept.
+			Property.SetSimple(obj,"OTxtRepr"+field, path+tex)
+		return i
+	}
+
+
+#	|-- Constructor and DoOn --|
+	constructor() {
+		base.constructor()
+		local DN 	= userparams()
+		local Mode 	= DGetParam( _script + "Mode", 1, DN)
+		
+		// 0 will only work when TurnedOn (standard Trap behavior) Default: TurnOn and script_test ObjID
+		// 1 (Default) Not automatically in game.exe
+		// 2 Every time. PRO: Works on in game.exe created objects CONTRA: Also executes after save game loads. Consider DAutoTxtReplCount=1 (TODO:) No Overwrite option.
+		if (Mode && !(IsEditor() + Mode == 1)){
+			if (!delegator.ParseDone){
+				ModTable.setdelegate(delegator)
+				TexTable.setdelegate(delegator)
+				foreach (entry, file in getconsttable().eDAutoTxtRepl){		// CSV data
+					if (entry != "kSeparator" && entry != "kUseInGame"){
+						ImportCSVData(file, (entry[kGetFirstChar] == '_'))				// Overwrite already present data.
+					}
+				}
+				// Parse Tables, remove sugar code.
+				foreach (k,v in ModTable._DataTable)
+					DParseTexArray("ModTable",v)
+				foreach (k,v in TexTable._DataTable){
+					if (typeof(v) == "array")
+						DParseTexArray("TexTable",v)
+					else { //another table TexTable={	k= v={	k2=v2[index i=entry]	} }
+						foreach (v2 in v)
+						{
+							if (typeof(v2) != "array")	//KeepIndex. THIS IS THE PARSER
+								continue
+							DParseTexArray("TexTable",v2)
+						}
+					}
+				}		
+				#DEBUG POINT Print result for control
+				if (DPrint() && IsEditor()){
+					#DEBUG POINT
+					DumpTable(ModTable._DataTable)
+					DumpTable(TexTable._DataTable)
+				}
+				delegator.ParseDone = true
+			}
+			DoOn(DN)
+		}
+	}
+
+############################################
+	function DoOn(DN)											// TexTable = {k=v[index i=entry] }
+	{
+		# Selection
 		type = DGetParam("DAutoTxtReplType",false,DN)
 		if (!type)
 		{	//DetectionMode
+			if (!Property.Possessed(self,"ModelName"))
+				return DPrint("No Shape->Model Name present.", kDoPrint)
 			local m = Property.Get(self,"ModelName").tolower()
-			foreach (k,v in Tables.ModTable){
-				local idx=v.find(m)
+			foreach (k,v in ModTable._DataTable){
+				local idx = v.find(m)
 				if (idx != null)
 				{
 					//Check if custom tex field is specified.
 					local f = 0
-					if (!(idx==v.len()-1)&&typeof(v[idx+1])=="integer")	 //if its the last entry v[idx+1] would throw an error.
+					if ((idx != v.len() - 1) && typeof(v[idx+1]) == "integer")	 //if its the last entry v[idx+1] would throw an error.
 					{
 						f = v[idx+1]
 					}
-						
 					//Get Texture from a Array[]	
-					if (typeof(TexTable[k])=="array")
+					if (typeof(TexTable._DataTable[k]) == "array")
 					{
-							DChangeTxtRepl(TexTable[k],f)
+						DChangeTxtRepl(TexTable[k], f)
 					}
 					else //Get Textures from sub table like BookWithSide 
 					{
-						local KeepIndex=[""]
-						if ("KeepIndex" in TexTable[k])
-						{
-							KeepIndex=[TexTable[k]["KeepIndex"],-1]
-						}
-								
-						foreach (field, tv in TexTable[k])	//TexTable={	k=TexTbl[k]={	field=tv[...]	} }	
+						local KeepIndex = ("KeepIndex" in TexTable[k])? KeepIndex = [TexTable[k]["KeepIndex"],-1] : null;	
+						foreach (field, entry in TexTable[k])	//TexTable={	k=TexTbl[k]={	field=entry[...]	} }	
 						{
 							//TODO: Does not work for 0
-							if (typeof(tv)!="array"||f>0&&field.tointeger()>f)	// KeepIndex case OR not all Fields should be used
+							if (typeof(entry) != "array" || f > 0 && field.tointeger() > f)	// KeepIndex case OR not all Fields should be used
 								continue
-							if (KeepIndex[0].find(field)!=null)
-								KeepIndex[1]=DChangeTxtRepl(tv,field,KeepIndex[1])
+							if (KeepIndex){
+								if (KeepIndex[0].find(field) != null)
+									KeepIndex[1] = DChangeTxtRepl(entry,field,KeepIndex[1])
+							}
 							else
-								DChangeTxtRepl(tv,field)
+								DChangeTxtRepl(entry,field)
 						}
-						
 					}
 				}
 				//else
@@ -468,33 +565,24 @@ function DParseTexArray(texarray)
 			}
 		}
 		else
-		{
+		{	// Manuell mode
 			DChangeTxtRepl(TexTable[type],DGetParam("DAutoTxtReplField",0,DN))
 		}
-	}
-/*For demo video
-	if (IsEditor()==2)
-		SetOneShotTimer("Change",1.5)
-}	
+	}	// END of DoOn
+	/*For demo video
+		if (IsEditor()==2)
+			SetOneShotTimer("Change",1.5)
+		}	
 
-function OnTimer()
+	function OnTimer()
 	{
-	DoOn(userparams())
+		DoOn(userparams())
 	}
-//*/
-	
-	function constructor() {
-		local DN 	= userparams()
-		local Mode 	= DGetParam("DAutoTxtReplMode", 1, DN)
-		local Exe 	= IsEditor()
-		// 0 will only work when TurnedOn (standard Trap behavior) Default: TurnOn and script_test ObjID
-		// 1 (Default) Not automatically in game.exe
-		// 2 Everytime. PRO: Works on in game.exe created objects CONTRA: Also executes after save game loads. Consider DAutoTxtReplCount=1 (TODO: Check if compatible with BaseTrapConstructor) or (TODO:) No Overwrite option.
-		if (Mode != 0 && !(Exe + Mode == 1))
-			DoOn(DN)
-	}	
-
+	//*/
 }
+::gDTexTable = DAutoTxtRepl.TexTable
+::gDModTable = DAutoTxtRepl.ModTable
+
 
 } // END OF DAutoTxtRepl enclosure.
 
@@ -537,9 +625,9 @@ MyModels 	= null	// Array of objects extracted from a file. See the ImportModels
 		::Property.Add(obj,"PhysType")
 		::Property.Set(obj,"PhysType", "Type", 0)					// PhysDims will be initialized if a model is set
 		local ModelSize = Property.Get(obj, "PhysDims", "Size")
-		if (ModelSize.x > xmax)												// Distance to next line.
+		if (ModelSize.x > xmax)										// Distance to next line.
 			xmax = ModelSize.x
-		v.y += ModelSize.y / 2													// Need to move half the y direction away from the last objects border.
+		v.y += ModelSize.y / 2										// Need to move half the y direction away from the last objects border.
 		::Property.Remove(obj,"PhysType")							// Need to physics, remove it.
 		::Object.Teleport(obj, v, v_ZERO)							// New Position
 		Object.EndCreate(obj)
@@ -577,8 +665,8 @@ MyModels 	= null	// Array of objects extracted from a file. See the ImportModels
 	function DoOn(DN = null){
 		if(!DN) DN		= userparams()
 		local first 	= DGetParam("First", 0, DN)				// Start
-		v_ZERO			= vector()								// Need facing reference when teleporting.
-		v 				= vector(-380,-380,0)					// Starting Position
+		v_ZERO			= ::vector()								// Need facing reference when teleporting.
+		v 				= ::vector(-380,-380,0)						// Starting Position
 		ImportModels(DGetParam("Filename", "DumpModels.txt", DN))// Get's the model names from a file.
 		xmax 			= 0										// Max X size of an object
 		count 			= 0										
@@ -598,8 +686,6 @@ MyModels 	= null	// Array of objects extracted from a file. See the ImportModels
 			Debug.Command("screenshot_format", "bmp")
 			local cam = Object.Create("Marker")
 			Camera.StaticAttach(cam)
-			cam 	  = Object.Named("Camera")					// TODO
-			print(cam)
 			return SetOneShotTimer("timer",0.15)
 		}
 		// Else dump them all at once.
@@ -709,7 +795,7 @@ A new idea that came to my mind is that you can catch reloads with this message,
 		foreach (m in DGetParam("DEditorTrapRelay","null",dn, kReturnArray))
 			func(t, m)
 
-	DPrint(" Done", kDoPrint)		
+	DPrint("Done", kDoPrint)		
 	}
 
 	function OnTest()
@@ -767,6 +853,8 @@ class DTestTrap extends DEditorScripts
 
 	static function PrintAllConstants(){
 	/* Prints all constants and enumerations.*/
+		DumpTable(::getconsttable())
+		return
 		foreach (k,t in getconsttable())
 		{
 			if (typeof t =="table")			//is enumerations
@@ -781,19 +869,24 @@ class DTestTrap extends DEditorScripts
 	}
 
 	static function DumpTable(table, isSubTable = false){
+		local _type = typeof table
+		if (_type == "null")
+			return ::print("Trying to Dump null.")
 		foreach (key, value in table)
 		{
-			print((((!isSubTable)? "" : "\t\tSub:\t" )  + "key: " + key +"  val: "+ value))
-			if (typeof(value) == "table" || typeof(value) == "class")
+			::print((((!isSubTable)? "" : "\t\tSub:" + _type + "\t" )  + "key: " + key +"  val: "+ value))
+			if (typeof(value) == "table" || typeof(value) == "class" || typeof(value) == "array" )
 			{
-				print(key + " Subtable:")
-				DumpTable(value, true)
-			
+				::print(key + " Sub:"+typeof value)
+				::print("------------------")
+				::DTestTrap.DumpTable(value, true)
+				::print("------------------")
 			}
 		}
 	}
 
 	function OnBeginScript(){
+		Reply(false)
 		base.OnBeginScript()
 	}
 	
@@ -802,8 +895,20 @@ class DTestTrap extends DEditorScripts
 	
 	constructor()
 	{
-		if (self != 6)
-			return	
+		//print(::DHandler)
+		//print(::DHandler.ClearData("sVarName"))
+		//print(Quest.BinGetTable(kSharedBinTable))
+
+		
+		
+		//print(DScript.CompileExpressions("st, b"))
+		//print(DScript.CompileExpressions.call(this,"c = 5,b<-3, b+c"))
+
+		//print(test+"\n")
+		//if (self != 6)
+			//return
+		local b = 8
+		
 		base.constructor()
 		if (self == 6){
 			//print("HUB"+DHub.DGetStringParam("A","notf",str))
@@ -831,19 +936,16 @@ class DTestTrap extends DEditorScripts
 	}
 	
 	function DFunc()	//General catching for testing.
-	{	
-	
-		print(message().flags)
-		BlockMessage()
-		print(message().flags)
+	{			print("Reply:"+SendMessage(self,"BeginScript"))
+				//print("b=" + DScript.CheckAndCompileExpression(this,"Object.Facing(self)"))
 		//	print("Checkin"+DCheckString("//Marker.TurnOn"))
 
 		if (Version.IsEditor() == 2){	// ingame
 			
 		}
 		
-	//	print("Success?:" +Quest.BinSet("MyTable",blob(1)))
 	}
+
 
 
 	function DoOn(DN)
@@ -911,12 +1013,6 @@ if (IsEditor())
 	::DumpTable <- DTestTrap.DumpTable
 
 
-
-class DTestTrap2 extends DTestTrap{
-
-}
-
-
 ##########################################
 // If your function is inside a specific class, make sure it gets inherited via extend or call it classname.function()
 class DPerformanceTest extends DEditorScripts
@@ -927,11 +1023,9 @@ class DPerformanceTest extends DEditorScripts
 i = null
 
 
-
 	function DoTest()
 	{
 ################# Insert necessary Variables here#######################
-
 #####################################################################	
 		print("-------------------------------------\nStart Test: For Function 1")
 		local i 	= 0
@@ -941,18 +1035,18 @@ i = null
 		while (time() == end)				//Time interval is exactly 1 second.
 		{
 #################Insert the test function here#######################
-			DCheckString("[me]")
+				Container.IsHeld(0,3) <= 0
 #####################################################################				
-				i++						//Checks how often this action can be performed within that 1 second.
+		i++						//Checks how often this action can be performed within that 1 second.
 		}
 		print("Function 1: was executed: " +i+" times in 1 second. Execution time: "+ (1000.0/i) +" ms")
 #####################################################################
 //set true if you want to compare it to a second function
 		if (
-		0
-		) 
-#####################################################################
-		{
+		1
+		) {
+################# Locals ############################################
+			local l = linkkind("~Contains")
 #####################################################################
 			print("Start Test: For 2nd Function")
 			local j=0
@@ -962,9 +1056,9 @@ i = null
 			while (time()==end2)			//Time interval is exactly 1 second.
 			{
 ################# Insert compare function here#######################
-			::IObjectScriptService.Named("Materials")
+				Link.AnyExist(l,3)
 #####################################################################
-				j++
+			j++
 			}
 			print("Function 2: was executed: " +j+" times in 1 second. Execution time: "+ (1000.0/j) +" ms\n-------------------------------------")
 		}
@@ -1023,6 +1117,20 @@ DrkInv.CapabilityControl(1,2)
 DrkInv.CapabilityControl(2,2)
 DrkInv.CapabilityControl(4,2)*/
 
-
-
 //Engine.SetEnvMapZone(58,(2).tochar() + (7).tochar() +(11).tochar()  + (13).tochar() + (3).tochar())
+
+
+/*local obj = 0
+
+while (Object.Archetype(obj) != 0){
+	Link.Create("Contains", 5, obj)
+	obj++
+}*/
+
+
+local s = "alxarm"
+foreach (signal in getconsttable().eAlarmSignals){
+			if (s == signal)
+				return	print("yes")
+		}
+	print("nope")

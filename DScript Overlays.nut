@@ -1,17 +1,16 @@
 // Shock or Thief?
-local Upperclass = null
-local Service	 = null
+local Overlayclass = null					// Free Variable, good, bad?
 if (GetDarkGame() != 1) {
-	Upperclass 	= IDarkOverlayHandler
-	Service		= DarkOverlay
+	Overlayclass 	= IDarkOverlayHandler
+	::gGameOverlay	<- DarkOverlay
 } else {
-	Upperclass 	= IShockOverlayHandler
-	Service		= ShockOverlay
+	Overlayclass 	= IShockOverlayHandler
+	::gGameOverlay	<- ShockOverlay
 }
-	
+
 if (kUseIngameLog) {
 // Enabled by Config Class - DEBUG
-	class cDIngameLogOverlay extends Upperclass {
+	class cDIngameLogOverlay extends Overlayclass {
 		Logfile = null
 		X		= null
 		Y		= 0
@@ -20,7 +19,7 @@ if (kUseIngameLog) {
 		blackbg = null
 		
 		constructor(){
-			if (::IsEditor())
+			if (::IsEditor())										// Get logfile depending on program
 				Logfile = ::dfile("monolog.txt")
 			else 
 			{	// For game.exe use Log file.
@@ -47,16 +46,15 @@ if (kUseIngameLog) {
 			}
 			
 			if (kGameLogAlpha){
-				blackbg = Service.CreateTOverlayItem(X, Y, 631, 640, (typeof kGameLogAlpha == "integer"? kGameLogAlpha : 63 ), true);
+				blackbg = ::gGameOverlay.CreateTOverlayItem(X, Y, 631, 640, (typeof kGameLogAlpha == "integer"? kGameLogAlpha : 63 ), true);
 			}
-			
 			base.constructor()
 		}
 		
 		function DrawHUD(){
 			local DLogString = "LOG OUTPUT:\n" + Logfile.slice(Logfile.find('\n', -770), 0).tostring()
-			Service.DrawString(DLogString,X, Y);
-			Service.GetStringSize(DLogString, SizeX, SizeY);
+			::gGameOverlay.DrawString(DLogString,X, Y);
+			::gGameOverlay.GetStringSize(DLogString, SizeX, SizeY);
 		}
 		
 		function OnUIEnterMode(){
@@ -76,26 +74,27 @@ if (kUseIngameLog) {
 				X = SizeX.tointeger() - 480
 			}
 			if (kGameLogAlpha){
-				Service.UpdateTOverlayPosition(blackbg, X, Y);
+				::gGameOverlay.UpdateTOverlayPosition(blackbg, X, Y);
 			}
 				
 		}
 	}
-}
+	
 // Add Black background if wanted.
 if (kGameLogAlpha){
 	cDIngameLogOverlay.DrawTOverlay <- function(){
-	if (Service.BeginTOverlayUpdate(blackbg)){
-		//Service.UpdateTOverlaySize(blackbg, SizeX.tointeger(), SizeY.tointeger())
-		Service.FillTOverlay(0);
-		Service.EndTOverlayUpdate()
+	if (::gGameOverlay.BeginTOverlayUpdate(blackbg)){
+		//::gGameOverlay.UpdateTOverlaySize(blackbg, SizeX.tointeger(), SizeY.tointeger())
+		::gGameOverlay.FillTOverlay(0);
+		::gGameOverlay.EndTOverlayUpdate()
 	}
-	Service.DrawTOverlayItem(blackbg)	
+	::gGameOverlay.DrawTOverlayItem(blackbg)	
 	}
+}	
+	
 }
 
-
-class cDHandlerFrameUpdater extends Upperclass {
+class cDHandlerFrameUpdater extends Overlayclass {
 /* This is has no real Overlay elements. This is used as the PerMidFrame updater. */
 
 	X1 			= ::int_ref()
@@ -113,9 +112,9 @@ class cDHandlerFrameUpdater extends Upperclass {
 	/* Roughly calculates how many steps are needed until an object would be out of screen. */
 		local i = 0.0
 		local j = 0.0
-		while (Service.WorldToScreen(::Camera.CameraToWorld(::vector(0.6, i, 0)), X1, Y1))			
+		while (::gGameOverlay.WorldToScreen(::Camera.CameraToWorld(::vector(0.6, i, 0)), X1, Y1))			
 			i += 0.01
-		while (Service.WorldToScreen(::Camera.CameraToWorld(::vector(0.6, 0, j)), X1, Y1))
+		while (::gGameOverlay.WorldToScreen(::Camera.CameraToWorld(::vector(0.6, 0, j)), X1, Y1))
 			j += 0.01
 
 		WidthToY   = i
@@ -126,12 +125,57 @@ class cDHandlerFrameUpdater extends Upperclass {
 	function DrawHUD(){
 		::DHandler.PerMidFrame_DoUpdates()
 
-		// Service.GetObjectScreenBounds(430, X1, Y1, X2, Y2);
+		// ::gGameOverlay.GetObjectScreenBounds(430, X1, Y1, X2, Y2);
 		if (NotChecked)
-			::DScript.ScreenToWorld.call(this)
+			ScreenToWorld()
 	}
 	
 	function OnUIEnterMode(){
 		NotChecked = true
 	}
+}
+
+if (kDInvMasterExtraInfo){
+
+
+class cDWorldInvOverlay extends Overlayclass
+{
+	items	= null
+	X1	= int_ref()
+	X2	= int_ref()
+	Y1	= int_ref()
+	Y2	= int_ref()
+	
+	constructor(){
+		items = []				// are added via DWorldInventory main script
+		base.constructor()
+	}
+	
+	function DrawHUD(){
+		foreach (item in items){
+			if (::gGameOverlay.GetObjectScreenBounds(item, X1,Y1,X2,Y2)){
+				if (Property.Get(item,"StackCount")){
+						::gGameOverlay.DrawString(Property.Get(item,"StackCount"), X2.tointeger() - 15,  Y2.tointeger() - 15);
+				}
+				if (kDInvMasterExtraInfo > 1){	// more info
+					local extra = Property.Get(item, "DesignNote")
+					if (extra){
+						if (extra[0] == '['){
+							// ::gGameOverlay.SetTextColor(255,127,63)
+							::gGameOverlay.SetTextColor(15,255,255)
+							::gGameOverlay.DrawString(extra, X1.tointeger(),  Y2.tointeger());
+							// Underline
+							//::gGameOverlay.GetStringSize(extra,X2,Y1)
+							//::gGameOverlay.DrawLine(X1.tointeger(), Y2.tointeger() + Y1.tointeger(), X1.tointeger() + X2.tointeger() - 2,Y2.tointeger()+ Y1.tointeger())
+							::gGameOverlay.SetTextColor(255,255,255)
+						} else ::gGameOverlay.DrawString(extra, X1.tointeger(),  Y2.tointeger());
+					}
+				}
+			}
+		}
+	}
+
+
+}
+
 }
