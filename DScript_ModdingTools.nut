@@ -278,7 +278,7 @@ delegator 	= {
 				local replace = [sub[i].slice(kRemoveFirstChar)]
 				local j = i + 1
 				while(!::endswith(sub[j],"]")){		// add next [ chars ]
-					//print("J is" + j + sub[j])
+
 					replace.append(sub[j])
 					removethese.append(j)
 					j++
@@ -343,7 +343,7 @@ delegator 	= {
 						}
 					}
 					line[idx] = subtable
-					//print(typeof line[idx])
+
 				}
 				else // Normal cell
 				{
@@ -564,7 +564,7 @@ delegator 	= {
 					}
 				}
 				//else
-					//That's wrong here print("DAutoTxtRepl ERROR: Didn't find a match for Shape ModelName "+m+". On Object "+self+. "Specify DAutoTxtReplType")
+
 			}
 		}
 		else
@@ -896,11 +896,10 @@ class DTestTrap extends DEditorScripts
 	
 		Quest.SubscribeMsg(self,"test")
 	//	if (self == 6)
-			//print(DGetParam(_script + "TOnResult").tostring().find("2"))
+
 		base.constructor()
 		return
-		print("\n-------------------------------------")
-		print(userparams() +"on" + self)
+
 		userparams()["IM"+GetClassName()] <- self
 		DumpTable(userparams())
 		
@@ -909,34 +908,23 @@ class DTestTrap extends DEditorScripts
 		foreach (key, method in userparams()) {
 			local res = DScript.CheckAndCompileExpression(this,method)
 			if (typeof res == "array" && res.len())
-				print(method + " results:"),DumpTable(res)
-			print("\n-------------------------------------\n")	
+	
 
 		}
-		//print(DScript.CheckAndCompileExpression(this, "ta$rt"))
 
-		//print(::DHandler)
-		//print(::DHandler.ClearData("sVarName"))
-		//print(Quest.BinGetTable(kSharedBinTable))
 
 		
 		
-		//print(DScript.CompileExpressions("st, b"))
-		//print(DScript.CompileExpressions.call(this,"c = 5,b<-3, b+c"))
 
-		//print(test+"\n")
 		//if (self != 6)
 			//return
 		
 
 		if (self == 6){
-			//print("HUB"+DHub.DGetStringParam("A","notf",str))
-			//print(DCheckString("@human"))
-			//print(DCheckString("_(var.t<-2 , var.t)"))
-			//print(DCheckString("_DCheckString(\"^human\", true).find(_#411_) >= 0"))
+
 		}
 		
-		//print(DCheckString(">-44>objnames"))
+
 		
 		return
 		local table = getroottable()
@@ -946,7 +934,7 @@ class DTestTrap extends DEditorScripts
 		{
 			if (typeof(value) != "class" || key[0] != 'D')
 				continue
-			// print((((isSubTable)? "\t\t" : "\t" )  + "key: " + key +"  val: "+ value))
+
 		}
 		
 		// DLowerTrap.DumpTable(ar)
@@ -960,7 +948,7 @@ class DTestTrap extends DEditorScripts
 	}
 
 	function OnQuestChange(){
-		print("QUEST CHANGE.")
+
 	
 	}
 
@@ -981,15 +969,14 @@ class DTestTrap extends DEditorScripts
 		local vto 	= vector(-23,16,1)
 		Property.SetSimple(411,"RenderType",1)
 		Property.SetSimple(545,"RenderType",1)
-		print("Res:" + (Engine.ObjRaycast(vfrom, vto, hloc, hobj, FALSE, 2, 0, 0)))		// Return must be 2 or 3 else nothing was hit.
+
 		Property.SetSimple(411,"RenderType",0)
 		Property.SetSimple(545,"RenderType",0)
 
 
-			print("\tHit Obj:" + hobj.tointeger())
+
 		KillTimer(GetData("HS"))
-				//print("b=" + DScript.CheckAndCompileExpression(this,"Object.Facing(self)"))
-		//	print("Checkin"+DCheckString("//Marker.TurnOn"))
+
 
 		if (Version.IsEditor() == 2){	// ingame
 			
@@ -1051,7 +1038,7 @@ SQUIRREL> 0.000000, 0.000000, 2.600000
 	
 	function OnCreate()
 	{
-		print("CREATED " + self )
+
 		Debug.Log("CREATED" + self)
 	}	
 	
@@ -1179,7 +1166,7 @@ DrkInv.CapabilityControl(4,2)*/
 
 /*local obj = 0
 
-print(obj)
+
 
 while (Object.Archetype(obj) != 0){
 	Link.Create("Contains", 5, obj)
@@ -1187,7 +1174,7 @@ while (Object.Archetype(obj) != 0){
 }*/
 
 
-print(("aba1").find((1).tostring()))
+
 
 
 //local rv = Quest.BinSet("TABLENAME",dblob("UGly").toblob())
@@ -1205,7 +1192,7 @@ while(rv[i] != 255){
 			i++
 		}
 	
-	print(start + ": " + rv.slice(start,i))
+
 	
 	}
 
