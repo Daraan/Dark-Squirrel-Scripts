@@ -262,13 +262,7 @@ function DParseTexArray(texarray)
 		texarray.remove(rem[r])
 		}
 
-	// Print result for control
-	/*
-	foreach (i,tv in texarray)	
-		{
-		print(texarray+"["+i+"]="+tv)
-		}
-	*/	
+
 	
 	return texarray
 }
@@ -346,7 +340,7 @@ function DoOn(DN)						//TexTable={k=v[index i=tv] }
 					}
 				}
 			//else
-				//That's wrong here print("DAutoTxtRepl ERROR: Didn't find a match for Shape ModelName "+m+". On Object "+self+. "Specify DAutoTxtReplType")
+
 			}
 	}
 	else
@@ -447,14 +441,14 @@ function FoundSth(test,dump,v)
 				Debug.Command("screen_dump",MyModels[i-1])
 			}
 		v.y += y/2+1
-		print(i+"  "+m)
+
 		if (v.y > 400)
 			{
 			v.y = -380
 			v.x += xmax
 			xmax = xmax/4
 			if (v.x >900)
-				print("Maxiumum Area used ending the progress")
+
 				return v
 			}	
 		return v
@@ -552,7 +546,7 @@ local i = DGetParam(GetClassName()+"Start",-10) //This (-10) adds 10 extra slots
 for (i;i<=max;i++)
 	{
 	local data = Data.GetString(file, "Obj"+i,"","obj") // !!!STRING FILE IN OBJ FOLDER!!!
-	##print(data)
+
 	if (i<0)											//Negative entries are Obj_10, Obj_9...
 		{
 		local j = "_"+(i*-1).tostring()
