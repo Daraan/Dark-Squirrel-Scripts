@@ -333,7 +333,7 @@ NOTE:
 		else
 			DPrint("Object (" + obj + ") has script slot 4 in use with " + i + " - Don't want to change that. Please fall back to adding a Metaproperty.", kDoPrint)
 			#DEBUG ERROR
-		// print("Done" + obj)
+
 	}
 
 	function DAddScriptFunc(DN, newscript = null){				// #NEW add script via parameter
