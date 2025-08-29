@@ -1,4 +1,4 @@
-##		--/					 §HEADER					--/
+##		--/					 ï¿½HEADER					--/
 
 #include DConfigDefault.nut
 // This file IS NECESSARY for DScript.nut to compile.
@@ -12,7 +12,7 @@
 // --------------------------------------------------------------------------
 
 
-##		/--		§#		§_INTRODUCTION__§		§#		--\
+##		/--		ï¿½#		ï¿½_INTRODUCTION__ï¿½		ï¿½#		--\
 //////////////////////////////////////////////////////////////////// 
 //					 	
 const DScriptVersion = 0.81 	// This is not a stable release!
@@ -31,7 +31,7 @@ const DScriptVersion = 0.81 	// This is not a stable release!
 //  To highlight code, special functions and constants and especially the use of custom fold points.
 //  An advanced text editor like notepad++ is recommended and necessary to use them. Like DromEd this file uses ANSI characters.
 //
-//		/--		§#		§_DEMO_CATEGORY_§		§#		--\
+//		/--		ï¿½#		ï¿½_DEMO_CATEGORY_ï¿½		ï¿½#		--\
 //			<-- fold it on the left
 //		|--			#		Paragraph		#			--|
 //			To fold the code into meaningful paragraphs.
@@ -64,7 +64,7 @@ There are three categories of output prints in this file, labeled as these at th
 /////////////////////////////////////////////////////////////////
 
 // ----------------------------------------------------------------
-##		/--		§#		§___CONSTANTS___§		§#		--\
+##		/--		ï¿½#		ï¿½___CONSTANTS___ï¿½		ï¿½#		--\
 // Adjustable Constants are in the DConfig*.nut files.
 // ----------------------------------------------------------------
 
@@ -122,7 +122,7 @@ const kScriptTurnOff	= 0
 // -----------------------------------------------------------------
 // -----------------------------------------------------------------
 
-##		/--		§#	  	  §_VERSION_CHECK_§		§#		--\
+##		/--		ï¿½#	  	  ï¿½_VERSION_CHECK_ï¿½		ï¿½#		--\
 /* First will check if the users NewDark API version is sufficient - some script might not work.
 	Then also if a FanMission author defines a dRequiredVersion in a separate DConfig file this test will check if the 
 	current DScriptVersion of this file is sufficient or outdated and will display a ingame and monolog message to them. */
@@ -146,7 +146,7 @@ if (dRequiredVersion > DScriptVersion){
 		print(warning)
 }
 
-##		/--		§#	  §HELLO_&_HELP_DISPLAY§	§#		--\
+##		/--		ï¿½#	  ï¿½HELLO_&_HELP_DISPLAYï¿½	ï¿½#		--\
 ##		|--			#	   General_Help		#			--|
 
 if (!::Engine.ConfigIsDefined("dsnohello") && dHelloMessage && IsEditor() && DScriptVersion > 0.90)	// will be enabled in Version 0.7 onward.
@@ -178,7 +178,7 @@ if (::Engine.ConfigIsDefined("dhelp")) 		//TODO: Setup attributes.
 
 
 ##	|-- ------------------------------------------- --|
-##	/--		§# §_____DSCRIPT_LIBRARY_____§  §#		--\
+##	/--		ï¿½# ï¿½_____DSCRIPT_LIBRARY_____ï¿½  ï¿½#		--\
 ##	|-- ------------------------------------------- --|
 // 
 // The table DScript acts as library, it contains various universal functions which don't need access to script or instance specific methods like self, message, userparams, ... and can so be used by different script classes.
@@ -346,54 +346,54 @@ DScript <- {
 			::Property.Set(obj,"PhysState", "Facing", newface)	
 	}
 	
-#	/--	 	§Geometry		--\
+#	/--	 	ï¿½Geometry		--\
 	/* How to interpret your return values in DromEd:
 		First in DromEd there are the Position:HPB values you see in your normal editor view and the Model->State:Facing XYZ Values.
 		The return functions are always based on the Facing XYZ Values, misleading is the reversed order H=Z, P=Y and B=X of the axes.
 
 		PolarCoordinates
 		<distance, theta, phi>
-		theta: 	below  pi/2 (90°) means below the object, above above
+		theta: 	below  pi/2 (90ï¿½) means below the object, above above
 
 		phi: Negative Values mean east, positive west.
-		Absolute values above 90° mean south, below north:
+		Absolute values above 90ï¿½ mean south, below north:
 	
 	Object.Facing and Camera.GetFacing()
 		Y							Z
-	Above270°						N180°			
+	Above270ï¿½						N180ï¿½			
 	/							 	|	
-	X---0°/360° 			W--270°-X--90°--E
+	X---0ï¿½/360ï¿½ 			W--270ï¿½-X--90ï¿½--E
 	\								| 	
-	Below90°						S0°
+	Below90ï¿½						S0ï¿½
 
 	DScript.PolarCoordinates(from, to)	
 	Theta							Phi
-	Above180°						N0°			
+	Above180ï¿½						N0ï¿½			
 	/					(0,90)	 	| 	(  0, -90)	
-	X---90° 				W++++90°X-- -90°--E
+	X---90ï¿½ 				W++++90ï¿½X-- -90ï¿½--E
 	\					(90,180)	| 	(-90, -180)
-	Below0°						180°S-180°	
+	Below0ï¿½						180ï¿½S-180ï¿½	
 
 	DScript.RelativeAngles(from, to)
 	Corrected Values:
 	Theta							Phi
-	Above90°						N0°			
+	Above90ï¿½						N0ï¿½			
 	/								|	
-	X---0° 				  W- +90°---X-- -90°--E
+	X---0ï¿½ 				  W- +90ï¿½---X-- -90ï¿½--E
 	\								|	
-	Below-90°					180°S-180°
+	Below-90ï¿½					180ï¿½S-180ï¿½
 	
 	#NOTE these might now look different, but if you take a closer look, these are mirrored.
 		Swapping the order: RelativeAngles(to,from) will result in the expected:
 		
 	DScript.RelativeAngles(to, from)
-	Inverse Corrected Values matches Object.Facing() only with negative values above 180°.
+	Inverse Corrected Values matches Object.Facing() only with negative values above 180ï¿½.
 	Theta							Phi
-	Above -90°				   -180°N 180°			
+	Above -90ï¿½				   -180ï¿½N 180ï¿½			
 	/							 	|	
-	X---0° 					W- -90° -X-- 90°--E
+	X---0ï¿½ 					W- -90ï¿½ -X-- 90ï¿½--E
 	\								| 	
-	Below 90°						S0°
+	Below 90ï¿½						S0ï¿½
 	*/	
 
 	function VectorBetween(from, to, UseCamera = true){
@@ -422,7 +422,7 @@ DScript <- {
 
 	function RelativeAngles(from, to, UseCamera = true){
 	/* Uses the standard PolarCoordinates, and transforms the values to be more DromEd like, we want 
-		Z(Heading)=0° to be south and Y(Pitch)=0° horizontal.
+		Z(Heading)=0ï¿½ to be south and Y(Pitch)=0ï¿½ horizontal.
 		Returns the relative XYZ facing values with B=X = 0. */
 		local v = PolarCoordinates(from, to, UseCamera)
 		v.x  = 0
@@ -695,7 +695,7 @@ DScript <- {
 		return ::compilestring(s, typeof this).call(::DScript._tempstore(this))
 	}
 	
-# |-- §(non_Integer)_Quest_Variables --|
+# |-- ï¿½(non_Integer)_Quest_Variables --|
 	function _GetQVarType(name){
 		// from -4 to 2	
 		name = name.tolower()
@@ -967,7 +967,7 @@ DScript <- {
 ::DScript.getdelegate().setdelegate(::DScript._tempstore.getdelegate())	// So _tempstore functions can be used directly via DScript.func
 
 ##		|-- ------------------------------------------- --|
-##		/--		§# §______DSCRIPT_BASICS_____§  §#		--\
+##		/--		ï¿½# ï¿½______DSCRIPT_BASICS_____ï¿½  ï¿½#		--\
 ##		|-- ------------------------------------------- --|
 // 				String and Parameter analysis
 //
@@ -999,7 +999,7 @@ SubVersion 	= 0.72
 		throw null								// will now look in root table
 	}*/
 	
-	## |-- 	§Main_Analysis_Function		--|
+	## |-- 	ï¿½Main_Analysis_Function		--|
 	function DCheckString(str, returnInArray = false){		
 	/* 
 	Analysis of a given string parameter depending on its prefixed parameter.
@@ -1169,12 +1169,12 @@ SubVersion 	= 0.72
 					return ::DScript._FormatForReturn(DCheckString(value, returnInArray), returnInArray)
 				}
 				// yes no break.
-			case '§': // Paragraph sign. #NOTE IMPORTANT this file needs to be saved with ANSI encoding!
+			case 'ï¿½': // Paragraph sign. #NOTE IMPORTANT this file needs to be saved with ANSI encoding!
 				// replace with difficulty?
-				local another = str.find("§",1)
+				local another = str.find("ï¿½",1)
 				str = str.slice(kRemoveFirstChar)
 				if (another){
-					local ar = ::DScript.DivideAtNext(str,"§")
+					local ar = ::DScript.DivideAtNext(str,"ï¿½")
 					str = ar[0] + (::Quest.Exists(kReplaceQVarOperatorWith) ? ::Quest.Get(kReplaceQVarOperatorWith) : ::Quest.Get("difficulty")) + ar[1]
 				}
 				local customtable = ::split(str,".")
@@ -1219,7 +1219,7 @@ SubVersion 	= 0.72
 						origin		= message().data3
 					}
 					# Get First Object Set
-print(str+"start?" + start + " On: " + self)
+
 					local division = ::DScript.DivideAtNext(str, "/", true)
 					if (division[1] != ""){ 		// we are not at the end
 						local nextset  = DCheckString(division[0], kReturnArray)
@@ -1239,7 +1239,7 @@ print(str+"start?" + start + " On: " + self)
 						return false
 						
 					foreach (obj in ::gSHARED_SET)
-print("SHARED" + obj)
+
 					
 					return ::DScript._FormatForReturn(delete ::gSHARED_SET, returnInArray)		// TODO
 			
@@ -1286,12 +1286,12 @@ print("SHARED" + obj)
 				local sref = ::string()
 				if (::Engine.FindFileInPath("install_path", divide[2], sref))	// TODO cache location, check FM
 					{
-					print("yes in " + sref)
+
 					
 					}
 				else
 					{
-					print("nope try again")
+
 					}
 				
 				/*
@@ -1423,7 +1423,7 @@ print("SHARED" + obj)
 				}
 				if (raw.len() == 2){	// if still two items exist it must be >radius
 					values[1] = raw[1].tofloat()
-					print(divide[0])
+
 					if (divide[0][1] == '>')				// divide[0] is the part before the colon {>5...:
 						values[0] = true
 				}
@@ -1531,7 +1531,7 @@ print("SHARED" + obj)
 		return ::split(data, separator)
 	}
 
-	#  |--  §Conditional_Debug_Print 	--|
+	#  |--  ï¿½Conditional_Debug_Print 	--|
 	function DPrint(dbgMessage = null, DoPrint = null, mode = 3) 	// default mode = ePrintTo.kMonolog | ePrintTo.kUI)
 	{
 		if (!DoPrint){
@@ -1569,7 +1569,7 @@ print("SHARED" + obj)
 }
 
 // ----------------------------------------------------------------
-##		/--		§# §____FRAME_WORK_SCRIPT____§	§#		--\
+##		/--		ï¿½# ï¿½____FRAME_WORK_SCRIPT____ï¿½	ï¿½#		--\
 //
 // The DBaseTrap is the framework for nearly all other scripts in this file.
 // It handles incoming messages and interprets the general parameters like Count, Delay, Repeat.
@@ -1594,8 +1594,8 @@ SourceObj 	  = null	//	The actual source of a message.
 	constructor(){									// Setting up save game persistent data.
 		_script = GetClassName()					// base.constructor has to be called before using _script.
 		if (this.getclass().getbase() == "DTrigger")
-			print("yohoho")
-		//print("Constructed" + _script + " On " + self + DScript.GetObjectName(Object.Archetype(self)))
+
+
 		if (!::IsEditor()){							// Initial data is set in the Editor.
 			return
 		}
@@ -1783,7 +1783,7 @@ SourceObj 	  = null	//	The actual source of a message.
 		RepeatForCopies(::callee())
 	}
 
-### |-- §_Main_Message_Handler_§ --| ###
+### |-- ï¿½_Main_Message_Handler_ï¿½ --| ###
 	function DBaseFunction(DN){
 	/* Handles and interprets all incoming messages. 
 		- Are they a valid Activating or Deactivating message? 
@@ -1828,13 +1828,13 @@ SourceObj 	  = null	//	The actual source of a message.
 			return
 		}
 	
-		// print("CURRENT Copy" + _script)
+
 		if (_script == null)
 			print(GetClassName() +" on " + self + "_script NOT SET! - base.constructor probably missing.")
 		return RepeatForCopies(::callee(), DN)
 	}
 
-	# |-- 		§Pre_Activation_Checks 		--|
+	# |-- 		ï¿½Pre_Activation_Checks 		--|
 	/*Script activation Count and Capacitors are handled via Object Data, in this section they are set and controlled.*/
 	# |--	Custom Condition Parameter 	--|
 	function DCheckCondition(Condition){
@@ -2100,13 +2100,7 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 	
 	function DMultiMessage(targets, messages, post = true, data = null, data2 = null, data3 = null)
 	{
-		#DEBUG Point
-		if (DPrint()){
-			::print("Targets")
-			DTestTrap.DumpTable(targets)
-			::print("Messages")
-			DTestTrap.DumpTable(messages)
-		}
+
 
 		foreach (msg in messages){
 			if (msg){	// not [null]
@@ -2197,7 +2191,7 @@ class DTrigger extends DRelayTrap
 }
 
 
-// |-- §Handler_Object§ --|
+// |-- ï¿½Handler_Objectï¿½ --|
 /* This creates one object named DScriptHandler, see the class below.
 	That script initializes some data at game time, like the PlayerID and handles the perFrame updates. */
 if (IsEditor()){
@@ -2215,8 +2209,7 @@ if (IsEditor()){
 			Property.Set(core,"SlayResult","Effect", eSlayResult.kSlayDestroy)
 			
 			Object.Teleport(core,vector(4,4,4),vector())
-			print("I'm " + self)
-			print("DScript - Creating Handler Object. " + core)
+
 			Object.EndCreate(core)
 		}
 	}
@@ -2247,9 +2240,7 @@ class DScriptHandler extends DRelayTrap
 			PerMidFrame_database = {}
 		}
 		if ("CallbackExtern" in this){							// Currently not used 
-			::print("someone wants a late " + self)				
-			foreach (instance, func in CallbackExtern){			// This table could be added curing construction to this class.
-				print("Having" + instance), instance[func]()	// When DHandler has not yet been constructed but then calls back.
+
 			}
 			CallbackExtern.clear()
 		}
@@ -2330,7 +2321,7 @@ class DScriptHandler extends DRelayTrap
 				::Quest.BinDelete("MissBinTables")
 			}
 			SetData("MissionInitialized")
-			print("MissionInitialized")
+
 		}
 	}
 
@@ -2514,7 +2505,7 @@ class DScriptHandler extends DRelayTrap
 
 	function OnDelete(){
 		DPrint("WARNING. DScript Handler deleted. This might delete some script data.\nWill recreate another instance.", kDoPrint, ePrintTo.kMonolog | ePrintTo.kLog)
-		print(Object.Exists("DScriptHandler"))
+
 	}
 
 // |-- Destructor
@@ -2751,13 +2742,7 @@ class DTrapSetQVar extends DBaseTrap
 			VAL = DGetParam(_script + action + "InitValue", DGetParam(_script + "InitValue", 0,DN),DN)
 		if (doinit == false){
 			local result = ::DScript.CheckAndCompileExpression(this, _Operation)				
-			#DEBUG POINT
-			if (DPrint()){
-				if (typeof result == "table" || typeof result == "array" || typeof result == "blob"){
-					::print("Saving table, array or blob with the contents:")
-					::DTestTrap.DumpTable(result)
-				}
-			}
+
 			return ::DScript.SetQVar(var_name, result, _DQVarType, bin_key_name, VAL)
 		}
 		else
@@ -2767,14 +2752,14 @@ class DTrapSetQVar extends DBaseTrap
     }
 	
 	function OnBeginScript(){
-		::print("DID BEGIN")
+
 		base.OnBeginScript()
 	}
 	
 	function InitQVarFromProp(){
-		print(GetProperty("TrapQVar") + " Im " + self)
+
 		local event = ::split(GetProperty("TrapQVar"),":;")
-		print("Len of prop "+event.len())
+
 		if (event.len() == 1 && event[0].len()){
 			print(event[0])
 			if (event[0] == "\"\"")
@@ -2785,7 +2770,7 @@ class DTrapSetQVar extends DBaseTrap
 			PrepareSetQVar("", event[0])
 		} 
 		else if (event.len() >= 1){								// Set more than one.
-			print("0 is+ '"+event[0])
+
 			event.apply(::strip)									// TODO: Do this more.
 			for(local i = 0; i < event.len(); i += 2){
 					if (event[i+1] == "\"\"")
@@ -2802,7 +2787,7 @@ class DTrapSetQVar extends DBaseTrap
 		if (::DHandler.IsDataSet("MissionInizialzed") || !HasProperty("TrapQVar"))
 			return
 		InitQVarFromProp()
-		::print("DID SIM")
+
 	}
 
     function DoOn(DN = null)
@@ -2820,7 +2805,7 @@ DScript.Quest <-
 	Triggers = {}										// will contain instance = array(of values)
 
 	function SubscribeMsg(instance, var_name){
-		print("Saving QVar Trigger" + instance)
+
 		if (var_name == "*")
 			return Triggers[instance] <- false
 		if (instance in Triggers){
@@ -2861,7 +2846,7 @@ DScript.Quest <-
 	function QuestChange(name, newval, oldval){
 	/* Checks which triggers shall react to the given msg. */
 		foreach (trigger, vars in Triggers){
-			print(type(trigger) + typeof vars)
+
 			if (!vars)	// "*" all
 				trigger.CheckQuest(name, newval, oldval)
 			else
@@ -2921,7 +2906,7 @@ DefOff 	= null
 
 	function OnDarkGameModeChange(){
 		if (!message().suspending && !message().resuming){
-			print("MODE CHANGED")
+
 		
 		}
 	

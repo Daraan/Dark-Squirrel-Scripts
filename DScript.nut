@@ -210,7 +210,7 @@ function DGetTimerData(m,KeyValue=false)		//Get back your data after timeout
 function DCapacitorCheck(script,DN,OnOff="")	//Capacitors only, general "" or "On/Off" specific
 {
 		local Capa = GetData(script+OnOff+"Capacitor")+1	//NewValue
-		//DEBUG print(script+"Capa= "+Capa+"/"+DGetParam(script+OnOff+"Capacitor",null,DN)+"  Timer:"+DGetParam(script+OnOff+"CapacitorFalloff",null,DN))
+
 		if (Capa == DGetParam(script+OnOff+"Capacitor",0,DN).tointeger())	//Reached Threshold?										//DHub compability
 		{
 			SetData(script+OnOff+"Capacitor",0)				//Reset Capacitor and terminate now unnecessary FalloffTimer
@@ -984,12 +984,12 @@ function OnTimer()
 		local t = DGetParam("DArmAttachmentUseObject",false,DN)
 		local m = DGetParam("DArmAttachmentModel",self,DN)
 
-		// print("m1= "+m)
+
 		//TODO: Switch better maybe?
 		if (m ==self && !t)
 			{m = Property.Get(self,"ModelName")}
 		t = t.tointeger()
-		print("m2= "+m)
+
 		if (t)
 			{
 			o = Object.Create(m)
@@ -1000,7 +1000,7 @@ function OnTimer()
 			o = Object.Create(-1)
 			Property.Add(o,"ModelName")
 			Property.SetSimple(o,"ModelName",m)
-			// print("model is: "+Property.Get(o,"ModelName",DGetParam("DArmAttachmentModel","stool",DN)))
+
 			}
 
 		if (t < 2)
@@ -1236,7 +1236,7 @@ function DoOff(DN)
 				local data = split(LinkTools.LinkGetData(l,""),"+")
 				if (data[0] == "DRay")
 					{
-					//DEBUG print("destroy:  "+data[2]+"   "+Object.Destroy(data[2].tointeger()))
+
 					Link.Destroy(l)
 					}
 			}
@@ -1584,7 +1584,7 @@ function DoOn(DN)
 						else
 						{
 							print("DScript: AI "+t+" has script slot 4 in use "+i+" - can't add DNotSuspAI script. Will try to add Metaproperty M-DUndercover8 instead.")
-							print("I was "+i+"\n")	//TODO: One output.
+
 							Object.AddMetaProperty(t,"M-DUndercover8")
 						}
 					}

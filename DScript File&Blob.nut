@@ -3,7 +3,7 @@
 #include DScript.nut // File & Blob Library is standalone.
 
 
-##		/--		§		§File_&_Blob_Library§		§		--\
+##		/--		ï¿½		ï¿½File_&_Blob_Libraryï¿½		ï¿½		--\
 //
 //	This file contains tools to interact with files (read only) and blobs.
 //	Ultimately enabling the extraction of data/parameters from files. 
@@ -428,19 +428,15 @@ class dCSV extends dblob
 // remember print() uses tostring() and will print the raw context of the file/blob	
 	function dump(unformatted = false){
 	/* unformatted = true will dump two tables for tables that have been created with useRosKey*/
-		print("Amount of CSV lines:" + lines.len())
 		if (useRowKey){
-			print("Lookup table with valid keys:\n\tKey\t:\tValues")
 			foreach (key, val in useRowKey){
 			local line = ""
 				foreach (entry in val)
 					line += "\t"+entry
-				print(key + "\t:" + line)
+				::Debug.MPrint(key + "\t:" + line)
 			}
-			print("==============\n")
 		} else unformatted = true
 		if(unformatted){
-			print("Stored Raw Data:")
 			foreach (key, val in lines){
 				local line = ""
 				foreach (entry in val)
@@ -456,7 +452,7 @@ class dCSV extends dblob
 
 // |-- Input Interpretation --|
 	function createCSVMatrix(separator = '\t', commentstring = "//", delimiter = '\''){
-		print("separator is " + separator.tochar())
+
 		myblob.seek(0,'b')		// Make sure pointer is at start
 		do {									// This loop is a line
 			local c = myblob[tell()]
@@ -486,7 +482,7 @@ class dCSV extends dblob
 					if (c == separator){
 						// if active treat as char but if not seperate here.
 						#DEBUG POINT
-						// print(lineraw)
+
 						if (lineraw != "")
 							curline.append(lineraw)
 						lineraw = ""
@@ -509,7 +505,7 @@ class dCSV extends dblob
 					}
 				}
 				switch (c){
-				// this fixes the string like „“ to be a "
+				// this fixes the string like ï¿½ï¿½ to be a "
 					case 108 - 255:
 					case 109 - 255:
 					case 124 - 255:
@@ -584,7 +580,7 @@ DefOff = null
 		
 		IsOn = Engine.FindFileInPath("install_path", IsOn, string())
 		
-		print(IsOn)
+
 		if (IsOn)
 			base.RelayMessages("On")
 		
@@ -681,8 +677,7 @@ class cDSaveHandler extends cDCustomHandler
 	
 		name = name.tostring()
 		map  = map.tostring()
-		print("map :" + map)
-		print("name :" + name)
+
 
 		local stamp = ""
 		// first 4 name characters
@@ -721,7 +716,7 @@ class cDSaveHandler extends cDCustomHandler
 		local slot = null
 		for (local i = 63; i > 55; i--){							// While possible to check all slots. Limiting it to 8 slots.
 			local param = rawdata.getParam2("Env Zone "+i, null, 2)
-			// print("P" + i + "=" + param + "'")
+
 			if (param == ""){										// Store first found empty slot.
 				if (!slot){
 					slot = i
@@ -738,7 +733,7 @@ class cDSaveHandler extends cDCustomHandler
 			if (!slot){
 			// All slots were used by EnvMaps or other missions.
 				// Check if a slot is not used by a save.
-				print("Found no slot, but saves avaliable")
+
 				for (local i = 63; i > 55; i--){
 					if (!(i.tostring() in Saves)){
 						slot = i
@@ -747,7 +742,7 @@ class cDSaveHandler extends cDCustomHandler
 			}
 			// For the current mission the slot shall always be 63
 			if (slot != 63){
-				print("mission save not in 63, moving others down by 1.")
+
 				local temp = {} 									// Deleting and shifting during a foreach, bad idea use a new table.
 				foreach (idx, save in Saves){
 					// lower number by 1
@@ -778,7 +773,7 @@ class cDSaveHandler extends cDCustomHandler
 		rawdata = File.slice(File.find(eDLoad.kStart), File.find(eDLoad.kEnd))
 		foreach (slot, save in Saves){
 			local data = rawdata.getParam2("Env Zone "+slot,"", 2, 0);	// original mission data
-			print(slot+data)
+
 			if (data != "")
 				backup[slot] <- data
 			Engine.SetEnvMapZone(slot, Saves[slot]);
@@ -791,9 +786,7 @@ class cDSaveHandler extends cDCustomHandler
 	
 	function SetEvent(event_id, value, instantly = true){
 		assert(value >= 0 && value < 16)
-		print(MissData)
-		MissData = MissData.slice(0, -event_id) + value + MissData.slice(-event_id + 1)
-		print(MissData)
+
 		// TODO also do a backup blob
 		if (instantly)
 			SaveFile()
@@ -851,7 +844,7 @@ EventID	= null
 		// Get EventValue
 		local event_data = DSaveHandler.GetEvent(EventID)
 		DPrint("Event Data is "+ event_data, true)
-		print(typeof event_data)
+
 		// Is data not null 0 -> 15
 		if (event_data >= 0){
 			// DataMatch does allow some advanced comparison.

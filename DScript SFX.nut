@@ -133,7 +133,7 @@ Each parameter can target multiple objects also more than one special effect can
 			{
 				local data = split(::LinkTools.LinkGetData(link,null),"+")
 				if (data[0] == "DRay"){
-					//DEBUG print("destroy:  "+data[2]+"   "+Object.Destroy(data[2].tointeger()))
+
 					::Link.Destroy(link)
 				}
 			}
@@ -181,7 +181,7 @@ DefOn = "InvSelect"
 			local userealobj= DGetParam(_script+"UseObject", FALSE, DN)
 			local model 	= DGetParam(_script+"Model", self, DN)
 
-			// print("m1 = "+model)
+
 			if (model == self && !userealobj)
 				model = ::Property.Get(self,"ModelName")
 
@@ -288,12 +288,7 @@ class DFocusOverTime extends DTrigger
 			full_change.y += 360
 		local difference  = (full_change - facing)
 		
-		/* if (false){					#DEBUG POINT
-			print(Object.Facing(obj))
-			print(full_change)
-			print(difference)
-			print(difference.Length())
-		} */														// This won't hurt even if it fails.
+
 
 		if ((difference).Length() < speed){
 			::DScript.SetFacingForced(obj, full_change)				// Fix to end point.
@@ -1440,7 +1435,7 @@ class DDirector extends DFocusOverTime
 			local link = Link.GetOne("ScriptParams", cur_point)
 			target = LinkDest(link)
 			speed = LinkTools.LinkGetData(link, "").tofloat()
-			print("Speed is" + speed)
+
 			if (!speed)
 				speed = DGetParam(_script + "PanSpeed", 3)
 		}
@@ -1474,7 +1469,7 @@ class DDirector extends DFocusOverTime
 				local idx = message().data
 				foreach(link in Link.GetAll("ScriptParams", self)){
 					local data = LinkTools.LinkGetData(link, "")
-					::print("data is " + data)
+
 					if (data == null)
 						continue
 					if (::abs(data.tointeger()) == idx && (data[0] >= '0' || (!leave && data[0] == '+') || (leave && data[0] == '-')))
@@ -1513,12 +1508,12 @@ class DDirector extends DFocusOverTime
 		local speed 	= LinkTools.LinkGetData(next_link, "Speed")
 		if (speed <= 0){
 			Property.Set(self,"MovingTerrain","active",FALSE);
-			print("speec" + speed)
+
 			if (speed == 0)
 				SetData("Jump",Path[index + 1])
 			else
 				LinkTools.LinkSetData(next_link, "Speed", -speed)
-			print("Will not start")
+
 			base.OnMessage()
 			return false			// Stops
 		}
@@ -1541,7 +1536,7 @@ class DDirector extends DFocusOverTime
 				Link.Create("TPathNext", self, Path[GetData("Active")+2])
 			else
 				return
-			::print("next obj is " + Path[GetData("Active")+2])
+
 			if (!OnMovingTerrainWaypoint())
 				return												// Pause
 		}
@@ -1648,7 +1643,7 @@ class DDirector extends DFocusOverTime
 				}
 			}
 			else ClearData("ReachedEnd")
-			::print("Cur idx = "+GetData("Active") +" len: " + Path.len())
+
 			if (notcanceled)
 				SendMessage(self, "ReachedEndpoint", ClearData("Active"), TRUE, Path.top())
 			else 
@@ -1656,7 +1651,7 @@ class DDirector extends DFocusOverTime
 				SendMessage(self, "Canceled", GetData("Active"), null, Path[ClearData("Active")])
 			}
 			Link.Destroy(Link.GetOne("TPathNext", self))
-			::print("Path[0]")
+
 			Object.Teleport(self, vector(), vector(), Path[0])
 			Link.Create("TPathNext",self,Path[1])
 			
