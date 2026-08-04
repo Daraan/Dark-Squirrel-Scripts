@@ -725,7 +725,7 @@ KEY_DEL		= 10323
 KEY_HOME	= 10311
 KEY_END		= 10319
 KEY_PGUP	= 10313
-KEY_PGDN	= 10321 = 8192 + KEY_PAD_PGUP
+KEY_PGDN	= 10321	// 8192 + KEY_PAD_PGDN
 KEY_LEFT	= 10315
 KEY_RIGHT	= 10317
 KEY_UP		= 10312
@@ -771,7 +771,7 @@ enum StyleColorKind		DarkOverlay.SetTextColorFromStyle //needs confirmation.
 {
    StyleColorFG			= 0		// foreground 
    StyleColorBG			= 1		//background,
-   StyleColorText,      = 2      // text color
+   StyleColorText       = 2      // text color
    StyleColorHilite		= 3     // hilight color
    StyleColorBright		= 4     // bright color
    StyleColorDim		= 5     // dim color

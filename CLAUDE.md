@@ -18,20 +18,23 @@ There is no build system, no package manager, no tests. The `.nut` files are dro
 |---|---|
 | `DScript Core.nut` | **The framework.** `DScript` library table, `DBasics`, `DBaseTrap`, `DRelayTrap`, `DTrigger`, `DScriptHandler`, `DHub`, QVar system (`DTrapSetQVar`, `DTrigQVar`, `DTrapDeleteQVar`) |
 | `DScript General.nut` | Gameplay traps: `DStdButton`, `DHitScanTrap`, `DWatchMe`, `DCopyPropertyTrap`, `DAddScript`, `DCompileTrap`, `DStackToQVar`, undercover scripts (`DImUndercover`, `DNotSuspAI*`, `DGoMissing`) |
-| `DScript SFX.nut` | Visual/inventory/camera: `DRay`, `DArmAttachment`, `DFocusObject`, `DFocusOverTime`, `DDirector`, `DHudObject`, `DHudCompass`, `DInventoryMaster`/`DSubInventory`/`DUseInventoryMaster`, `LootSounds`, `DRenameItem`, `DTweqDevice`, `DDrunkPlayerTrap`, teleporters (`DTPBase`, `DPortal`, …) |
+| `DScript SFX.nut` | Visual/inventory/camera: `DRay`, `DArmAttachment`, `DObjectFaceTarget`, `DObjectPanTo`, `DDirector`, `DHudObject`, `DHudCompass`, `DInventoryMaster`/`DSubInventory`/`DUseInventoryMaster`, `LootSounds`, `DRenameItem`, `DTweqDevice`, `DDrunkPlayerTrap`, teleporters (`DTPBase`, `DPortal`, …) |
 | `DScript File&Blob.nut` | Standalone `dfile` / `dblob` classes — read params out of files and `.str` resources. Backs the `>` operator |
 | `DScript Overlays.nut` | `cDIngameLogOverlay` (in-game log), `cDHandlerFrameUpdater` (drives per-mid-frame updates), `cDWorldInvOverlay`. Picks Dark vs Shock overlay API |
 | `DScript_ModdingTools.nut` | Editor-only: `DSpy`, `DAutoTxtRepl`, `DDumpModels`, `DEditorTrap`, `DTestTrap` (`DumpTable`), `DPerformanceTest` |
 | `DSConfigDefault.nut` | **Read this first when changing behaviour.** All tunable consts, `eSeparator`, `eDQVarType` inputs, `MissionConstants`, and the `_dFROM` message-class patches |
-| `DSConfigDefAutoTxt.nut` | Texture-replacement tables. Currently a **verbatim duplicate** of lines 119–228 of `DSConfigDefault.nut` |
+| `DSConfigDefAutoTxt.nut` | Texture-replacement tables. Currently a **verbatim duplicate** of lines 117–231 of `DSConfigDefault.nut` |
 | `DSConfigFix.nut` / `DSConfigMyFM.nut` | Per-mod / per-FM override stubs. Both declare `const kReplyMessage` |
 
 ### Legacy — do NOT edit, do NOT copy patterns from
 
-`DScript.nut` (v0.42a monolith) · `DSEditorScripts.nut` (v0.1b) · `DT2UndercoverWeapons.nut`
+`DT2UndercoverWeapons.nut` (defines `BlackJack`/`Sword`/`Arrow`; unrelated to V2, kept for reference).
 
-They redefine **~29 class names** that V2 also defines (`DBaseTrap`, `DRelayTrap`, `DHub`, `DRay`,
-`DStdButton`, `DHudCompass`, `DPortal`, `DImUndercover`, …). See *Load order* below — they win.
+The v0.42a monolith `DScript.nut` and the v0.1b `DSEditorScripts.nut` — which used to redefine ~29
+V2 class names and win the load-order race described below — were **deleted by the upstream merge
+that brought in the `Scripts-in-progress` history (2026-08-04)**. A repo-wide scan after that merge
+found zero duplicate top-level class names among the root `.nut` files, so the load-order shadowing
+problem tracked as `T-01` is resolved; `docs/OPEN_TASKS.md` has the details.
 
 ### Reference
 
@@ -65,6 +68,15 @@ They redefine **~29 class names** that V2 also defines (`DBaseTrap`, `DRelayTrap
     idiomatic non-DScript squirrel before deciding whether a task needs a DScript class at all.
   - `Notepad++/` — syntax/fold definitions for base `squirrel.osm` scripts, parallel to (but
     separate from) `docs/userDefineLang_Squirrel DScript.xml` above.
+  - `Custom-API-reference.nut`, `Custom-API-reference_messages.nut`, `Custom-API-reference_services.nut`
+    — hand-improved rewrites of the three `.txt` files above (saved as `.nut` purely so editors
+    syntax-highlight them; they are still plain reference text, not runnable scripts). **Prefer
+    these over the `.txt` originals** — each is a strict superset (explicit enum/flag numeric
+    values, cross-references from enums to the services/messages that use them, expanded prose on
+    `SqRootScript` semantics). An audit (2026-08-04) found and fixed a handful of transcription
+    defects (bad arithmetic in a `KEY_PGDN` comment, a stray enum comma, an unfinished cross-ref
+    note, dropped quotes around several string-literal defaults, one `#ifNOT`/`#ifndef` typo) —
+    all corrected, nothing outstanding to watch for.
 
 ---
 
@@ -90,7 +102,7 @@ SqRootScript                        engine base
     └── DBaseTrap                   message routing + Count/Capacitor/Delay/Repeat/FailChance/Condition
         ├── DRelayTrap              DSendMessage, DMultiMessage, DRelayMessages
         │   ├── DTrigger            adds a second, parallel "T"-prefixed parameter namespace
-        │   │   └── DHitScanTrap, DFocusOverTime, DDirector, DRenameItem, …
+        │   │   └── DHitScanTrap, DObjectPanTo, DDirector, DRenameItem, …
         │   ├── DScriptHandler      singleton, reachable as ::DHandler
         │   ├── DHub                per-message dispatcher (BROKEN at 0.81)
         │   └── DStdButton
@@ -158,7 +170,7 @@ Always build parameter names as `_script + "Foo"`, never a hard-coded string.
 - **A specific handler suppresses `OnMessage()`.** If you add `OnTimer` / `OnBeginScript` to a
   subclass, call `base.OnTimer()` / `base.OnBeginScript()` or the framework stops receiving events.
 - **Mutating an array inside its own `foreach` skips an element** — see the acknowledged bug in
-  `DFocusOverTime.PanToTarget` (`SFX:308`).
+  `DObjectPanTo.PanToTarget` (`SFX:308`).
 - `GetDarkGame()` → `0` = Thief 1/G, `1` = SS2, `2` = Thief 2. `IsEditor()` gates editor-only code —
   several classes and `DBasics.constructor` itself only exist in the editor.
 - Requires `GetAPIVersion() >= 11` (T2 v1.27 / SS2 v2.48).
@@ -191,9 +203,11 @@ Always quote: `"DScript File&Blob.nut"`. Unquoted `&` backgrounds the command.
 ### Load order determines which code actually runs
 
 `squirrel.osm` compiles **every** `.nut` in `sq_scripts/` in filename order; later definitions win.
-ASCII puts `"DScript "` (0x20) before `"DScript."` (0x2E), so **legacy `DScript.nut` loads after
-`DScript Core/General/SFX.nut` and replaces their classes with v0.42a implementations.** Any
-behavioural test of this branch is meaningless until the legacy files are moved out of the folder.
+ASCII puts `"DScript "` (0x20) before `"DScript."` (0x2E), which used to matter because the legacy
+`DScript.nut` monolith sorted after `DScript Core/General/SFX.nut` and replaced their classes with
+v0.42a implementations. That file (and `DSEditorScripts.nut`) is gone as of the 2026-08-04 merge —
+see T-01 in `docs/OPEN_TASKS.md` — but the sort-order mechanism itself is still live and still worth
+knowing before adding new files.
 
 Corollary for new work: your own `.nut` file must sort *after* the DScript core files to `extend`
 its classes.
@@ -234,7 +248,8 @@ Errors surface in `monolog.txt` (editor) or `Thief2.log` / `Shock2.log` (game). 
 
 The headline items:
 
-- **T-01** Legacy files shadow V2 — nothing is testable until they leave the load path.
+- **T-01** ~~Legacy files shadow V2~~ — resolved by the 2026-08-04 merge (`DScript.nut` /
+  `DSEditorScripts.nut` deleted upstream); see `docs/OPEN_TASKS.md` for the remaining detail.
 - **T-40** `DHub` is non-functional (the file header says so too).
 - **T-10** `/` ping-back operator dies on an `intern`/`inter` typo.
 - **T-20/T-21** `]` operator indexes a `split()` result wrongly; `==` conditions never match.

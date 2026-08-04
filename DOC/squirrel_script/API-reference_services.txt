@@ -9,7 +9,7 @@ For example:
 In a few cases function availability or arguments differ between Thief 1/G, Thief 2 and SS2. Those cases
 are denoted with C-style #ifdef declarations. In other cases some appended functions, or an entire service,
 may only be available from a certain API version and up. The API version is the same as returned by the
-function GetAPIVersion (see API-reference.txt for version listing). Those are denoted with a comment
+function "GetAPIVersion" (see "API-reference.txt" for version listing). Those are denoted with a comment
 like this
 
     // **** Available only in API version 3+ ****
@@ -17,7 +17,6 @@ like this
 where the minimum API version is specified (3 in this example). All subsequent functions require at least
 that API version.
 
-# As a site note BOOL is 0 or 1; bool is true or false.
 
 // ----------------------------------------------------------------
 // COMMON SERVICES
@@ -26,67 +25,34 @@ that API version.
 // **** Available only in API version 3+ ****
 Version
 {
-	// returns an app name-version string in the form of "Thief 2 Final 1.19" if title_only is FALSE
-	// or an app name string in the form of "Thief 2"/"DromEd"/"System Shock 2" if title_only is TRUE
 	GetAppName(BOOL title_only, string & result);
-	
 	GetVersion(int_ref major, int_ref minor);
-	
-	// returns 0 if the running executable is NOT the editor, 1 if editor in edit mode, 2 if editor in game mode
 	int IsEditor();
-
-	// returns the "game" string (set in cam.cfg to select game, i.e. "dark/"shock")
 	GetGame(string & result);
-	// returns the current gamesys filename (including ".gam" extension)
 	GetGamsys(string & result);
-	// returns the current map/mission filename (including ".mis" extension)
 	GetMap(string & result);
-	
-	// get the current FM name, returns empty string and S_FALSE if none is active
 	HRESULT GetCurrentFM(string & result);
-	// get the current FM path name as "rootpath/name" (roopath can be relative to CWD), returns empty string and S_FALSE if none is active
-	# CWD: Current Working Dictionary; should mean the game.exe location
 	HRESULT GetCurrentFMPath(string & result);
-	
-	// returns the 'relpath' with the current FM path prefixed if an FM is active, otherwise the unmodified 'relpath'
 	FMizeRelativePath(string relpath, string & result);
-	// checks if path is absolute, if so returns it as-is, otherwise behaves the same as FMizeRelativePath
 	FMizePath(string path, string & result);
 }
 
 // **** Available only in API version 3+ ****
 Engine
 {
-	// returns TRUE if config var is defined
 	BOOL ConfigIsDefined(string name);
-	// get config var value as int, float or raw text
 	BOOL ConfigGetInt(string name, int_ref value);
 	BOOL ConfigGetFloat(string name, float_ref value);
 	BOOL ConfigGetRaw(string name, string & value);
-	
-	// get bind variable as float
 	float BindingGetFloat(string name);
-	
-	// search for a file in paths defined by a path config var (like script_module_path), 'fullname' is
-	// If the file is found then the resolved file name with path is returned and true is returned.
 	BOOL FindFileInPath(string path_config_var, string filename, string & fullname);
-	
-	// returns TRUE if running game in legacy DX6 mode
 	BOOL IsRunningDX6();
-	// get display resolution (more specifically the main 2D surface, which is the only thing relevant as far as drawing concerns)
 	GetCanvasSize(int_ref width, int_ref height);
-	// aspect ratio of current display mode (w/h)
 	float GetAspectRatio();
-	
-	// get and set global fog settings (dist 0 means fog disabled)
 	GetFog(int_ref r, int_ref g, int_ref b, float_ref dist);
 	SetFog(int r, int g, int b, float dist);
-	
-	// get and set fog settings for a fog zone (iZone must be a number 1 to 8 or function silently fails)
 	GetFogZone(int iZone, int_ref r, int_ref g, int_ref b, float_ref dist);
 	SetFogZone(int iZone, int r, int g, int b, float dist);
-	
-	// get and set weather parameters
 	GetWeather(int_ref precip_type, float_ref precip_freq, float_ref precip_speed, float_ref vis_dist,
 								float_ref rend_radius, float_ref alpha, float_ref brightness, float_ref snow_jitter,
 								float_ref rain_len, float_ref splash_freq, float_ref splash_radius, float_ref splash_height,
@@ -95,41 +61,18 @@ Engine
 								float rend_radius, float alpha, float brightness, float snow_jitter,
 								float rain_len, float splash_freq, float splash_radius, float splash_height,
 								float splash_duration, string texture, vector wind);
-								
-	// perform a raycast on the worldrep (terrain only), returns TRUE if something was hit and hit_location contains
-	// the hit location (not quite as expensive as ObjRaycast but don't use excessively)
 	BOOL PortalRaycast(vector from, vector to, vector & hit_location);
-	
-	// perform a raycast on objects and terrain (expensive, don't use excessively)
-	//   'ShortCircuit' - if 1, the raycast will return immediately upon hitting an object, without determining if there's
-	//                    any other object hit closer to ray start
-	//                    if 2, the raycast will return immediately upon hitting any terrain or object (most efficient
-	//                    when only determining if there is a line of sight or not)
-	//   'flags'        - if bit 0 is set, the raycast will not include mesh objects (ie. characters) in the cast
-	//                    if bit 1 is set, the raycast will only include objects in the cast whose Render Type property
-        //                    is Normal or Unlit [new flag in T2 v1.27 / SS2 v2.48]
-	//   'ignore1'      - is an optional object to exclude from the raycast (useful when casting from the location of
-	//                    an object to avoid the cast hitting the source object)
-	//   'ignore2'      - is an optional object to exclude from the raycast (useful in combination with ignore2 when
-	//                    testing line of sight between two objects, to avoid raycast hitting source or target object)
-	// returns 0 if nothing was hit, 1 for terrain, 2 for an object, 3 for mesh object (ie. character)
-	// for return types 2 and 3 the hit object will be returned in 'hit_object'
 	int ObjRaycast(vector from, vector to, vector & hit_location, object & hit_object, int ShortCircuit, int flags, object ignore1, object ignore2);
 
 	// **** Available only in API version 4+ ****
-	// set texture for environment zone (iZone must be a number 0 to 63 or function silently fails, if texture name
-	// is empty or NULL the specified env zone map is cleared)
 	SetEnvMapZone(int iZone, string texture);
 }
 
 Object
 {
-	// LG Advice: Start creating an object. If you are going to put initial properties, on the object, you should BeginCreate it,
-    // then put the properties on, then EndCreate it. 
 	ObjID BeginCreate(object archetype_or_clone);
 	HRESULT EndCreate(object obj);
 	ObjID Create(object archetype_or_clone);
-	
 	HRESULT Destroy(object obj);
 	BOOL Exists(object obj);
 	HRESULT SetName(object obj, string name);
@@ -158,35 +101,13 @@ Object
 #ifdef SHOCK
 	ObjID FindClosestObjectNamed(ObjID objId, string name);
 #endif
-
-	// transform a pos from object space to world space, ObjectToWorld(vector(0,0,0)) would be the same as Position()
 	vector ObjectToWorld(object obj, vector obj_pos);
 
 	// **** Available only in API version 7+ ****
-	//transform a pos from world space to object space, WorldToObject(Position()) would be the same as vector(0,0,0)
 	vector WorldToObject(object obj, vector world_pos);
-	
-	// calculate the relative transform between two objects, returning the relative transform for the hypothetical child object
-	// rel_type is a RelTransformType value and selects what on the parent the child should be relative to
-	// for joint/vhot/subobj/submodel types the sub_or_vhot_or_joint value has to be set to the desired joint/vhot/subobj/submodel index
-	
-	// Transform types(rel_type) for CalcRelTransform:
-						# enum RelTransformType // replace for rel_type
-						{
-						   RelObject,		// relative to parent object 			(sub_or_vhot_or_joint ignored, set 0)
-						   RelJoint,		// relative to a joint on parent 		(sub_or_vhot_or_joint is joint index)
-						   RelVHot,			// relative to a vhot on parent 		(sub_or_vhot_or_joint is vhot index)
-						   RelSubObject,	// relative to a sub-object on parent 	(sub_or_vhot_or_joint is sub-object index)
-						   RelSubPhysModel	// relative to a physics sub-model on parent (sub_or_vhot_or_joint is physics sub-model index)
-						};
-						# enum joint
-								 0: N/A, 1: Head, 2: Neck, 3:Abdomen, 4:Butt, 5:Left Shoulder, 6:Right Shoulder, 7:Left Elbow,
-								 8: Right Elbow, 9:Left Wrist, 10:Right Wrist, 11:Left Fingers, 12:Right Fingers, 13:Left Hip, 14:Right Hip, 
-								15: Left Knee, 16:Right Knee, 17:Left Ankle, 18:Right Ankle, 19:Left Toe, 20:Right Toe, 21:Tail
 	BOOL CalcRelTransform(object parent_obj, object child_obj, vector & rel_pos, vector & rel_facing, int rel_type, int sub_or_vhot_or_joint);
 
 	// **** Available only in API version 8+ ****
-	// get the archetype of an object
 	ObjID Archetype(object scr_obj);
 }
 
@@ -196,8 +117,6 @@ Property
 	HRESULT Set(object obj, string prop, string field, cMultiParm val);
 	HRESULT SetSimple(object obj, string prop, cMultiParm val);
 #ifndef THIEF1
-	// Will set the property locally, even on a proxy object. # Only use for local data.
-	# Set will ask the owner to set the property if multiplayer.
 	HRESULT SetLocal(object obj, string prop, string field, cMultiParm val);
 #endif
 	HRESULT Add(object obj, string prop);
@@ -207,11 +126,8 @@ Property
 
 	// **** Available only in API version 11+ ****
 #ifdef THIEF1
-	# See above.
 	HRESULT SetLocal(object obj, string prop, string field, cMultiParm val);
 #endif
-
-	// query if object has a property set locally, ignoring inheritance from archetypes and metaproperties
 	BOOL PossessedSimple(object obj, string prop);
 }
 
@@ -237,8 +153,6 @@ Physics
 	HRESULT ControlCurrentRotation(object obj);
 	HRESULT ControlCurrentPosition(object obj);
 	HRESULT DeregisterModel(object obj);
-	
-	# subModel = 0, bobs the head in the direction of the vector.
 	PlayerMotionSetOffset(int subModel, vector & offset);
 	HRESULT Activate(const object obj);
 	BOOL ValidPos(const object obj);
@@ -253,27 +167,13 @@ Link
 	LinkID Create(linkkind kind, object from, object to);
 	HRESULT Destroy(LinkID destroy_me);
 	BOOL AnyExist(linkkind kind = 0, object from = 0, object to = 0);
-	
-	 // Get all the links that match a particular pattern
 	linkset GetAll(linkkind kind = 0, object from = 0, object to = 0);
 	LinkID GetOne(linkkind kind = 0, object from = 0, object to = 0);
-	
 	HRESULT BroadcastOnAllLinks(object SelfObj, string Message, linkkind recipients);
-	
-	# BroadcastData has two different behaviors:
-	# A) The Link has no Dataslot / the value is blank / null, then the message.data will what you specify.
-	# B) The Link has a DataSlot with a value. Only when that value matches the parameter parameter the message will be sent.
-	#	So BroadcastOnAllLinksData can filter out some objects based on the linkdata.
 	HRESULT BroadcastOnAllLinksData(object SelfObj, string Message, linkkind recipients, cMultiParm linkdata);
-	
 	HRESULT CreateMany(linkkind kind, string FromSet, string ToSet);
 	HRESULT DestroyMany(linkkind kind, string FromSet, string ToSet);
-	
-	 // Query all links inherited by one or two objs
-	 // All links from me and my donors to you and your donors, in inheritance order
 	linkset GetAllInherited(linkkind kind = 0, object from = 0, object to = 0);
-	
-	// All links out from me or my donors to just you, in inheritance order 
 	linkset GetAllInheritedSingle(linkkind kind = 0, object from = 0, object to = 0);
 } 
 
@@ -306,72 +206,28 @@ ActReact
 
 Data
 {
-	// Fetch a string, given a string table and a string name.
-	// The string table comes from the .str file in finals\strings
-	// The third argument is the default string value to use if it isn't found 
-	// The fourth arg is a path relative to art\finals.  
-	string GetString( string table, string name, string def = "", string relpath = "strings");
-	
-	// Fetch an object string, using the property that corresponds to the table
-	# This uses the ObjID as a key to find a value in a preloaded table, standard tables are obj objdescs and objnames from RES\Strings
-	# Can be used to retrieve obj string in user language.
-	# uses Inventory:
-	# Long Description <- objdescs
-	# Object Name <- objnames
+	string GetString(string table, string name, string def = "", string relpath = "strings");
 	string GetObjString(ObjID obj, string table);
-	
-	// just calls Rand() directly, ie. returns 0 to 2^15-1
 	int DirectRand();
-	// returns an integer between low and high inclusive, if high<=low, returns low
 	int RandInt(int low, int high);
-   // returns a float from 0.0 to 1.0-(1/(1<<16)) (ie. just short of 1)
 	float RandFlt0to1();
 	float RandFltNeg1to1();
 } 
 
 AI
 {
-	# These are not part of the AI class but here for reference:
-	enum eAIScriptSpeed
-	{
-		kSlow, 
-		kNormalSpeed, 
-		kFast
-	}
-	enum eAIActionPriority
-	{
-		kLowPriorityAction,
-		kNormalPriorityAction,
-		kHighPriorityAction
-	}	
-	
-	# These three create an sAIObjActResultMsg on the AI
-	BOOL MakeGotoObjLoc(ObjID objIdAI, object objIdTarget, eAIScriptSpeed speed = kNormalSpeed, eAIActionPriority = kNormalPriorityAction, cMultiParm dataToSendOnReach = null); 
-														
-	BOOL MakeFrobObjWith(ObjID objIdAI, object objIdTarget, object objWith, eAIActionPriority = kNormalPriorityAction, cMultiParm dataToSendOnReach = null);	
+	BOOL MakeGotoObjLoc(ObjID objIdAI, object objIdTarget, eAIScriptSpeed speed = kNormalSpeed, eAIActionPriority = kNormalPriorityAction, cMultiParm dataToSendOnReach = null);
+	BOOL MakeFrobObjWith(ObjID objIdAI, object objIdTarget, object objWith, eAIActionPriority = kNormalPriorityAction, cMultiParm dataToSendOnReach = null);
 	BOOL MakeFrobObj(ObjID objIdAI, object objIdTarget, eAIActionPriority = kNormalPriorityAction, cMultiParm dataToSendOnReach = null);
-													
 	eAIScriptAlertLevel GetAlertLevel(ObjID objIdAI);
 	SetMinimumAlert(ObjID objIdAI, eAIScriptAlertLevel level);
-	ClearAlertness(ObjID objIdAI);
-	
-	# In the source this is empty. Maybe it did something in T1; was used in the T2 archer demo.
 	ClearGoals(ObjID objIdAI);
-	
-	// Extra flags to let scripts control other aspects of AI state 
-	# Not tested by me
-	# Allow all				0
-	//define kSpeechOff     1	# This is permanent version of Sound.HaltSpeech(objIdAI)
-	# These seam to be not implemented.
-	//define kMotionOff     2	# This was used to disallow new motions (original WorkerBot script) and then control an AI via Puppet.PlayMotion
-	//define kCombatOffHACK 4
 	SetScriptFlags(ObjID objIdAI, int iFlags);
-	
+	ClearAlertness(ObjID objIdAI);
 	Signal(ObjID objIdAI, string signal);
 	BOOL StartConversation(ObjID conversationID);
 	
 	// **** Available only in API version 11+ ****
-	// stun and freeze-related functions previously only available through the ShockAI script service are now available to all games here
 	BOOL Stun(object who, string startTags, string loopTags, float sec);
 	BOOL IsStunned(object who);
 	BOOL UnStun(object who);
@@ -411,10 +267,6 @@ Sound
 
 AnimTexture
 {
-	// Within range of the reference object, change all of texture 1 to texture 2
-	// refobj NEEDS! EngineFeatures -> Retexture Radius (else radius = 0.1)
-	// Scripts -> TerrReplace is NOT used by this function. LGS used these in gen.osm to get their parameters from there.
-	// That's why LGS used null values for fam and tx values with paths. (Internally separating them again after). No need to still do that. 
 	HRESULT ChangeTexture(object refobj, string fam1, string tx1, string fam2, string tx2);
 }
 
@@ -425,13 +277,9 @@ PGroup
 
 Camera
 {
-    // Attach a camera to an object(fixed facing)
 	HRESULT StaticAttach(object attachee);
-	// Set camera to object's position
 	HRESULT DynamicAttach(object attachee);
-	// Return camera to player, if attached to attachee
 	HRESULT CameraReturn(object attachee);
-	// Return camera to player forcibly.
 	HRESULT ForceCameraReturn();
 
 	// **** Available only in API version 6+ ****
@@ -441,10 +289,7 @@ Camera
 	vector GetFacing();
 
 	// **** Available only in API version 7+ ****
-	// transform a pos from camera space to world space, CameraToWorld(vector(0,0,0)) would be the same as Camera.GetPosition()
 	vector CameraToWorld(vector local_pos);
-	
-	// transform a pos from world space to camera space, WorldToCamera(Camera.GetPosition()) would be the same as vector(0,0,0)
 	vector WorldToCamera(vector world_pos);
 }
 
@@ -479,40 +324,18 @@ Damage
 }
 
 Container
-{	
-	# eDarkContainType type
-		kContainTypeAlt		= -3
-		kContainTypeHand	= -2
-		kContainTypeBelt	= -1
-		kContainTypeGeneric	= 0
-	HRESULT Add(object obj, object container, eDarkContainType type = 0, int flags = CTF_COMBINE);	
-																	CTF_NONE=0 CTF_COMBINE=1
-	
-	# This has nothing to do with stacks. 
-	# You can use this to make the player drop an item at the current location BUT physics are not activated for the object. Alternative Debug.Command("drop_item")
-	# Returns 0 if it was contained and dropped. 1 If it was not contained or the container didn't match. Will always drop for container = 0.
+{
+	HRESULT Add(object obj, object container, int type = 0, int flags = CTF_COMBINE);
 	HRESULT Remove(object obj, object container = 0);
 	HRESULT MoveAllContents(object src, object targ, int flags = CTF_COMBINE);
 
 	// **** Available only in API version 1+ ****
-	# This always returns quantity even if the obj has no stack prop.
 	HRESULT StackAdd(object src, int quantity);
-	
-	#NOTE: NOT BOOL!!!: 
-	# returns 0 if contained else if not contained eContainType.ECONTAIN_NULL = 2147483647 (0x7FFFFFFF)
 	eContainType IsHeld(object container, object containee);
 }
 
 Quest
 {
-	#REFERENCE ONLY:  enum eQuestDataType
-	kQuestDataMission	= 0
-	kQuestDataCampaign	= 1
-	kQuestDataUnknown	= 2
-
-	// new for T2 v1.26 / SS2 v2.47 is that you can subscribe to name "*" in order to get QuestChange
-	// messages for all qvars (unsubscribe "*" to remove it again)
-	#TODO: Still has to be test if this works for Squirrel too.
 	BOOL SubscribeMsg(object obj, string name, eQuestDataType type = kQuestDataUnknown);
 	BOOL UnsubscribeMsg(object obj, string name);
 	HRESULT Set(string name, int value, eQuestDataType type = kQuestDataMission);
@@ -525,7 +348,7 @@ Quest
 	// (the table will be generated each time this function is called, so cache it in a 'local' var if you need to access it several times)
 	sqtable GetAllVars(eQuestDataType type);
 
-	// set/get campaign quest bin(ary) data as a blob
+	// set/get campaign quest bin data as a blob
 	bool BinSet(string name, sqblob blob);
 	// (returns null if no data with that name was found)
 	sqblob BinGet(string name);
@@ -538,7 +361,7 @@ Quest
 	// (returns null if no data with that name was found)
 	sqtable BinGetTable(string name);
 
-	// same as the qvar counterparts above but for quest bin(ary) data
+	// same as the qvar counterparts above but for quest bin data
 	BOOL BinExists(string name);
 	BOOL BinDelete(string name);
 }
@@ -556,13 +379,6 @@ Locked
 Key
 {
 	BOOL TryToUseKey(object key_obj, object lock_obj, eKeyUse how);
-													# enum eKeyUse
-													{
-														kKeyUseDefault	= 0
-														kKeyUseOpen		= 1
-														kKeyUseClose	= 2
-														kKeyUseCheck	= 3
-													}
 }
 
 // **** Available only in API version 1+ ****
@@ -609,14 +425,7 @@ Debug
 	HRESULT Break();
 
 	// **** Available only in API version 3+ ****
-	// log file output (works in game exe too)
 	HRESULT Log(string s);
-	
-	// log file output (works in game exe too)
-	STDMETHOD (Log)(const string ref, const string ref = NULL_STRING, const string ref = NULL_STRING,
-				const string ref = NULL_STRING, const string ref = NULL_STRING, const string ref = NULL_STRING,
-				const string ref = NULL_STRING, const string ref = NULL_STRING) PURE;
-	
 }
 
 
@@ -631,27 +440,19 @@ DarkGame
 	HRESULT FadeToBlack(float time);
 
 	// **** Available only in API version 2+ ****
-	# For secrets.
 	HRESULT FoundObject(ObjID obj);
-	
-	#NOTE: These 4 are available in Engine use them instead to be Shock compatible.
 	BOOL ConfigIsDefined(string name);
 	BOOL ConfigGetInt(string name, int_ref value);
 	BOOL ConfigGetFloat(string name, float_ref value);
 	float BindingGetFloat(string name);
-	
-	BOOL 	GetAutomapLocationVisited(int page, int location);
+	BOOL GetAutomapLocationVisited(int page, int location);
 	HRESULT SetAutomapLocationVisited(int page, int location);
 
 	// **** Available only in API version 3+ ****
-	// set/change the next mission that will follow current mission (normally the next mission is cur+1 or if
-	// missflag.str contains a miss_%d_next the next mission is defined by that)
 	SetNextMission(int mission);
-	// get current mission number
 	int GetCurrentMission();
 
 	// **** Available only in API version 8+ ****
-	// only does something in T2 multiplayer builds
 	BOOL RespawnPlayer();
 	HRESULT FadeIn(float time);
 }
@@ -679,40 +480,15 @@ PickLock
 
 DrkInv
 {
-    // change the current inventory capabilities...
-	# Theoretically can disable interactions / messages, can't get this to work. Telliamed used that in TrapKillEvents, maybe he figures it out in the end.
-	## function changes allow_cycle... but I can't see it used anywhere.
 	CapabilityControl(eDrkInvCap cap_change, eDrkInvControl control);
-			
-			# enum eDrkInvCap				DrkInv.CapabilityControl(eDrkInvCap cap_change, eDrkInvControl control)
-			{
-				kDrkInvCapCycle		= 0
-				kDrkInvCapWorldFrob	= 1
-				kDrkInvCapWorldFocus= 2
-				kDrkInvCapInvFrob	= 3
-			}
-			# enum eDrkInvControl
-			{
-				kDrkInvControlOn	= 0
-				kDrkInvControlOff	= 1
-				kDrkInvControlToggle= 2
-			}
-	
 	AddSpeedControl(string name, float speed_fac, float rot_fac);
 	RemoveSpeedControl(string name);
 }
 
 DrkPowerups
 {
-	// trigger a flash effect in world at location of obj
-	// NOTE: Needs a RenderFlash Link to the actual effect. FlashBomb directly uses this script. Use it as a reference.
-		// ObjProp NoFlash (Dark GameSys: FlashInvuln) will make an AI immune to flashing.
 	TriggerWorldFlash(object obj);
-	
-	//Creates the deploy_arch object at the position of the src_object
 	BOOL ObjTryDeploy(object src_object, object deploy_arch);
-	
-	// hack for now to allow cleaning up nearby blood
 	CleanseBlood(object water_src_object, float rad);
 }
 
@@ -747,107 +523,30 @@ Bow
 // **** Available only in API version 3+ ****
 DarkOverlay
 {
-	// set the current overlay handler, there can only be one handler set at any given time, NULL clears handler
 	AddHandler(IDarkOverlayHandler handler);
 	RemoveHandler(IDarkOverlayHandler handler);
-	
-	// get/load a bitmap that can be used for HUD drawing (max 128 bitmaps can be loaded, cleared when db resets)
-	// returns a handle that can be used in subsequent bitmap functions or -1 if failed to load
 	int GetBitmap(string name, string path = "intrface\\");
-	
-	// discard a no longer used bitmap handle, only needs to be called when using a lot of bitmaps to stay below 128
 	FlushBitmap(int handle);
-	
-	// get size of a loaded bitmap
 	GetBitmapSize(int handle, int_ref width, int_ref height);
-	
-//
-// coordinate mapping (may ONLY be called inside the DarkOverlayHandler::DrawHUD and DrawTOverlay handlers)
-//
-	// map a 3D position in the world to a screen coordinate, returns FALSE if off-screen
 	BOOL WorldToScreen(vector pos, int_ref x, int_ref y);
-	
-	// get the screen space bounding rect of an object, returns FALSE if entirely off-screen
 	BOOL GetObjectScreenBounds(object obj, int_ref x1, int_ref y1, int_ref x2, int_ref y2);
-	
-//
-// transparent overlay management
-//
-	// create a transparent overlay item (like the security icon in shock), alpha is 0 to 255
-	// its contents have to be updated using Begin/EndTOverlayUpdate and draw calls, note that constant updating
-	// isn't too optimal, so it should only be done when necessary and avoided on larger items
-	// returns an overlay handle, or -1 if failed
 	int CreateTOverlayItem(int x, int y, int width, int height, int alpha, BOOL trans_bg);
-	
-	// create a transparent overlay item from a bitmap, does not require its contents to be updated
-	// (max 64 overlays can be created, cleared when db resets)
-	// returns an overlay handle, or -1 if failed (will fail if bm_handle isn't a valid bitmap)
 	int CreateTOverlayItemFromBitmap(int x, int y, int alpha, int bm_handle, BOOL trans_bg);
-	
-	// destroy a transparent overlay item, not necessary to call but frees resources and overlay slot before a db reset
 	DestroyTOverlayItem(int handle);
-	
-	// change alpha of a transparent overlay
 	UpdateTOverlayAlpha(int handle, int alpha);
-	
-	// change position of a transparent overlay
 	UpdateTOverlayPosition(int handle, int x, int y);
-	
-	// change display size of a transparent overlay (for scaled overlay items)
 	UpdateTOverlaySize(int handle, int width, int height);
-	
-	
-//
-// methods that may ONLY be called inside the DarkOverlayHandler::DrawHUD handler
-// or inside a DarkOverlayHandler::Begin/EndTOverlayUpdate pair
-//
-	// draw a loaded bitmap at the given position, bitmap will be drawn unscaled
 	DrawBitmap(int handle, int x, int y);
-	
-	// draw a sub-rect of a loaded bitmap at the given position
-	// src_x/src_y are relative to the bitmap (0,0 would be the upper left of the bitmap)
 	DrawSubBitmap(int handle, int x, int y, int src_x, int src_y, int src_width, int src_height);
-	
-	// set current text color from a StyleColorKind
-	// not all font types support custom colors, FONTT_FLAT8 font type has color native in font and is unaffected
 	SetTextColorFromStyle(int style_color);
-	
-	// set current text color with explicit RGB values
-	// not all font types support custom colors, FONTT_FLAT8 font type has color native in font and is unaffected
 	SetTextColor(int r, int g, int b);
-	
-	// get string extents (with current font)
 	GetStringSize(string text, int_ref width, int_ref height);
-	
-	// draw text string (with current font and text color)
 	DrawString(string text, int x, int y);
-	
-	// draw line (with current text color)
 	DrawLine(int x1, int y1, int x2, int y2);
-	
-//
-// methods that may ONLY be called inside a DarkOverlayHandler::Begin/EndTOverlayUpdate pair
-//
-	// fill contents of a transparent overlay item to palette index color (0 is black), 'alpha' sets alpha component of
-	// the image data and should not be confused with the alpha specified in the CreateOverlayItem functions,
-	// which is applied on top of the alpha in image data (normally it's set to 255)
 	FillTOverlay(int color_idx = 0, int alpha = 255);
-	
-//
-// methods that may ONLY be called inside the DarkOverlayHandler::DrawTOverlay handler
-//
-	// must be called before updating a transparent overlay item contents with draw calls
-	// make sure the return value is TRUE before drawing anything
 	BOOL BeginTOverlayUpdate(int handle);
-	
-	// end update of a transparent overlay item, may only be called after a successful BeginTOverlayUpdate
 	EndTOverlayUpdate();
-	
-	// draw a transparent overlay item, handle is an overlay item handle returned by one of the CreateTOverlayItem functions
 	DrawTOverlayItem(int handle);
-	
-#See also font color styles 
-enum StyleColorKind in API-reference.nut
 }
 
 
