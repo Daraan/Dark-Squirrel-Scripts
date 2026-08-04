@@ -233,7 +233,7 @@ DefOn = "InvSelect"
 
 
 #########################################
-class DFocusObject extends DBaseTrap
+class DObjectFaceTarget extends DBaseTrap
 /* Rotates a set of objects to face a specific target. */
 #########################################
 {
@@ -253,7 +253,7 @@ class DFocusObject extends DBaseTrap
 
 	function DoOn(DN)
 	{
-		local target	= DGetParam(_script+"Focus", self, DN)
+		local target	= DGetParam(_script+"Target", self, DN)
 		local offset	= DGetParam(_script+"Offset",    0, DN, kReturnArray)
 		local Viewers	= DGetParam(_script+"Viewer", self, DN, kReturnArray)
 		
@@ -265,10 +265,10 @@ class DFocusObject extends DBaseTrap
 }
 
 #########################################
-class DFocusOverTime extends DTrigger
+class DObjectPanTo extends DTrigger
 #########################################
 {
-/* In effect similar to DFocusObject but gradually over time. */
+/* In effect similar to DObjectFaceTarget but gradually over time. */
 	target		= null
 	offset		= null
 	speed		= null
@@ -353,12 +353,12 @@ class DFocusOverTime extends DTrigger
 	
 #	|-- On Off --|
 	function DoOn(DN){
-		target	= DGetParam(_script + "Focus", self, DN)
+		target	= DGetParam(_script + "Target", self, DN)
 		offset	= DGetParam(_script + "Offset",    0, DN, kReturnArray)
 		speed	= DGetParam(_script + "Speed",     3, DN) // degrees per frame
 		Viewers = DGetParam(_script + "Viewer", self, DN, kReturnArray)
-		
-		::DFocusObject.ResizeArrayToArray(offset, Viewers, 0)
+
+		::DObjectFaceTarget.ResizeArrayToArray(offset, Viewers, 0)
 		foreach (i, viewer in Viewers){						// TODO #BUG When a viewer gets removed offset index will be wrong.
 			PanToTarget(viewer, target, speed, offset[i])
 		}
@@ -1422,7 +1422,7 @@ class DModelByCount extends DStackToQVar
 	}
 }
 ###############################################################
-class DDirector extends DFocusOverTime
+class DDirector extends DObjectPanTo
 ###############################################################
 {
 	Path 		= null
@@ -1445,8 +1445,8 @@ class DDirector extends DFocusOverTime
 				speed = DGetParam(_script + "PanSpeed", 3)
 		}
 		else {
-			if (_script + "Focus" in userparams()){
-				target 	= DCheckString(userparams()[_script + "Focus"])
+			if (_script + "Target" in userparams()){
+				target 	= DCheckString(userparams()[_script + "Target"])
 				speed 	= DGetParam(_script + "PanSpeed", 3)
 			}
 			else {
@@ -1673,14 +1673,14 @@ class DDirector extends DFocusOverTime
 			if (pos){
 				if (typeof pos != "vector"){
 					if (rot && typeof rot != "vector")
-						DFocusObject.ObjectFaceTarget(pos, rot)
+						DObjectFaceTarget.ObjectFaceTarget(pos, rot)
 					::Object.Teleport(::PlayerID, vector(), vector(), pos)		// Teleport to an object.
 				}
 				else
 					::Object.Teleport(::PlayerID, pos, rot)						// Add custom location, rot.
 			} else if (rot){
 				if (typeof rot != "vector"){
-					::DFocusObject.ObjectFaceTarget(::PlayerID, rot)
+					::DObjectFaceTarget.ObjectFaceTarget(::PlayerID, rot)
 				}
 				else
 					::DScript.SetFacingForced(::PlayerID, rot)

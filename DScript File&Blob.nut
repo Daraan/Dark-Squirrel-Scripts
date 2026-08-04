@@ -3,7 +3,7 @@
 #include DScript.nut // File & Blob Library is standalone.
 
 
-##		/--		§		§File_&_Blob_Library§		§		--\
+##		/--		ï¿½		ï¿½File_&_Blob_Libraryï¿½		ï¿½		--\
 //
 //	This file contains tools to interact with files (read only) and blobs.
 //	Ultimately enabling the extraction of data/parameters from files. 
@@ -509,7 +509,7 @@ class dCSV extends dblob
 					}
 				}
 				switch (c){
-				// this fixes the string like „“ to be a "
+				// this fixes the string like ï¿½ï¿½ to be a "
 					case 108 - 255:
 					case 109 - 255:
 					case 124 - 255:

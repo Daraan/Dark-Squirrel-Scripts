@@ -1,4 +1,4 @@
-//////////////////////////////////////////////////////////////////// 
+////////////////////////////////////////////////////////////////////
 //		§DSCRIPT_DEFAULT_CONSTANTS		--\
 ////////////////////////////////////////////////////////////////////
 // 
@@ -27,14 +27,12 @@
 //  Further custom sounds can be defined by the FM author.
 const kDisplayTotalLoot			= true
 
-#THIEF ONLY
-// DInventoryMaster	allows to display a big inventory in the world.
-//  This variable enables some extra text information for the items. Numbers only!
-const kDInvMasterExtraInfo		= 3	// 0 off; 1 will display stack, 2 Name of Keys, 3 Name of every item, expect LockPicks. 4 All.
-
 // Tip: you can add this line to your default.bnd file to select the main item via hotkey:
 #bind yourkey "inv_select dinventorymaster"            ; replace yourkey to your liking.
 
+// DInventoryMaster	allows to display a big inventory in the world.
+// This enables some extra text information for the items. Numbers only!
+const kDInvMasterExtraInfo		= 3	// 0 off; 1 will display stack, 2 Name of Keys, 3 Name of every item, expect LockPicks. 4 All.
 
 //	/-- 		§For_FM_Authors			--\ 
 #	|--	Display Hello & Help Message?	--|
@@ -43,20 +41,23 @@ const dHelloMessage		= true			// If it annoys you turn it off here.
 #	|-- 	Required User Version		--|
 // Set this if your FM uses features that are only available from a certain DScript version onward.
 //	It will print an UI Warning if the DScript.nut version of the user is below this one.
-const dRequiredVersion	= 0.0
+const dRequiredVersion	= 0
 
 #	|-- 		Debug				--|
+// DSpy registers only: Collision(1), Contact(2), Enter/Exit(4), the other types hold not that much useful information.
+const kDSpyPhysRegister	= 7				// Bitwise; see ePhysScriptMsgType reference. 
 
 // If enabled ports the newest part of the monolog.txt(editor.exe) or game.log(game.exe) directly ingame onto the screen.
 const kUseIngameLog 	= true		// same as "-480/0"
 // use this as an alternativ to define the X/Y position from the upper left corner. Use negative values for right/bottom.
 // const kUseIngameLog = "20/30"
-const kIngameLogAlpha 	= true		// 0 or false is Off, 255 is full black. true is equal to 63.
+const kGameLogAlpha 	= true			// 0 or false is Off, 255 is full black. true is equal to 63.
 
-// DSpy registers only: Collision(1), Contact(2), Enter/Exit(4), the other types hold not that much useful information.
-const kDSpyPhysRegister	= 7				// Bitwise; see ePhysScriptMsgType reference. 
 
 #	|-- Operator Adjustments & Mission Constants --|
+// The { operator makes use of an modified vector class to make the xyz values accessible by index: v[0] = v.x
+// You can see the detailed the modification below in this file.
+const kEnableDistanceOperator	= true
 
 // The $§ and > operator replace a present $ symbol with the current difficulty QuestVariable.
 // By default NV's "DebugDifficulty" has a higher priority - for testing purposes.
@@ -86,9 +87,6 @@ getconsttable().MissionConstants <-{
 	*/ // NOTE This is commented out.
 }
 
-// The { operator makes use of an modified vector class to make the xyz values accessible by index: v[0] = v.x
-// You can see the detailed the modification below in this file.
-const kEnableDistanceOperator	= true
 
 #	|-- 	Script specific Adjustments		--|
 // Resets the Count of a Script
@@ -262,11 +260,12 @@ enum eSeparator
 // -------------------------------------------------------------------------------------
 
 # /-- 		§API-Modifications 			--\
-/* These are adjustments to the Squirrel API classes, the underlying types in the engine can not be changed.
+/* These are adjustments to the Squirrel API classes, 
 	While not really a Configuration I think it's good to place to point them out openly. */
 
 # |-- Corrected [source] parameter --|
-// This adds the _dFROM index as a redirection to the .from index to all Message classes. Adding it only to sScrMsg is not sufficient.
+
+// This adds the _dFROM index as a redirection to the .from index to all Message classes. Adding only to sScrMsg is not sufficient.
 foreach (k, MsgClass in ::getroottable())
 {
 	if (typeof MsgClass == "class" && MsgClass.getbase() == sScrMsg){
@@ -322,7 +321,7 @@ sRoomMsg.__getTable._dFROM 			<- 	function(){
 }
 
 # |-- Vector Adjustment --|
-// This is a little bit more invasive, as it changes the original function in the vector class therefore I added the option to disable it, if any errors should occur. Performance for vectors stays basically the same.
+// This is a little bit more invasive therefore I added the option to disable it, speed for vectors stays basically the same.
 
 if (kEnableDistanceOperator) {
 /* Enables the access vector.x via vector[0] used to speed up the { operator.

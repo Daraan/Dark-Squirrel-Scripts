@@ -44,18 +44,15 @@ if (kUseIngameLog) {
 				::Engine.GetCanvasSize(SizeX, SizeY)
 				X = SizeX.tointeger() - 480
 			}
-
-			if (kIngameLogAlpha){
-				blackbg = ::gGameOverlay.CreateTOverlayItem(X, Y, 631, 640, (typeof kIngameLogAlpha == "integer"? kIngameLogAlpha : 63 ), true);
+			
+			if (kGameLogAlpha){
+				blackbg = ::gGameOverlay.CreateTOverlayItem(X, Y, 631, 640, (typeof kGameLogAlpha == "integer"? kGameLogAlpha : 63 ), true);
 			}
 			base.constructor()
 		}
 		
 		function DrawHUD(){
 			local DLogString = "LOG OUTPUT:\n" + Logfile.slice(Logfile.find('\n', -770), 0).tostring()
-						
-			//::gGameOverlay.DrawLine(0,0,1920,1080)
-			//::gGameOverlay.DrawLine(0,1080,1920,0)
 			::gGameOverlay.DrawString(DLogString,X, Y);
 			::gGameOverlay.GetStringSize(DLogString, SizeX, SizeY);
 		}
@@ -76,7 +73,7 @@ if (kUseIngameLog) {
 				::Engine.GetCanvasSize(SizeX, SizeY)
 				X = SizeX.tointeger() - 480
 			}
-			if (kIngameLogAlpha){
+			if (kGameLogAlpha){
 				::gGameOverlay.UpdateTOverlayPosition(blackbg, X, Y);
 			}
 				
@@ -84,10 +81,10 @@ if (kUseIngameLog) {
 	}
 	
 // Add Black background if wanted.
-if (kIngameLogAlpha){
+if (kGameLogAlpha){
 	cDIngameLogOverlay.DrawTOverlay <- function(){
 	if (::gGameOverlay.BeginTOverlayUpdate(blackbg)){
-		::gGameOverlay.UpdateTOverlaySize(blackbg, SizeX.tointeger(), SizeY.tointeger())
+		//::gGameOverlay.UpdateTOverlaySize(blackbg, SizeX.tointeger(), SizeY.tointeger())
 		::gGameOverlay.FillTOverlay(0);
 		::gGameOverlay.EndTOverlayUpdate()
 	}
@@ -139,7 +136,7 @@ class cDHandlerFrameUpdater extends Overlayclass {
 }
 
 if (kDInvMasterExtraInfo){
-/* Draws item names and stack for DInventoryMaster */
+
 
 class cDWorldInvOverlay extends Overlayclass
 {
@@ -177,6 +174,7 @@ class cDWorldInvOverlay extends Overlayclass
 			}
 		}
 	}
+
 
 }
 
