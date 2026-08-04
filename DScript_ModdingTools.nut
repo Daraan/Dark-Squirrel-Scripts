@@ -49,7 +49,7 @@ static enumlist =
 	difficulty	= {Normal = 0, Hard = 1, Expert = 2}					// Above diff is custom
 	FlagValue	= { MF_STANDING = 1, MF_LEFT_FOOTFALL = 2, MF_RIGHT_FOOTFALL = 4, MF_LEFT_FOOTUP = 8, MF_RIGHT_FOOTUP = 16, MF_FIRE_RELEASE = 32,
 					MF_CAN_INTERRUPT = 64, MF_START_MOT = 0x80, MF_END_MOT = 0x100, 
-					// LG: Flags subject to game-specific interpretation. # Motion flags.
+					// Flags subject to game-specific interpretation
 					MF_TRIGGER1 = 0x1000, MF_TRIGGER2 = 0x2000, MF_TRIGGER3 = 0x4000,
 					 MF_TRIGGER4 = 0x8000, MF_TRIGGER5 = 0x10000, MF_TRIGGER6 = 0x20000, MF_TRIGGER7 = 0x40000, MF_TRIGGER8 = 0x80000 }
 					// TODO # Not 100% sure if these are used for this message.
@@ -66,13 +66,12 @@ static isObject = [
 	"culprit", "containee", "container", "combiner", "weapon", "patrolObj", "target", "collObj", "contactObj", "transObj", "stimulus", "kind","sensor", "source"
 ]
 
-//Register Object to all wanted Phys Messages
+//Register Object to all Phys Messages
 	function OnBeginScript()
 		::Physics.SubscribeMsg(self, kDSpyPhysRegister)
 
-	function OnEndScript(){
+	function OnEndScript()
 		::Physics.UnsubscribeMsg(self,kDSpyPhysRegister)	// I'm not sure why they always clean them up, but I keep it that way.
-	}
 
 	function InterpretConstants(dataname, datavalue){
 	/* Gives the raw values a sense like Object name or kDoorOpening */
@@ -165,7 +164,7 @@ static isObject = [
 					if (ignore & 1)
 						ignoreset.extend(["Timer"])
 					if (ignore & 2)
-						ignoreset.extend(["Sim", "DarkGameModeChange", "BeginScript", "EndScript"]) // #NOTE Begin and End are blocked by handlers.
+						ignoreset.extend(["BeginScript", "Sim", "DarkGameModeChange"])
 					if (ignore & 4)
 						ignoreset.extend(["PhysFellAsleep", "PhysWokeUp", "PhysMadePhysical", "PhysMadeNonPhysical"])
 					if (ignore & 8)
@@ -180,12 +179,12 @@ static isObject = [
 				return
 		}
 		
-		DPrint(::format("\n Message received: %s (%s) from %s.\n Data included:",
+		DPrint(::format(
+						"\n Message received: %s (%s) from %s.\n Data included:",
 						mssg, typeof(bmsg), 
 						bmsg.from == bmsg._dFROM? bmsg.from.tostring() : bmsg._dFROM + " (via Proxy 0)"
 						),
-				kDoPrint, DGetParam("DSpyMode", IsEditor()? ePrintTo.kMonolog : ePrintTo.kLog)
-		)
+				kDoPrint, DGetParam("DSpyMode", IsEditor()? ePrintTo.kMonolog : ePrintTo.kLog))
 		
 		// Storing the function throws, have to do it like this:
 		if (IsEditor()){
@@ -194,9 +193,7 @@ static isObject = [
 												( (dataname.len() > 7)? "\t: \t" : "\t\t: \t" ),
 												InterpretConstants(dataname, bmsg[dataname])))
 			}
-		} 
-		else 
-		{
+		} else {
 			foreach (dataname, v in bmsg.__getTable){		//the v are functions!
 				::Debug.Log(::format( "\t%s%s%s", dataname ,
 												( (dataname.len() > 7)? "\t: \t" : "\t\t: \t" ),
@@ -639,7 +636,7 @@ MyModels 	= null	// Array of objects extracted from a file. See the ImportModels
 			// Position the camera away from the object, depending on it's size.	//TODO can be done with Overlay.
 			local d = 0.62 * ModelSize.y + 0.5 //~cos(45)
 			::Object.Teleport(cam, vector(v.x - d, v.y + d, v.z + ModelSize.z / 8 + 2), v_ZERO)//	vector(0,32,-45))	// Old Method.
-			::DFocusObject.SetObjectFaceTarget(cam, obj)							// Face it.
+			::DObjectFaceTarget.SetObjectFaceTarget(cam, obj)							// Face it.
 			
 			if (i != 0)												// TODO, this is here because?
 				Debug.Command("screen_dump", MyModels[i - 1])
@@ -852,7 +849,7 @@ if (IsEditor()){	// All classes from NewDark
 //This is just a script for testing purposes. ignore
 class DTestTrap extends DEditorScripts						
 {
-	DefOn = "+Test+TurnOn"
+	DefOn = "Test"
 
 	static function PrintAllConstants(){
 	/* Prints all constants and enumerations.*/
@@ -888,33 +885,16 @@ class DTestTrap extends DEditorScripts
 		}
 	}
 
+	function OnBeginScript(){
+		Reply(false)
+		base.OnBeginScript()
+	}
+	
 	function OnEndScript(){
 	}
 	
 	constructor()
 	{
-	
-		Quest.SubscribeMsg(self,"test")
-	//	if (self == 6)
-			//print(DGetParam(_script + "TOnResult").tostring().find("2"))
-		base.constructor()
-		return
-		print("\n-------------------------------------")
-		print(userparams() +"on" + self)
-		userparams()["IM"+GetClassName()] <- self
-		DumpTable(userparams())
-		
-		
-		return
-		foreach (key, method in userparams()) {
-			local res = DScript.CheckAndCompileExpression(this,method)
-			if (typeof res == "array" && res.len())
-				print(method + " results:"),DumpTable(res)
-			print("\n-------------------------------------\n")	
-
-		}
-		//print(DScript.CheckAndCompileExpression(this, "ta$rt"))
-
 		//print(::DHandler)
 		//print(::DHandler.ClearData("sVarName"))
 		//print(Quest.BinGetTable(kSharedBinTable))
@@ -927,8 +907,9 @@ class DTestTrap extends DEditorScripts
 		//print(test+"\n")
 		//if (self != 6)
 			//return
+		local b = 8
 		
-
+		base.constructor()
 		if (self == 6){
 			//print("HUB"+DHub.DGetStringParam("A","notf",str))
 			//print(DCheckString("@human"))
@@ -936,6 +917,7 @@ class DTestTrap extends DEditorScripts
 			//print(DCheckString("_DCheckString(\"^human\", true).find(_#411_) >= 0"))
 		}
 		
+		//::TESTI <- this
 		//print(DCheckString(">-44>objnames"))
 		
 		return
@@ -952,42 +934,9 @@ class DTestTrap extends DEditorScripts
 		// DLowerTrap.DumpTable(ar)
 
 	}
-
-	function OnBeginScript(){
-		Quest.SubscribeMsg(self,"test")
 	
-	
-	}
-
-	function OnQuestChange(){
-		print("QUEST CHANGE.")
-	
-	}
-
-	function OnTest(){
-		DrkInv.CapabilityControl(eDrkInvCap.kDrkInvCapCycle,0)
-		DrkInv.CapabilityControl(eDrkInvCap.kDrkInvCapInvFrob,0)
-		DrkInv.CapabilityControl(eDrkInvCap.kDrkInvCapWorldFocus,0)
-		DrkInv.CapabilityControl(eDrkInvCap.kDrkInvCapWorldFrob,0)
-		OnMessage()
-	}
-
 	function DFunc()	//General catching for testing.
-	{
-		Property.Set(8,"Scripts","Script 1","")
-		local hloc = vector()
-		local hobj = object()
-		local vfrom = vector(-17,16,1)
-		local vto 	= vector(-23,16,1)
-		Property.SetSimple(411,"RenderType",1)
-		Property.SetSimple(545,"RenderType",1)
-		print("Res:" + (Engine.ObjRaycast(vfrom, vto, hloc, hobj, FALSE, 2, 0, 0)))		// Return must be 2 or 3 else nothing was hit.
-		Property.SetSimple(411,"RenderType",0)
-		Property.SetSimple(545,"RenderType",0)
-
-
-			print("\tHit Obj:" + hobj.tointeger())
-		KillTimer(GetData("HS"))
+	{			print("Reply:"+SendMessage(self,"BeginScript"))
 				//print("b=" + DScript.CheckAndCompileExpression(this,"Object.Facing(self)"))
 		//	print("Checkin"+DCheckString("//Marker.TurnOn"))
 
@@ -1005,7 +954,9 @@ class DTestTrap extends DEditorScripts
 	}
 
 	function DoOff(DN){
-		DFunc()
+		local datavalue = message().time
+		local ms 	= datavalue % 1000
+					print( ms + "ms ")
 
 /* 
 
@@ -1058,11 +1009,6 @@ SQUIRREL> 0.000000, 0.000000, 2.600000
 	
 }
 
-
-
-class DTestTrap2 extends DTestTrap
-{}
-
 if (IsEditor())
 	::DumpTable <- DTestTrap.DumpTable
 
@@ -1080,7 +1026,6 @@ i = null
 	function DoTest()
 	{
 ################# Insert necessary Variables here#######################
-		local str = "[archetype]X"
 #####################################################################	
 		print("-------------------------------------\nStart Test: For Function 1")
 		local i 	= 0
@@ -1090,7 +1035,7 @@ i = null
 		while (time() == end)				//Time interval is exactly 1 second.
 		{
 #################Insert the test function here#######################
-			str.len() == 11
+				Container.IsHeld(0,3) <= 0
 #####################################################################				
 		i++						//Checks how often this action can be performed within that 1 second.
 		}
@@ -1101,8 +1046,7 @@ i = null
 		1
 		) {
 ################# Locals ############################################
-
-
+			local l = linkkind("~Contains")
 #####################################################################
 			print("Start Test: For 2nd Function")
 			local j=0
@@ -1112,8 +1056,7 @@ i = null
 			while (time()==end2)			//Time interval is exactly 1 second.
 			{
 ################# Insert compare function here#######################
-			"X" == ""
-
+				Link.AnyExist(l,3)
 #####################################################################
 			j++
 			}
@@ -1179,34 +1122,15 @@ DrkInv.CapabilityControl(4,2)*/
 
 /*local obj = 0
 
-print(obj)
-
 while (Object.Archetype(obj) != 0){
 	Link.Create("Contains", 5, obj)
 	obj++
 }*/
 
 
-print(("aba1").find((1).tostring()))
-
-
-//local rv = Quest.BinSet("TABLENAME",dblob("UGly").toblob())
-
-
-/*
-local i = 0
-DumpTable(rv)
-while(rv[i] != 255){
-	if (!rv[i])
-		i++
-	else {
-	local start = i
-		while (rv[i]){
-			i++
+local s = "alxarm"
+foreach (signal in getconsttable().eAlarmSignals){
+			if (s == signal)
+				return	print("yes")
 		}
-	
-	print(start + ": " + rv.slice(start,i))
-	
-	}
-
-}*/
+	print("nope")

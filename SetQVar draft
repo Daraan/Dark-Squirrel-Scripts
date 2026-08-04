@@ -1,0 +1,85 @@
+class DSetQVar extends DBaseTrap
+{
+    function DGetQVar(name){
+        if (::DHandler.IsDataSet("QVar" + name))
+            return ::DHandler.GetData("QVar" + name)
+        if (Quest.Exists(name))
+            return = Quest.Get(name)
+        if (Quest.BinExists(name))
+            return Quest.BinGet(name)[name]        // this is table with one entry if set by DScript
+        return null
+    }
+    
+    function SetQVar(action){
+       local var_name = DGetParam(_script + action + "Name", DGetParam(_script + "Name", ::Property.Get(self, "QuestVar")))   // DSetQVarOnName > QVarName
+       local eventraw = DGetParam(_script + action + "Action", DGetParam(_script + "Action"))
+       DPrint("QVarName is " + var_name +". Action is " + eventraw)
+       
+       // replace %s with current value
+       local count = 0
+       local pos = 0
+       while (0 <= pos = eventraw.find("%s",pos)){  // It should be okay to throw more paramters in.
+         count++  
+            pos += 2
+       }
+       print(count)
+       if (count){
+        local curval = DGetQVar(var_name)
+        if (curval == null)
+            curval = "0"
+        eventraw = ::format(eventraw,array(count,curval.tostring()))
+       }
+        local result = DScript.CompileString(eventraw)
+        if (typeof result == "integer"){
+            DPrint(var_name + " new value is " + result. "With type " + typeof result+".\nInteger Value. Using standard QVar system."
+            return Quest.Set(var_name,result,DGetParam(_script + "Type",eQuestDataType.kQuestDataMission))
+        }
+        else    // no integer can't use standard system.
+        {
+            local type = DGetParam(_script + "Type",eQuestDataType.kQuestDataMission)
+            if (type == 1){
+                // Campaign Var
+                DPrint(var_name + " new value is " + result. "With type " + typeof result+".\nNon integer value. Using binary campaign system")
+                local table = Quest.BinGet(kSharedBinTable)
+                if (!table)
+                    table = {var_name = result}
+                else table[var_name] <- result
+                Quest.BinSetTable(kSharedBinTable,table)
+           }
+            else
+            {
+                DPrint(var_name + " new value is " + result. "With type " + typeof result+".\nNon integer value. Using DScript mission system")
+                ::DHandler.SetData("QVar" + var_name, result)
+            }
+        }
+        ::DHandler.Extern.DQVarHandler.Event(var_name, result)
+    }
+
+    function DoOn(DN = null)
+        SetQVar("On")
+  
+    function DoOff(DN = null)
+        SetQVar("Off")
+}
+
+class DQVarTrigger extends DRelayTrap{
+
+DefOn = ""
+
+    function OnBeginScript(){
+        local var_name = DGetParam(_script + "Name", ::Property.Get(self, "QuestVar"))
+        print("Name i" + var_name)
+        if (var_name)
+            ::DHandler.Extern.DQVarHandler.RegisterTrigger(this, var_name)   // Instance and QVars that trigger it.
+        else
+            DPrint(var_name + " no valid QVar name.", kDoPrint)
+           
+        Quest.SubscribeMsg(self,var_name, eQuestDataType.kQuestDataUnknown)  // For normal QVar system.
+    }
+    
+    function DoOn(DN = null){
+    
+    }
+
+
+}
