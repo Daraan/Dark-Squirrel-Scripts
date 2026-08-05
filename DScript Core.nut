@@ -204,6 +204,8 @@ DScript <- {
 	/* Creates a long string out of your array data separated by "+" 
 		#NOTE Constants are defined in DConfig*.nut					*/
 		local data 		= ""
+		if (ar.len() == 0)
+			return ""
 		local maxIndex	= ar.len() - 1
 		for( local i = 0; i < maxIndex; i++)		// Appends your next indexed value and your divide operator
 			data += ar[i] + separator				
@@ -434,11 +436,11 @@ DScript <- {
 	function FindClosestObjectInSet(anchor, objset){
 	/* Want to use this function use with array.reduce but without the Squirrel 3.2 Update which allows passing the anchor, nah */
 		local apos 	  = ::Object.Position(anchor)
-		local minDist = 8000		// random big value
+		local minDist = null
 		local retObj  = null
 		foreach (obj in objset){
 			local curDist = (::Object.Position(obj) - apos).Length()
-			if (curDist < minDist){
+			if (minDist == null || curDist < minDist){
 				minDist = curDist
 				retObj  = obj
 			}
@@ -450,12 +452,12 @@ DScript <- {
 	/* Get all objects in a Path witch branches. The set is ordered by distance to the start point.*/
 		foreach ( link in ::Link.GetAll(linktype, objset[cur_idx]) ){
 			local nextobj = ::SqRootScript.LinkDest(link)
-			if ( !objset.find(nextobj) )					// Checks if next object is already present.
+			if ( objset.find(nextobj) == null )					// Checks if next object is already present.
 			{
 				objset.append(nextobj)
 			}
 		}
-		if ( !objset.len() == cur_idx )						// Ends when the current object is the last one in the set. minor todo: could be a parameter, probably faster.
+		if ( objset.len() - 1 != cur_idx )						// Ends when the current object is the last one in the set. minor todo: could be a parameter, probably faster.
 			return ObjectsInNet(linktype, objset, cur_idx + 1)//return enables a Tail Recursion with call stack collapse.
 	}
 
@@ -482,14 +484,14 @@ DScript <- {
 				if(::Link.AnyExist(linktype, curobj)){
 					foreach (link in ::Link.GetAll(linktype, curobj)){	// if there are multiple linked, get them.
 						local nextobj = ::SqRootScript.LinkDest(link)
-						if (!objset.find(nextobj))						// Checks if next object is already present.
+						if (objset.find(nextobj) == null)						// Checks if next object is already present.
 							foundobjs.append(nextobj)
 					}
 				}
 			}
 		}
 		if (onlyfirst)
-			return [foundobjs[0]]										// we work with obj arrays so return first found in in one.
+			return foundobjs.len()? [foundobjs[0]] : []										// we work with obj arrays so return first found in in one.
 		return foundobjs
 	}
 	
@@ -509,7 +511,7 @@ DScript <- {
 	/* Like the class DGetParam function but works with strings instead of a table/class. */
 		str 		= str.tostring()
 		local key 	= str.find(param)
-		if (key >= 0){
+		if (key != null){
 			// Problem are substrings like TOn and On
 			// So make sure it is ;TOn and On or start of string.
 			// Could be done easier but less efficient with split, array find.
@@ -548,6 +550,7 @@ DScript <- {
 							switch(typeof to){
 								case "array"  :
 									to.append(value)
+									rv = to
 									break
 								case "string" :
 									rv = to + value
@@ -561,6 +564,7 @@ DScript <- {
 							}
 							if (rv.len() > maxLength)
 								return rv.slice(-maxLength)
+							return rv
 						}
 		OBJSET			= function(str){
 							return ::DBasics.DCheckString.call(THIS, str, kReturnArray)
