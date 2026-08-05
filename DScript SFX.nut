@@ -48,8 +48,11 @@ Each parameter can target multiple objects also more than one special effect can
 					//Checking if a SFX is already present or if it should be updated.
 					foreach (link in ::Link.GetAll("ScriptParams", from)){				// This is slow.
 						if (LinkDest(link) == to){
-							local data = split(::LinkTools.LinkGetData(link, ""), "+")	//See below. SFX Type and created SFX ObjID is saved
-							if (data[1].tointeger() == sfx){
+							local raw = ::LinkTools.LinkGetData(link, "")
+							if (typeof raw != "string")						// unrelated ScriptParams link
+								continue
+							local data = split(raw, "+")	//See below. SFX Type and created SFX ObjID is saved
+							if (data.len() == 3 && data[0] == "DRay" && data[1] == sfx.tostring()){
 								sfxobj = data[2].tointeger()
 								break
 							}
@@ -127,13 +130,17 @@ Each parameter can target multiple objects also more than one special effect can
 
 	function DoOff(DN)
 	{
-		foreach (from in DGetParam("DRayFrom",self,DN,kReturnArray))
+		foreach (from in DGetParam(_script + "From",self,DN,kReturnArray))
 		{
 			foreach (link in ::Link.GetAll("ScriptParams", from))
 			{
-				local data = split(::LinkTools.LinkGetData(link,null),"+")
-				if (data[0] == "DRay"){
+				local raw = ::LinkTools.LinkGetData(link, "")
+				if (typeof raw != "string")					// unrelated ScriptParams link
+					continue
+				local data = split(raw,"+")
+				if (data.len() == 3 && data[0] == "DRay"){
 					//DEBUG print("destroy:  "+data[2]+"   "+Object.Destroy(data[2].tointeger()))
+					::Object.Destroy(data[2].tointeger())		// the effect object itself used to leak (its destroy sat inside a comment)
 					::Link.Destroy(link)
 				}
 			}
@@ -176,6 +183,8 @@ DefOn = "InvSelect"
 	function OnTimer()
 	{
 		if (message().name == "Equip"){ 
+			if (IsDataSet("DArmDummy"))					// one dummy was leaked per InvSelect
+				::Object.Destroy(ClearData("DArmDummy"))
 			local DN		= userparams()
 			local sfxdummy 	= null
 			local userealobj= DGetParam(_script+"UseObject", FALSE, DN)
@@ -223,6 +232,7 @@ DefOn = "InvSelect"
 			::LinkTools.LinkSetData(l,"rel pos",v_relpos)
 			::LinkTools.LinkSetData(l,"rel rot",v_relrot)
 			Object.EndCreate(sfxdummy)
+			SetData("DArmDummy", sfxdummy)
 		}
 		
 		if (RepeatForCopies(OnTimer))
@@ -325,8 +335,11 @@ class DObjectPanTo extends DTrigger
 
 #	|-- Message Handlers --|
 	function FrameUpdate(script = null){
-		if (!target)						// on Reload.
-			return DoOn(userparams())	
+		if (!target){						// on Reload.
+			if (typeof GetData("Active") != "string")
+				ClearData("Active")			// float-interval mode: members died with the reload - let DoOn arm a fresh timer chain.
+			return DoOn(userparams())
+		}	
 		foreach (i, viewer in Viewers){		// all objects done.
 			PanToTarget(viewer, target, speed, offset[i])
 		}
@@ -336,7 +349,7 @@ class DObjectPanTo extends DTrigger
 	function OnTimer(){
 		if (message().name == "DFaceUpdate"){
 			if (FrameUpdate() && IsDataSet("Active")){			// false on reload->!target->DoOn() was called and new timer started there.
-				SetData(SetOneShotTimer("DFaceUpdate", message().data, message().data))
+				SetData("Active", SetOneShotTimer("DFaceUpdate", message().data, message().data))
 			}
 		}
 		base.OnTimer()
@@ -1439,7 +1452,8 @@ class DDirector extends DObjectPanTo
 		if (Link.AnyExist("ScriptParams", cur_point)){
 			local link = Link.GetOne("ScriptParams", cur_point)
 			target = LinkDest(link)
-			speed = LinkTools.LinkGetData(link, "").tofloat()
+			try speed = LinkTools.LinkGetData(link, "").tofloat()		// guard: empty/non-numeric link data must not kill the ride
+			catch(e) speed = 0
 			print("Speed is" + speed)
 			if (!speed)
 				speed = DGetParam(_script + "PanSpeed", 3)
@@ -1475,9 +1489,11 @@ class DDirector extends DObjectPanTo
 				foreach(link in Link.GetAll("ScriptParams", self)){
 					local data = LinkTools.LinkGetData(link, "")
 					::print("data is " + data)
-					if (data == null)
+					if (data == null || data == "")
 						continue
-					if (::abs(data.tointeger()) == idx && (data[0] >= '0' || (!leave && data[0] == '+') || (leave && data[0] == '-')))
+					local didx = null
+					try didx = ::abs(data.tointeger()) catch(e) continue		// unrelated/non-numeric ScriptParams data
+					if (didx == idx && (data[0] >= '0' || (!leave && data[0] == '+') || (leave && data[0] == '-')))
 						targets.append(LinkDest(link))
 				}
 			}
@@ -1537,7 +1553,7 @@ class DDirector extends DObjectPanTo
 			local nextobj = LinkDest(destlink)
 			Object.Teleport(self, vector(), vector(), nextobj)
 			Link.Destroy(destlink)
-			if (IsDataSet("Active"))								// case we jumped to last.
+			if (IsDataSet("Active") && GetData("Active")+2 < Path.len())								// case we jumped to last.
 				Link.Create("TPathNext", self, Path[GetData("Active")+2])
 			else
 				return
@@ -1626,6 +1642,8 @@ class DDirector extends DObjectPanTo
 		::Property.Set(self,"MovingTerrain","active",FALSE)
 		// Some last delay?
 		ClearData("Jump")
+		if (!Path)										// TurnOff before any TurnOn: nothing to tear down (Path is only built in GetPath).
+			return
 		if (DGetParam(_script + "CycleMode") 
 			&& Link.AnyExist("TPath",Path.top(),Path[0])
 			&& (notcanceled || (DGetParam(_script + "Off", DefOff, DN, kReturnArray).find(message().message) == null)))
