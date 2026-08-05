@@ -713,7 +713,7 @@ DScript <- {
 			}
 			catch(wasblob){return eDQVarType.kCampaignBlob}
 		}
-		if (name in ::Quest.BinGetTable(kSharedBinTable))
+		if (::Quest.BinExists(kSharedBinTable) && name in ::Quest.BinGetTable(kSharedBinTable))
 			return eDQVarType.kScalarCampaign
 		if (::DHandler.IsDataSet("qvar_" + name))
 			return eDQVarType.kScalarMission
@@ -865,11 +865,11 @@ DScript <- {
 					// add an extra entry.
 					table._MissionOnly <- true
 					// Need to store the names of the tables in a campain var as well to find them later.
-					if (::Quest.BinExists("MisBinTables")){
-						local tables = ::Quest.BinGetTable("MisBinTables")
+					if (::Quest.BinExists("MissBinTables")){
+						local tables = ::Quest.BinGetTable("MissBinTables")
 						if (tables.names.find(name) == null){
 							tables.names.append(name)
-							::Quest.BinSetTable("MisBinTables", tables)
+							::Quest.BinSetTable("MissBinTables", tables)
 						}
 					}
 					else 
@@ -877,7 +877,7 @@ DScript <- {
 						// create new miss table.
 						local s = ::string()
 						::Version.GetMap(s)
-						::Quest.BinSetTable("MisBinTables", {Miss = s.tostring(), names = [name]})	// TODO: store in s. Re: What?
+						::Quest.BinSetTable("MissBinTables", {Miss = s.tostring(), names = [name]})	// TODO: store in s. Re: What?
 					}
 				}
 				#TEST
@@ -900,23 +900,23 @@ DScript <- {
 			return DPrint("ERROR: No QVar name given", kDoPrint)
 		local temp = "[null]"
 		name = name.tolower()
-		if (::Quest.BinExists(name) && type==null || type < eDQVarType.kNonScalarCampaign){
+		if (::Quest.BinExists(name) && (type == null || type < eDQVarType.kNonScalarCampaign)){
 			try
 				temp = Quest.BinGetTable(name)
 			catch(wasblob)
 				temp = Quest.BinGet(name)
 			::Quest.BinDelete(name)
 		}
-		if (Quest.BinExists(kSharedBinTable) && type==null || type == eDQVarType.kScalarCampaign){
+		if (Quest.BinExists(kSharedBinTable) && (type == null || type == eDQVarType.kScalarCampaign)){
 			local table = ::Quest.BinGetTable(kSharedBinTable)
 			if (name in table){
 				temp = delete table[name]
 				::Quest.BinSetTable(kSharedBinTable, table)
 			}
 		}
-		if (::DHandler.IsDataSet("qvar_" + name) && type==null || type == eDQVarType.kScalarMission)
+		if (::DHandler.IsDataSet("qvar_" + name) && (type == null || type == eDQVarType.kScalarMission))
 			temp = ::DHandler.ClearData("qvar_" + name)
-		if (::Quest.Exists(name) && !type || type >= eDQVarType.kIntegerMission){
+		if (::Quest.Exists(name) && (type == null || type >= eDQVarType.kIntegerMission)){
 			temp = Quest.Get(name)
 			::Quest.Delete(name)
 		}
