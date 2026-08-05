@@ -1136,14 +1136,24 @@ class DTweqDevice extends DBaseTrap
 		
 		foreach (obj in objset)
 		{
-			local primjoin = Property.Get(obj,"CfgTweqJoints","Primary Joint")
-			local current  = Property.Get(obj,"StTweqJoints","Joint"+primjoin+"AnimS")
+			// Joints are only touched for the Joints tweq; mirror the constructor's guards.
+			local dojoints = !TweqType || TweqType == eTweqType.kTweqTypeJoints
+			if (dojoints && !Property.Possessed(obj,"CfgTweqJoints")){
+				#DEBUG WARNING
+				DPrint("WARNING: Object " + obj +" has no Tweq->Joints property")
+				dojoints = false
+			}
+			if (dojoints)
 			foreach (j in joints)
 			{
+				local reverse = false
 				if (j[kGetFirstChar] == '-'){
-					current = current^TWEQ_AS_REVERSE // XOR reverses the reverse
+					reverse = true
 					j = j.slice(kRemoveFirstChar)
 				}
+				local current = Property.Get(obj,"StTweqJoints","Joint"+j+"AnimS")	// each joint's own state - one shared value leaked reversals between joints
+				if (reverse)
+					current = current ^ TWEQ_AS_REVERSE			// XOR reverses the reverse
 				Property.Set(obj, "StTweqJoints", "Joint"+j+"AnimS", current | TWEQ_AS_ONOFF)	//is always On.
 			}
 			
@@ -1194,17 +1204,17 @@ static eDrunkData =
 			KillTimer(GetData("DrunkTimer"))
 
 		//strenghth 0-2 advised
-		local l = DGetParam("DDrunkPlayerTrapInterval", 0.2, DN)
+		local l = DGetParam(_script + "Interval", 0.2, DN)
 		DrkInv.AddSpeedControl("DDrunk", 0.8, 1); //Makes the Player slower
 		//Saving all the Parameter Data in the Timer to make it SaveGame compatible.
 		SetData("DrunkTimer", DSetTimerData("DrunkTimer",
 											l,											// Delay for the timer
-											DGetParam("DDrunkPlayerTrapStrength",1,DN),	// [0] = Strength
+											DGetParam(_script + "Strength",1,DN),	// [0] = Strength
 											l,											// [1] = Interval
-											DGetParam("DDrunkPlayerTrapLength",	0,DN),	// [2] = Length
-											DGetParam("DDrunkPlayerTrapFadeIn",	0,DN),	// [3] = FadeInTime
-											DGetParam("DDrunkPlayerTrapFadeOut",0,DN),	// [4] = FadeOutTime
-											DGetParam("DDrunkPlayerTrapMode",	3,DN),	// [5] = Modes
+											DGetParam(_script + "Length",	0,DN),	// [2] = Length
+											DGetParam(_script + "FadeIn",	0,DN),	// [3] = FadeInTime
+											DGetParam(_script + "FadeOut",0,DN),	// [4] = FadeOutTime
+											DGetParam(_script + "Mode",	3,DN),	// [5] = Modes
 											0))											// [6] = CurrentFrame
 	}
 
@@ -1381,6 +1391,7 @@ DPortalTarget="+player+#88+@M-MySpecialAIs"
 
 	function OnEndScript(){
 		Physics.UnsubscribeMsg(self, ePhysScriptMsgType.kEnterExitMsg)
+		base.OnEndScript()
 	}
 
 	function DoOn(DN){
