@@ -23,12 +23,15 @@ There is no build system, no package manager, no tests. The `.nut` files are dro
 | `DScript Overlays.nut` | `cDIngameLogOverlay` (in-game log), `cDHandlerFrameUpdater` (drives per-mid-frame updates), `cDWorldInvOverlay`. Picks Dark vs Shock overlay API |
 | `DScript_ModdingTools.nut` | Editor-only: `DSpy`, `DAutoTxtRepl`, `DDumpModels`, `DEditorTrap`, `DTestTrap` (`DumpTable`), `DPerformanceTest` |
 | `DSConfigDefault.nut` | **Read this first when changing behaviour.** All tunable consts, `eSeparator`, `eDQVarType` inputs, `MissionConstants`, and the `_dFROM` message-class patches |
-| `DSConfigDefAutoTxt.nut` | Texture-replacement tables. Currently a **verbatim duplicate** of lines 117–231 of `DSConfigDefault.nut` |
-| `DSConfigFix.nut` / `DSConfigMyFM.nut` | Per-mod / per-FM override stubs. Both declare `const kReplyMessage` |
+| `DSConfigDefAutoTxt.nut` | Texture-replacement tables (`enum eDAutoTxtRepl`, `gDModTable`, `gDTexTable`). Sole owner since `2ca17b2` — the duplicate block in `DSConfigDefault.nut` was removed |
+| `DSConfigFix.nut` / `DSConfigMyFM.nut` | Per-mod / per-FM override stubs. `const kReplyMessage` now lives only in the Fix layer; MyFM shows the override syntax as a comment |
 
-### Legacy — do NOT edit, do NOT copy patterns from
+### Old code — do NOT copy patterns from
 
-`DT2UndercoverWeapons.nut` (defines `BlackJack`/`Sword`/`Arrow`; unrelated to V2, kept for reference).
+`DT2UndercoverWeapons.nut` (defines `BlackJack`/`Sword`/`Arrow`). Written against the raw engine API,
+not the V2 framework, so it is not a model for new work — but it is **not dead**: its own header makes
+it the opt-in companion file for `DImUndercover` on Thief 2 ("INCLUDE it in your map if you do"), and
+that is how the README's file-set table lists it. It never collided with a V2 class name.
 
 The v0.42a monolith `DScript.nut` and the v0.1b `DSEditorScripts.nut` — which used to redefine ~29
 V2 class names and win the load-order race described below — were **deleted by the upstream merge
@@ -181,8 +184,8 @@ Always build parameter names as `_script + "Foo"`, never a hard-coded string.
 
 ### grep needs `-a` on two files
 
-`DScript Core.nut` and `DScript File&Blob.nut` are **ISO-8859-1**; grep classes them as binary and
-returns *nothing* — no match, no warning, no error.
+`DScript Core.nut` and `DScript File&Blob.nut` carry high bytes that make grep class them as binary,
+so it returns *nothing* — no match, no warning, no error.
 
 ```bash
 grep -an "pattern" "DScript Core.nut"      # -a is mandatory
@@ -191,10 +194,19 @@ grep -arn "pattern" --include="*.nut" .    # for repo-wide sweeps
 
 ### Encodings are mixed and load-bearing
 
-Those two files are ANSI/Latin-1; the rest have drifted to UTF-8. `DScript Core.nut:1172` uses a
-literal `§` as a `case` label in `DCheckString`, and `§`/`»` appear in fold markers throughout.
+Only `DScript Core.nut` is still ANSI/Latin-1 (45× `§` = `0xA7`, 37× `°` = `0xB0`); everything else
+decodes as UTF-8, including `DScript File&Blob.nut` despite what older notes said — but `grep` still
+needs `-a` on both. `DScript Core.nut:1172` uses a literal `§` as a `case` label in `DCheckString`,
+and `§`/`»` appear in fold markers throughout.
 **Never bulk re-save, re-encode, or normalize line endings** (files are a mix of LF and CRLF too).
-Use `Edit` with exact byte-matched strings; avoid rewriting whole files.
+
+**The `Edit`/`Write` tools corrupt `DScript Core.nut`.** They decode as UTF-8, so every `0xA7`/`0xB0`
+byte comes back as U+FFFD and the file is rewritten as UTF-8 — which breaks the `case '§'` label,
+i.e. the whole parameter parser. Confirmed the hard way (2026-08-05). **Edit that one file with a
+throwaway Python script instead**: read bytes, `.decode("latin-1")`, do exact string replacements
+with a `count == 1` assertion each, `.encode("latin-1")`, and assert the `0xA7`/`0xB0` histogram is
+unchanged before writing. Everything else takes `Edit` normally — verify with
+`python3 -c "b=open(F,'rb').read(); b.decode('utf-8')"` afterwards.
 
 ### Filenames contain spaces and `&`
 

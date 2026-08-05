@@ -185,7 +185,7 @@ Author's own markers, worth knowing before designing anything nearby.
 | T-90 | `DScript Core.nut:926, 629` | `_GetInstance()` / `_tempstore._get` walk the call stack with **hard-coded depths (4, 5, 7)**. Any added or removed call frame silently breaks variable resolution inside `_` expressions. No test can catch this | ☐ |
 | T-91 | framework-wide | `RepeatForCopies` mutates `_script` on the live instance and re-enters the caller; `DTrigger` also appends/slices `"T"`. Several sites juggle `_script` by hand and must restore it — a missed restore corrupts every later parameter lookup on that instance | ☐ |
 | T-92 | `DScript Core.nut:1619-1640` | `Copies` is limited to 2–9 by single-character arithmetic (`_script[-1]`, `+ '0'`) | ☐ |
-| T-93 | repo-wide | Encodings have drifted: only `DScript Core.nut` and `DScript File&Blob.nut` are still ANSI/Latin-1, the rest are UTF-8, and `§` is a literal `case` label at `Core:1172`. Whether NewDark tolerates the UTF-8 files is unverified | ☐ |
+| T-93 | repo-wide | Encodings have drifted. Re-checked 2026-08-05 by byte histogram: **only `DScript Core.nut`** is still ANSI/Latin-1 (45× `0xA7` `§`, 37× `0xB0` `°`); `DScript File&Blob.nut` and everything else already decode as UTF-8, so the older "two Latin-1 files" note was wrong. `§` is a literal `case` label at `Core:1172`, so that file cannot be converted without changing the label. Whether NewDark tolerates the UTF-8 files is still unverified. **Editing hazard:** ordinary UTF-8 editors/tools silently turn Core's high bytes into U+FFFD — patch that file byte-safely, see CLAUDE.md | ☐ |
 
 ---
 

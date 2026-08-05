@@ -1,5 +1,51 @@
 # Alpha Release — Cleanup Plan (no bug fixes)
 
+> ## Execution status — 2026-08-05, branch `cleanup-alpha`
+>
+> **Done:** Batch 1 (all four sub-batches), Batch 2, Batch 4.
+> **Deliberately not done:** Batch 3 (dead code) and Batch 5 (naming/style) — deferred on request,
+> the pass was scoped to customer-facing behaviour. Every item in both batches is still valid as
+> written below.
+>
+> | Commit | Contents |
+> |---|---|
+> | `29f3bb7` | Batch 1a — prints in `DScript Core.nut` |
+> | `f284495` | Batch 1b–1d — prints in SFX, File&Blob, ModdingTools |
+> | `2ca17b2` | Batch 2 — config dedupe, `.gitignore` |
+> | `0d5e540` | Batch 4 — `KNOWN_ISSUES.md`, README, stale comments |
+>
+> **Deviations from the plan as written, and why:**
+> - Three print sites the plan did not list were included, same defect class: `DTrapSetQVar`'s two
+>   `kDoPrint` `DPrint`s (`Core`) and `DPersistentSaveTrap`'s one (`File&Blob`) defaulted to mode
+>   `kMonolog|kUI`, i.e. an on-screen `DarkUI.TextMessage` in the shipped game. All three are now
+>   `Debug`-gated. A leftover top-level scratch snippet at the end of `DScript_ModdingTools.nut` that
+>   printed on every compile was removed too.
+> - Where a listed print was the entire body of a loop, an `if`, or a handler override, the
+>   scaffolding had to go with it (`Core` `gSHARED_SET` foreach, the `DTrigger` compare, the
+>   `OnBeginScript` override). Where the structure carries meaning it was kept and commented:
+>   `FindFileInPath`'s two branches (T-67's bug half is untouched) and
+>   `DTrigQVar.OnDarkGameModeChange`, whose empty handler exists to stop the message reaching
+>   `OnMessage`.
+> - `DScript_ModdingTools.nut` was swept but its remaining prints were kept: `DDumpModels` progress,
+>   `DumpTable`, `DImportObj` errors and `DPerformanceTest` results **are** those tools' output, and
+>   the file is editor-only.
+> - `DT2UndercoverWeapons.nut` was **not** moved to `legacy/`. Its own header makes it the opt-in
+>   companion for `DImUndercover`, not legacy; it is documented in the README file-set table instead
+>   (the plan allowed either).
+> - `DScript.SetQVar`'s ungated INFO print is commented out rather than deleted — the string was
+>   built on every QVar write, but it is the one useful hook for debugging QVar storage.
+> - `DScript Overlays.nut` was not touched at all: it has zero `print()` calls, and its only entries
+>   in this plan are Batch 3 items.
+>
+> **Editing hazard found during the pass:** the agent `Edit`/`Write` tools decode as UTF-8 and
+> silently destroyed all 82 Latin-1 high bytes in `DScript Core.nut` (`§`, `°` → U+FFFD), which would
+> have broken the `case '§'` label in `DCheckString`. Reverted and re-applied via a byte-safe Python
+> patch. See the encodings section of `CLAUDE.md` for the procedure.
+>
+> **Nothing here has been run.** Bracket balance per file was verified byte-identical to the
+> pre-pass baseline and encodings/line endings are unchanged, but the acceptance test below still
+> needs a DromEd `script_reload`.
+
 **Goal:** get the V2 branch into an alpha-releasable state by removing development leftovers —
 above all user-visible log spam — **without changing any gameplay behavior**. Bug fixes are
 explicitly out of scope; they stay tracked in `docs/OPEN_TASKS.md` and the wave reports
