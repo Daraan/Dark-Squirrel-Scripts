@@ -1034,6 +1034,8 @@ SubVersion 	= 0.72
 		}
 		return "" */
 		# |-- 	Operator Analysis 	--|
+		if (str == "")			// Guard: empty parameter value (e.g. 'Foo=;') - nothing to analyze.
+			return ::DScript._FormatForReturn(str, returnInArray)
 		switch (str[kGetFirstChar]){
 			# |-- Sugar Coded parameters --|
 			case '[' :
@@ -1060,10 +1062,10 @@ SubVersion 	= 0.72
 					case "message" : 
 						return ::DScript._FormatForReturn(DCheckString(message()[div_str[1]], returnInArray), returnInArray)
 					case "copy":
-						if (str[6] == '{'){
-							return ::DScript._FormatForReturn(DCheckString(userparams()[GetClassName() + str.slice(7,-1)], returnInArray))
+						if (str.len() > 6 && str[6] == '{'){
+							return ::DScript._FormatForReturn(DCheckString(userparams()[GetClassName() + str.slice(7,-1)], returnInArray), returnInArray)
 						}
-						return ::DScript._FormatForReturn(DCheckString(userparams()[div_str[1]], returnInArray))
+						return ::DScript._FormatForReturn(DCheckString(userparams()[div_str[1]], returnInArray), returnInArray)
 					case "random":
 						local values = ::DScript.DivideAtNext(div_str[1], ",")					// this allows nesting.
 						return ::DScript._FormatForReturn(::Data.RandInt(DCheckString(values[0]),DCheckString(values[1])), returnInArray)
@@ -1084,7 +1086,7 @@ SubVersion 	= 0.72
 							return ::DScript._FormatForReturn(::Object.Facing(self), returnInArray)
 						return ::DScript._FormatForReturn(::Object.Facing(DCheckString(div_str[1])), returnInArray)
 				}
-				if (str[1] == '|'){				// #HACK This is a work around for objectsets in DScript.CheckAndCompileExpression, als strings can't be passed with \".
+				if (str.len() > 1 && str[1] == '|'){				// #HACK This is a work around for objectsets in DScript.CheckAndCompileExpression, als strings can't be passed with \".
 					local end = str.find("|]")
 					if (end){
 						local result = ::callee()(::strip(str.slice(2,end)), kReturnArray)
@@ -1124,16 +1126,18 @@ SubVersion 	= 0.72
 				return ::DScript._FormatForReturn(objset, returnInArray)	
 				
 			case ']' :								// [&ControlDevice[+TPathInit+TPathNext	// TODO slice only until next?
-				local s 		= ::split(str,"]")			// [1]=objset [2]=linkset		[0]=""[
+				local s 		= ::split(str,"]")			// [0]=objset [1]=linkset (leading ']' token is dropped by split)
 				local firstone  = false
-				if (s[2][kGetFirstChar] == '^'){	// [&ControlDevice[^+TPathInit+TPathNext will return the first found attached obj, not all
+				if (s.len() == 2 && s[1][kGetFirstChar] == '^'){	// [&ControlDevice[^+TPathInit+TPathNext will return the first found attached obj, not all
 					firstone = true
-					s[2] = s[2].slice(kRemoveFirstChar)
+					s[1] = s[1].slice(kRemoveFirstChar)
 				}
 				#DEBUG ERROR
-				if (s.len() != 3)
+				if (s.len() != 2){
 					DPrint("ERROR: ']' operator formatting is wrong ]objects]links", kDoPrint, ePrintTo.kUI | ePrintTo.kMonolog)
-				return ::DScript._FormatForReturn(::DScript.ObjectsLinkedFromSet(DCheckString(s[1], kReturnArray), DCheckString(s[2], kReturnArray) , firstone),returnInArray) 
+					return ::DScript._FormatForReturn([], returnInArray)
+				}
+				return ::DScript._FormatForReturn(::DScript.ObjectsLinkedFromSet(DCheckString(s[0], kReturnArray), DCheckString(s[1], kReturnArray) , firstone),returnInArray) 
 			
 			# |-- * @ $ ^ Parameters
 			# Object of Type, without descendants
@@ -1166,8 +1170,8 @@ SubVersion 	= 0.72
 					return ::DScript._FormatForReturn(DCheckString(ref.tostring(),returnInArray), returnInArray)
 				}
 				// Else DSCustomConfig?
-				if (str in getconsttable().MissionsConstants){
-					local value = getconsttable().MissionsConstants[str]
+				if (str in getconsttable().MissionConstants){
+					local value = getconsttable().MissionConstants[str]
 					if (typeof value == "function")							// allows you to define functions.
 						value = value()
 					return ::DScript._FormatForReturn(DCheckString(value, returnInArray), returnInArray)
@@ -1253,6 +1257,7 @@ print("SHARED" + obj)
 						// >strings/book>/Green.str>MyKey  // >strings/>testfile.txt>MyKey>Offset>" 	
 						// Offsetkey or #Offsetnumber
 				local divide = ::split(str,">")
+				divide.insert(0, "")		// split() drops the leading empty token; restore the documented 0-based field numbering.
 				
 				
 				// Objects native name.
@@ -1296,6 +1301,7 @@ print("SHARED" + obj)
 				else
 					{
 					print("nope try again")
+					return ::DScript._FormatForReturn(null, returnInArray)	// T-67: file not found - do not open an unvalidated path.
 					}
 				
 				/*
@@ -1344,8 +1350,8 @@ print("SHARED" + obj)
 				// to be compatible with old: // ^%^TrolPt%Guard	would for example give you the closest guard, relative to the closest Patrol Point.
 				if (str[kGetFirstChar] == '%'){		
 					local str2    = ::split(str,"%")
-					anchor  = DCheckString(str2[1])
-					str    = div_str[1]
+					anchor  = DCheckString(str2[0])
+					str    = str2[1]
 				}
 				if (::Object.Exists(str)){
 					return ::DScript._FormatForReturn(Object.FindClosestObjectNamed(anchor,str), returnInArray)
@@ -1380,7 +1386,9 @@ print("SHARED" + obj)
 			# Return one Random Object
 			case '?': 	// random return
 				local objset = DCheckString(str.slice(1), kReturnArray)
-				return ::DScript._FormatForReturn(objset[Data.RandInt(0, objset.len())],returnInArray)  // One random item.
+				if (objset.len() == 0)
+					return ::DScript._FormatForReturn(null, returnInArray)
+				return ::DScript._FormatForReturn(objset[Data.RandInt(0, objset.len() - 1)],returnInArray)  // One random item.
 
 			# Filter rendered objects
 			case '}':
@@ -1409,7 +1417,7 @@ print("SHARED" + obj)
 				local ancpos 	= ::Object.Position(divide[0].find("%")? DCheckString(raw.pop()) : self) 
 					
 				local dovec 	= divide[0].find("(")
-				local boxlimit	= ::array(2, ::array(3))	// nested array 2x3
+				local boxlimit	= [::array(3), ::array(3)]	// nested array 2x3
 				if (dovec){									// can't be at pos 0.
 					if (divide[0][dovec - 1] == '>')
 						values[2] = true
@@ -1462,7 +1470,7 @@ print("SHARED" + obj)
 			# |-- Interpretation of other data types if they come as string.
 			case '<':	//vector
 				local ar = ::split(str, "<,")
-				return ::DScript._FormatForReturn( ::vector(ar[1].tofloat(), ar[2].tofloat(), ar[3].tofloat()), returnInArray) 
+				return ::DScript._FormatForReturn( ::vector(ar[0].tofloat(), ar[1].tofloat(), ar[2].tofloat()), returnInArray) 
 			case '#':	//needed for +#ID+ identification.	#NOTE: Not needed anymore but highly recommended.
 				return ::DScript._FormatForReturn(str.slice(1).tointeger(), returnInArray)
 			case '.':	//Here for completion: .5.25 - but the case of an unexpected float normally doesn't happen.
@@ -1474,11 +1482,11 @@ print("SHARED" + obj)
 					if (str[2] == '%'){		
 						local str2    = ::split(str,"%")
 						anchor  = DCheckString(str2[1])
-						str     = div_str[1]
+						str     = str2[2]
 					} else
 						str 	= str.slice(2)
 					local prop_field = ::DScript.DivideAtNext(str,":")
-					return ::DScript._FormatForReturn(::Property.Get(anchor,prop_field[0],prop_field[1]))
+					return ::DScript._FormatForReturn(::Property.Get(anchor,prop_field[0],prop_field[1]), returnInArray)
 				}
 			case '1' : case '2' : case '3': case '4' : case '5' : case '6': case '7' : case '8' : case '9' : case '0' :
 				if (::DScript._IntExp.match(str))
@@ -1540,7 +1548,7 @@ print("SHARED" + obj)
 	{
 		if (!DoPrint){
 			// Enabled via user parameter?
-			mode = DGetParamRaw(GetClassName()+"Debug", false)
+			mode = DGetParamRaw((("_script" in this)? _script : GetClassName())+"Debug", false)
 		}
 		if (mode){	//*magic trick*
 			if (dbgMessage)
