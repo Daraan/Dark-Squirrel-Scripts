@@ -65,8 +65,8 @@ myblob = null								// As we will work more with the derived dblob class
 	}
 
 	function getParam2(param, def = "", start = 1, length = 0, offset = 0){
-		if (find(param, offset) >= 0){ 			// Check if present and move pointer behind pattern
-			myblob.seek(start, 'c')				// move start forward
+		if (find(param, offset) != null){ 			// Check if present and move pointer behind pattern
+			myblob.seek(param.len() - 1 + start, 'c')	// find() leaves the pointer one past the pattern's FIRST character - skip the tail, then 'start'				// move start forward
 			local rv = ""
 			for (local i = 0; (length? i < length : true); i++){		// if length == 0 it will read to the end of the line.
 				local c = readNext('\n')
@@ -104,8 +104,9 @@ myblob = null								// As we will work more with the derived dblob class
 			return null
 		local c = myblob.readn('c')
 		if (c == '\\'){				// escape character
-			myblob.seek(1,'c')		// skip the next
-			c = myblob.readn('c')	// and get the next
+			if (myblob.eos())		// lone trailing backslash
+				return null
+			return myblob.readn('c')	// return the escaped character itself as a literal (it used to be skipped)
 		}
 		if (c == separator)
 			return false
@@ -129,9 +130,16 @@ myblob = null								// As we will work more with the derived dblob class
 	function CheckIfSubstring(str){
 	/* Subfunction for find: Checks if the next characters in the blob match to the given substring.
 		Assumes that you already have prechecked the first character. readn == str[0]*/
+		if (str.len() < 2)
+			return true
+		local pos = myblob.tell()
+		if (pos + str.len() - 1 > myblob.len())		// pattern tail would run past EOS - no match, no out-of-range read
+			return false
+		local rest = myblob.readblob(str.len() - 1)	// works for files AND blobs; '[]' byte indexing does not exist on file streams
+		myblob.seek(pos, 'b')						// restore the read position
 		for (local i = 1; i < str.len(); i++)
 		{	
-			if (myblob[tell() + i -1] != str[i]){
+			if (rest[i - 1] != str[i]){
 				return false	// One char does not match
 			}
 		}
@@ -158,7 +166,7 @@ myblob = null								// As we will work more with the derived dblob class
 		} else {
 			local length = pattern.len()
 			if (length == 1)						// If the string has only length 1 we are done.
-				return (pattern[0], myblob.tell(), stopString)
+				return find(pattern[0], myblob.tell(), stopString)
 			while (true){
 				local first = find(pattern[0], myblob.tell(), stopString)
 				if (!first && first != 0)
@@ -274,7 +282,7 @@ class dblob extends dfile
 				else {
 					myblob = str.readblob(str.len())
 				}
-				str.close()
+				(str instanceof ::dfile? str.myblob : str).close()
 				break
 			case "blob" :
 					if (str instanceof dblob)
@@ -327,7 +335,10 @@ class dblob extends dfile
 		
 	function _add(other){
 		myblob.seek(0,'e')
-		myblob.writeblob(other instanceof ::blob? other : other.myblob)	// distinguish between blob and dblob.
+		if (typeof other == "string")				// documented: dblob("A") + "string"
+			writec(other)
+		else
+			myblob.writeblob(other instanceof ::blob? other : other.myblob)	// distinguish between blob and dblob.
 		return this
 	}	
 	
@@ -384,7 +395,7 @@ class dCSV extends dblob
 		useRowKey	  = useFirstColumnAsKey
 		useFile 	  = streamFile
 		lines 		  = []	
-		createCSVMatrix(separator)
+		createCSVMatrix(separator, commentstring, delimiter)
 	}
 	
 	// open uses optional inputs via a list!
@@ -407,7 +418,7 @@ class dCSV extends dblob
 		if (useRowKey && key in useRowKey)
 			return useRowKey[key]
 		// Alternative CSV like notation: dCSV[A1], #NOTE here that A is column, and 1 is row
-		if (key[0] < 91 && key[1] < 58)
+		if (key.len() > 1 && key[0] < 91 && key[1] < 58)
 			return lines[key.slice(1).tointeger() - 1][key[0] - 65]	// 65 is the ASCII difference between A and 0
 		throw null
 	}
@@ -468,6 +479,11 @@ class dCSV extends dblob
 			local delimiteractive 	= null
 			local lineraw 			= ""
 			while(true){				// This loops a cell
+				if (myblob.eos()){					// e.g. the file ends with a separator - nothing more to read
+					if (lineraw != "")
+						curline.append(lineraw)
+					break
+				}
 				local c = myblob.readn('c')
 				if (c == delimiter){
 					// check if next character is delimiter again, if it is it will be added if not sets delimiter = false and continue with next char.
@@ -539,7 +555,8 @@ class dCSV extends dblob
 	function refresh(separator = '\t',delimiter = '\'', commentstring = "//"){
 		if (typeof myblob != "file")
 			throw "dCSV not initialized as stream. Can't refresh."
-		createCSVMatrix(separator, commentstring)
+		lines = []		// createCSVMatrix appends - without this every refresh duplicated all rows
+		createCSVMatrix(separator, commentstring, delimiter)
 	}
 
 }
