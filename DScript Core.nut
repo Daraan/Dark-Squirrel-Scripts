@@ -2384,6 +2384,8 @@ class DScriptHandler extends DRelayTrap
 		}
 		if (IsDataSet("PerMidFrame_Active"))
 			OverlayHandlers.FrameUpdater <- cDHandlerFrameUpdater()
+		if (IsDataSet("PerFrame_Active"))				// Restart the DoUpdates chain after a load; the pending PostMessage does not survive save/load.
+			PostMessage(self, "DoUpdates", 0)
 		
 		if (OverlayHandlers){
 			foreach (handler in OverlayHandlers)
@@ -2391,7 +2393,7 @@ class DScriptHandler extends DRelayTrap
 		}
 		base.OnBeginScript()							// For the DoOn part.		
 		# Stuff to do only at mission start.
-		if (!IsDataSet("MissionInizialzed")){
+		if (!IsDataSet("MissionInitialized")){
 			// Clean MissionOnly Bin Tables
 			if (::Quest.BinExists("MissBinTables")){
 				local table = Quest.BinGetTable("MissBinTables")
@@ -2413,7 +2415,7 @@ class DScriptHandler extends DRelayTrap
 // |-- Hashkey for lookup
 	// simple id+_script combi
 	function CreateHashKey(instance){
-		return ::format("%04u%s",instance.self, ("_script" in instance)? instance._script : instance.GetClassName())
+		return ::format("%d_%s",instance.self, ("_script" in instance)? instance._script : instance.GetClassName())
 	}
 
 	function ReRegisterWithKey(instance, key, data = null){
@@ -2483,7 +2485,8 @@ class DScriptHandler extends DRelayTrap
 	}
 // |-- PerMidFrame Updates via Overlay
 	function PerMidFrame_DoUpdates(){
-		::Object.CalcRelTransform(::PlayerID, ::PlayerID, DHudObject.pos_vector, vector(), 4, 0)	// Doing this here once, instead of letting every instance do it.
+		if ("DHudObject" in ::getroottable())			// T-39: DHudObject lives in DScript SFX.nut, which may not be shipped.
+			::Object.CalcRelTransform(::PlayerID, ::PlayerID, DHudObject.pos_vector, vector(), 4, 0)	// Doing this here once, instead of letting every instance do it.
 		foreach ( data in PerMidFrame_database){		// [instance, _script]						
 			data[0].FrameUpdate(data[1])
 		}
@@ -2495,6 +2498,7 @@ class DScriptHandler extends DRelayTrap
 		if (!PerMidFrame_database.len()){
 			ClearData("PerMidFrame_Active");
 			::gGameOverlay.RemoveHandler(OverlayHandlers.FrameUpdater);
+			delete OverlayHandlers.FrameUpdater		// else the next PerMidFrame_Register's NewOverlay refuses to re-attach a fresh updater.
 		}
 	}
 		
@@ -2533,10 +2537,10 @@ class DScriptHandler extends DRelayTrap
 	}
 	
 	function DeRegisterAll(instance){
-		local key = CreateHashKey(instance)
-		switch (IsRegistered(instance)){
-			case 'F': return delete PerFrame_database[key]
-			case 'M': return delete PerMidFrame_database[key]
+		local key = ::DHandler.CreateHashKey(instance)
+		switch (::DHandler.IsRegistered(instance)){
+			case 'F': return delete ::DHandler.PerFrame_database[key]
+			case 'M': return delete ::DHandler.PerMidFrame_database[key]
 		}
 		RepeatForCopies.call(instance, ::callee(), instance)		// using call so non DScripts can use this one.
 	}
@@ -2560,10 +2564,10 @@ class DScriptHandler extends DRelayTrap
 		{
 			if (Name in OverlayHandlers){				// Check if already registered
 				if (multiple){
-					Name + "2"
+					local basename = Name
 					local i = 2
 					while (Name in OverlayHandlers){
-						Name = Name.slice(0,-1) + i
+						Name = basename + i
 						i++
 					}
 				} else return							// Already active & not multiple allowed
@@ -2580,9 +2584,11 @@ class DScriptHandler extends DRelayTrap
 		}
 		else
 		{
-			foreach (ol in OverlayHandlers){
-				if (ol.getclass() == Name_or_class)
+			foreach (name, ol in OverlayHandlers){
+				if (ol.getclass() == Name_or_class){
 					::gGameOverlay.RemoveHandler(ol)
+					delete OverlayHandlers[name]			// deleting the current foreach key is safe for tables
+				}
 			}
 		}
 	}
@@ -2875,7 +2881,7 @@ class DTrapSetQVar extends DBaseTrap
 	}
 	
 	function OnSim(){	// TODO: IMPORTANT IS THIS REALLY AFTER?
-		if (::DHandler.IsDataSet("MissionInizialzed") || !HasProperty("TrapQVar"))
+		if (::DHandler.IsDataSet("MissionInitialized") || !HasProperty("TrapQVar"))
 			return
 		InitQVarFromProp()
 		::print("DID SIM")
