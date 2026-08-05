@@ -13,7 +13,8 @@ which allows to skip the opposite message and will trigger the last one again.
 	}
 
 	function OnTweqComplete(){
-		Object.RemoveMetaProperty(self,"FrobInert")
+		if (message().Type == eTweqType.kTweqTypeJoints)	// only the joint animation locks frobbing
+			Object.RemoveMetaProperty(self,"FrobInert")
 	}
 }
 
@@ -48,7 +49,8 @@ DefOff = null
 	}
 
 	function OnEndScript(){
-		Physics.UnsubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);	//I'm not sure why they always clean them up, but I keep it that way.
+		Physics.UnsubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);
+		base.OnEndScript()	//I'm not sure why they always clean them up, but I keep it that way.
 	}
 		
 	function ButtonPush(){
@@ -59,7 +61,8 @@ DefOff = null
 		}
 		Sound.PlayEnvSchema(self, "Event Activate", self, null,eEnvSoundLoc.kEnvSoundAtObjLoc)
 		ActReact.React("tweq_control", 1.0, self, OBJ_NULL, eTweqType.kTweqTypeJoints, eTweqDo.kTweqDoActivate)
-		DarkGame.FoundObject(self);		//Marks Secret found if there is one associated with the button press. TODO: T1 comability?
+		if (::GetDarkGame() != 1)		// Thief-only service.
+			DarkGame.FoundObject(self);		//Marks Secret found if there is one associated with the button press. TODO: T1 comability?
 		
 		local trapflags = FALSE
 		local 		 on = true
@@ -70,23 +73,25 @@ DefOff = null
 		if(trapflags & TRAPF_ONCE)
 			Property.SetSimple(self,"Locked",true);
 				
+		if(trapflags & TRAPF_INVERT)		// Apply INVERT first; NOON/NOOFF filter the actual (possibly inverted) action.
+			on = !on;
 		if((on && !(trapflags & TRAPF_NOON))
 			|| (!on && !(trapflags & TRAPF_NOOFF))){
-			if(trapflags & TRAPF_INVERT)
-				on = !on;
 			if (on){
-				if (DCheckParameters(userparams(), kScriptTurnOn))	// TODO: Test
+				if (DCheckCondition(DGetParamRaw(_script+"OnCondition", DGetParamRaw(_script+"Condition", true, userparams()), userparams()))
+					&& DCheckParameters(userparams(), kScriptTurnOn))	// TODO: Test
 					DoOn(userparams())
 			}
 			else{
-				if (DCheckParameters(userparams(), kScriptTurnOff))
+				if (DCheckCondition(DGetParamRaw(_script+"OffCondition", DGetParamRaw(_script+"Condition", true, userparams()), userparams()))
+					&& DCheckParameters(userparams(), kScriptTurnOff))
 					DoOff(userparams())
 			}
 		}
 	}
 	
 	function OnPhysCollision(){
-		if(message().collSubmod == 4)	// Collision with the button part. Arrows for example.
+		if(message().Submod == 4)	// Collision with the button part. Arrows for example.
 		{
 			if(!DGetParam(_script + "RealFrobOnly", false) 
 				&& !(Object.InheritsFrom(message().collObj,"Avatar")
@@ -158,12 +163,12 @@ hloc = vector()
 			else vfrom = ::Object.Position(from)
 		}
 		else {
-			vrom = from
+			vfrom = from
 			from = OBJ_NULL
 		}
 		if (typeof to != "vector"){
 			if (from == ::PlayerID && to == ::PlayerID)
-				vto = ::Camera.CameraToWorld(50,0,0)			// 50 units in frot of player view.
+				vto = ::Camera.CameraToWorld(vector(50,0,0))			// 50 units in frot of player view.
 			else
 				vto = ::Object.Position(to)
 		} else {
@@ -171,12 +176,16 @@ hloc = vector()
 			to = OBJ_NULL
 		}
 #		|--  Ignore Set --|
-		local ignore_set = DGetParamRaw(_script + "ignore_set", null, DN)	// Getting this raw to not create empty arrays if not needed.
+		local ignore_set = DGetParamRaw(_script + "ignore_set", null, DN)
+		local ignore_org = null	// Getting this raw to not create empty arrays if not needed.
 		if (ignore_set){
 			ignore_set = DCheckString(ignore_set, kReturnArray)
+			ignore_org = ignore_set.map(@(obj) [::Property.Possessed(obj,"RenderType"), ::Property.Get(obj,"RenderType")])
 			foreach (obj in ignore_set)
 				Property.SetSimple(obj,"RenderType",1)					// This does not actually affect the rendering. ObjRaycast will check if the property is set and before the next frame it is reset.
 		}
+		local hobj = object()				// per-activation out-params: the class-member defaults are shared across instances.
+		local hloc = vector()
 #		|--  Actual Scan --|		
 		local result = (1 + Engine.ObjRaycast(vfrom, vto, hloc, hobj, 
 				FALSE, 																					// ShortCircuit
@@ -185,34 +194,39 @@ hloc = vector()
 				).tostring()																			// Doing tostring to easier check for valid parameters via (3,4).find(result)
 				
 		local hobjID = hobj.tointeger()													// Need an integer, and DONT overwrite.
+		if ("34".find(result) != null)												// Only when the raycast hit an object/mesh - never a stale/0 id.
 		foreach (msg in DGetParam(_script + "HitMsg", "DHitScan",DN,kReturnArray))		//Sent Hit messages to hit object
 			DSendMessage(hobjID, msg)
 #		|--  Check Result --|		
-		if (DGetParam(_script + "TOnResult","",DN).tostring().find(result) != null){	
+		if (DGetParam(_script + "TOnResult","34",DN).tostring().find(result) != null){	
 			local triggers  = DGetParam( _script + "Triggers",null,DN,kReturnArray)
-			if (triggers[0]==null || triggers.find(hobjID) != null){							// Now optional again.
+			if (triggers[0]==null || triggers.map(@(t) typeof t == "string"? ObjID(t) : t).find(hobjID) != null){							// Now optional again.
 				TriggerMessages("On", DN) 											// TODO: Test
 				if (DGetParam(_script + "AutoOff", false, DN))
-					DCheckParameters(DN, kScriptTurnOff)							// This will disable an infinite repeating TurnOn
+					DStopInfRepeat()							// This will disable an infinite repeating TurnOn
 			}
 		}
 		else if (DGetParam(_script + "TOffResult","",DN).tostring().find(result) != null){
 			local triggers  = DGetParam( _script + "Triggers", null, DN, kReturnArray)
-			if (triggers[0]==null || triggers.find(hobjID) != null){
+			if (triggers[0]==null || triggers.map(@(t) typeof t == "string"? ObjID(t) : t).find(hobjID) != null){
 				TriggerMessages("Off", DN)
 				if (DGetParam(_script + "AutoOff", false, DN))
-					DCheckParameters(DN, kScriptTurnOff)							// Yes Off here as well as we are in the {On} action.
+					DStopInfRepeat()							// Yes Off here as well as we are in the {On} action.
 			}
 		}
 #		|-- Restoring Ignore set --|
 		if (ignore_set){
-			foreach (obj in ignore_set)
-				Property.SetSimple(obj,"RenderType", 0)
+			foreach (i, obj in ignore_set){			// restore the original values - a forced 0 rewrote Unlit/EditorOnly/inherited objects permanently.
+				if (ignore_org[i][0])
+					Property.SetSimple(obj,"RenderType", ignore_org[i][1])
+				else
+					::Property.Remove(obj,"RenderType")	// not locally possessed - don't leave a local override behind
+			}
 		}		
 
 	}
 	
-	function DoOff()
+	function DoOff(DN)
 	{
 		// If we are here infinite {On} repeats are now already stopped.
 		// Wanna stop {T[On/Off]} as well.

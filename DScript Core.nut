@@ -2048,6 +2048,20 @@ SourceObj 	  = null	//	The actual source of a message.
 		return true		// #NOTE #NEW: DCheckParameters does not auto start anymore.
 	}
 	
+	function DStopInfRepeat(DN = null){
+	/* Stops an active infinite repeat (timer or per-frame) without burning Count/Capacitor
+		charges or re-rolling FailChance the way a full DCheckParameters call would. */
+		if (!IsDataSet(_script + "InfRepeat"))
+			return false
+		local data = GetData(_script + "InfRepeat")
+		ClearData(_script + "InfRepeat")
+		if (typeof data == "string" && data.find("F") != null)	// per-frame registration ("F<key>" / "<action>F<key>")
+			::DHandler.PerFrame_DeRegister(this)
+		else if (IsDataSet(_script + "DelayTimer"))
+			KillTimer(ClearData(_script + "DelayTimer"))
+		return true
+	}
+
 # 	|-- On Off --| #
 	// These are the function that will get called when all activation checks pass.
 	function DoOn(DN){
