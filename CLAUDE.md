@@ -202,11 +202,24 @@ and `§`/`»` appear in fold markers throughout.
 
 **The `Edit`/`Write` tools corrupt `DScript Core.nut`.** They decode as UTF-8, so every `0xA7`/`0xB0`
 byte comes back as U+FFFD and the file is rewritten as UTF-8 — which breaks the `case '§'` label,
-i.e. the whole parameter parser. Confirmed the hard way (2026-08-05). **Edit that one file with a
-throwaway Python script instead**: read bytes, `.decode("latin-1")`, do exact string replacements
-with a `count == 1` assertion each, `.encode("latin-1")`, and assert the `0xA7`/`0xB0` histogram is
-unchanged before writing. Everything else takes `Edit` normally — verify with
-`python3 -c "b=open(F,'rb').read(); b.decode('utf-8')"` afterwards.
+i.e. the whole parameter parser. Confirmed the hard way (2026-08-05). This is not hypothetical: the
+same thing already happened to `DScript File&Blob.nut` before this repo was audited — its fold-marker
+banner and one comment lost their characters permanently (restored in `d3a41c2` from the `backup/`
+copy, which is still CP1252).
+
+Use [`tools/latin1_patch.py`](tools/latin1_patch.py) for that file — it edits as latin-1, asserts each
+pattern matches exactly once, and refuses to write if the high-byte census changes.
+
+### Check your edits: `tools/check_files.py`
+
+```bash
+python3 tools/check_files.py --base HEAD~1     # run after ANY .nut edit
+```
+
+Flags the two failures that have actually happened here: encoding damage (U+FFFD, changed high-byte
+census) and structural damage (bracket balance drifting from a git baseline — which is what deleting
+a `print()` that was the sole body of a loop or `if` looks like). It is not a syntax check; only
+`script_reload` in DromEd is.
 
 ### Filenames contain spaces and `&`
 
