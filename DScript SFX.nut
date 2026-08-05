@@ -768,6 +768,8 @@ anchor_rotation = null
 			return
 		if (message().message == "FrobInvEnd" && IsDataSet("DInvAttacher"))	// Toggle
 			return DoOff()
+		if (IsDataSet("DInvAttacher"))										// already open (InvSelect/InvFocus re-fire): don't create a duplicate dummy set.
+			return
 			
 		local v = vector()
 		Object.CalcRelTransform(::PlayerID, ::PlayerID, v, v_zero, 4, 0)	// vector from camera to player, so negate it. v_zero will stay 0
@@ -827,7 +829,8 @@ class DInventoryDummy extends SqRootScript
 {
 	OnFrobWorldEnd = function(){
 		local real = LinkDest(Link.GetOne("ScriptParams",self))
-		::DHandler.Extern.DInventoryMaster.DoOff()
+		if ("DInventoryMaster" in ::DHandler.Extern)		// a pure DSubInventory setup has no master registered (proper sub routing needs a back-link).
+			::DHandler.Extern.DInventoryMaster.DoOff()
 		SendMessage(real,"Selecting")											// For Subcontainers.
 		if (::Container.IsHeld(::PlayerID,real) == eContainType.ECONTAIN_NULL)
 			::Container.Add(real, ::PlayerID)
@@ -863,6 +866,8 @@ exception = null						// Fixes deselection. If an item is picked up that does be
 				}
 			}
 		}
+		if (typeof sub == "string")						// "auto" (or unresolved) with no match - fall back to the master.
+			sub = OBJ_NULL
 		if (sub <= OBJ_NULL){								// In case it's not found or an archetype.
 			return DHandler.Extern.DInventoryMaster.self
 		}
@@ -1008,7 +1013,7 @@ class DRenameItem extends DTrigger
 		local append 	= DGetParam(_script+"Append", "", DN).tostring()
 			
 		// Backup? If the property is not set. It will be removed only and the archetype name appears again, else store it.
-		if (Property.PossessedSimple(item, "GameName"))
+		if (Property.PossessedSimple(item, "GameName") && !IsDataSet(_script+"OrgName"))	// only the FIRST rename sees the real original.
 			SetData(_script+"OrgName", Property.Get(item,"GameName"))
 		
 		// Language support found and nothing special. EXIT
@@ -1031,6 +1036,7 @@ class DRenameItem extends DTrigger
 	}
 	
 	function DoOff(DN){
+		ClearData(_script + "Ticks")					// stop a running [Timer] countdown - it re-applied the hack one tick after the restore.
 		if (GetData(_script+"OrgName"))
 			::Property.SetSimple(DGetParam(_script, self, DN),"GameName",GetData(_script+"OrgName"))
 		else
@@ -1043,12 +1049,17 @@ class DRenameItem extends DTrigger
 		if (message().name == "DRenameItem"){
 			local data = DGetTimerData(message().data)
 			_script = data[0]
+			if (!IsDataSet(_script + "Ticks")){				// countdown was cancelled by DoOff
+				_script = GetClassName()
+				return base.OnTimer()
+			}
 			local append = GetData(_script + "Ticks") - 1
 			if (append == 0){
 				if (DGetParam(_script + "NoRestart", null) <= 1)			// #NOTE null < anything = true
 					ClearData(_script + "Ticks")
 				DoOff(userparams())
 				TriggerMessages("Off", userparams())
+				_script = GetClassName()								// restore before the early return (T-91)
 				return
 			}
 			SetData(_script + "Ticks", append)
