@@ -38,7 +38,7 @@ if (kUseIngameLog) {
 					if (X < 0)
 						X = SizeX.tointeger() + X
 					if (Y < 0)
-						Y = SizeX.tointeger() + Y
+						Y = SizeY.tointeger() + Y
 				}
 			} else {
 				::Engine.GetCanvasSize(SizeX, SizeY)
@@ -67,7 +67,7 @@ if (kUseIngameLog) {
 					if (X < 0)
 						X = SizeX.tointeger() + X
 					if (Y < 0)
-						Y = SizeX.tointeger() + Y
+						Y = SizeY.tointeger() + Y
 				}
 			} else {
 				::Engine.GetCanvasSize(SizeX, SizeY)
@@ -155,7 +155,7 @@ class cDWorldInvOverlay extends Overlayclass
 		foreach (item in items){
 			if (::gGameOverlay.GetObjectScreenBounds(item, X1,Y1,X2,Y2)){
 				if (Property.Get(item,"StackCount")){
-						::gGameOverlay.DrawString(Property.Get(item,"StackCount"), X2.tointeger() - 15,  Y2.tointeger() - 15);
+						::gGameOverlay.DrawString("" + Property.Get(item,"StackCount"), X2.tointeger() - 15,  Y2.tointeger() - 15);
 				}
 				if (kDInvMasterExtraInfo > 1){	// more info
 					local extra = Property.Get(item, "DesignNote")
