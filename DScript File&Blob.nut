@@ -171,6 +171,10 @@ myblob = null								// As we will work more with the derived dblob class
 	}
 	
 	//	|-- Metamethods --|
+	/* #IMPORTANT: _typeof deliberately reports the type of the WRAPPED stream, not "instance".
+		So typeof mydfile gives "file" (or "blob" for a dblob) and can NEVER be used to test
+		whether something is a dfile/dblob/dCSV. Use instanceof for that - it is the only
+		reliable test:	if (x instanceof ::dfile)	*/
 	function _typeof()
 		return typeof myblob
 		

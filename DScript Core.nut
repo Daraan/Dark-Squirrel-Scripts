@@ -1,7 +1,7 @@
 ##		--/					 §HEADER					--/
 
-#include DConfigDefault.nut
-// This file IS NECESSARY for DScript.nut to compile.
+#include DSConfigDefault.nut
+// This file IS NECESSARY for DScript Core.nut to compile.
 //	In it are adjustable constants which you might want to change depending on your need.
 //	Like setting a minimum required version for your Fan Mission.
 //
@@ -1577,7 +1577,7 @@ class DBaseTrap extends DBasics
 //----------------------------------
 </
 Help 		= "Handles received messages and parameters. Very little use by itself."
-Help2		= "Can be used to generate a DPingingBack when it received a DPingBackmessage.\nOr to block messages to other scripts via DBaseTrapBlockMessage="
+Help2		= "Can be used to generate a DPingingBack when it received a DPingBackmessage.\nOr to block messages to other scripts via [ScriptName]ExclusiveMessage="
 SubVersion 	= 0.77
 />
 //----------------------------------

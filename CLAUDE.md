@@ -42,7 +42,7 @@ problem tracked as `T-01` is resolved; `docs/OPEN_TASKS.md` has the details.
   features are missing from it. Trust the code.
 - `docs/userDefineLang_Squirrel DScript.xml` — Notepad++ syntax + fold definition.
 - `backup/`, `obj/`, `strings/` — snapshots and DromEd assets, not build inputs.
-- `docs/squirrel_script/` — **`squirrel.osm` engine API docs**, not DScript-specific. This is the
+- `DOC/squirrel_script/` — **`squirrel.osm` engine API docs**, not DScript-specific. This is the
   underlying Dark Engine/Squirrel binding that all of DScript is built on top of; consult it for
   anything DScript's own docs don't cover, or to check what the engine itself provides vs. what
   DScript adds:
@@ -245,6 +245,8 @@ Errors surface in `monolog.txt` (editor) or `Thief2.log` / `Shock2.log` (game). 
 
 **Full task list with file:line, cause and suggested fix: [`docs/OPEN_TASKS.md`](docs/OPEN_TASKS.md)**
 (grouped, ID'd `T-nn`, ordered — start there rather than re-auditing).
+The user-facing subset — which script classes a mission author must not rely on — is
+[`docs/KNOWN_ISSUES.md`](docs/KNOWN_ISSUES.md); keep it in sync when a `T-nn` gets fixed.
 
 The headline items:
 

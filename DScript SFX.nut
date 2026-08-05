@@ -542,8 +542,8 @@ Similar to DHudCompass attaches the [DHudObject]{Object}; by default the selecte
 The objects facing will be constant toward the camera. With {Rotation} chose an offset.
 NOTE: Z-Rotation does not work intuitively as it is in combination with pitch.
 Use X,Y 180° Rotation to imitate a Z 180° rotation.
-
-*/#######################################
+*/
+#######################################
 {
 	function GetRotation(){
 		local v = Camera.GetFacing()
