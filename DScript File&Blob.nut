@@ -588,7 +588,7 @@ DefOff = null
 	function OnBeginScript(){
 		// At Mission start create timestamp.
 		if (DGetParam(_script + "ClearAtNewGame", true) && !Quest.Exists("DTimestamp")){
-			Quest.Set("Timestamp", (date().yday<<11)+(date().hour<<6)+(date().min))
+			Quest.Set("DTimestamp", (date().yday<<11)+(date().hour<<6)+(date().min))
 		}
 		
 		// At SaveGame load, sent message?
@@ -603,7 +603,7 @@ DefOff = null
 		
 		print(IsOn)
 		if (IsOn)
-			base.RelayMessages("On")
+			base.DRelayMessages("On")
 		
 		if (RepeatForCopies(callee()))
 			base.OnBeginScript()
@@ -611,7 +611,7 @@ DefOff = null
 	
 	function DoOn(DN){
 		local event_name = DGetParam(_script + "EventName")
-		if (DGetParam(_script + "AllowNewGame")){
+		if (DGetParam(_script + "ClearAtNewGame", true)){
 			event_name = ::format("%s_%X", event_name, Quest.Get("DTimestamp"))
 		}
 		// make a save
@@ -713,7 +713,8 @@ class cDSaveHandler extends cDCustomHandler
 				print("DScript Warning: DPersistentSave: FM Name not set - hopefully still playtest.", kDoPrint, ePrintTo.kLog | ePrintTo.kUI)
 		}
 		// Last 3 character of miss file
-		stamp += map.slice(-6,-4)	// last 4 are '.mis'
+		if (map.len() >= 6)
+			stamp += map.slice(-6,-4)	// last 4 are '.mis'
 		// And some check characters via both names
 		local key = 0
 		for (local i = 1; i < name.len(); i++)	// probably 0 in editor.
@@ -734,12 +735,18 @@ class cDSaveHandler extends cDCustomHandler
 		}
 		
 		File 	= ::dfile(eDLoad.kFile)
-		rawdata = File.slice(File.find(eDLoad.kStart), File.find(eDLoad.kEnd))	// blobs are way faster than doing this in the stream. More memory though.
+		local _start = File.find(eDLoad.kStart)
+		local _end   = File.find(eDLoad.kEnd)
+		if (_start == null || _end == null){
+			print("DScript ERROR: DPersistentSave: data markers not found in " + eDLoad.kFile)
+			rawdata = ::dblob("")
+		} else
+			rawdata = File.slice(_start, _end)	// blobs are way faster than doing this in the stream. More memory though.
 		local slot = null
 		for (local i = 63; i > 55; i--){							// While possible to check all slots. Limiting it to 8 slots.
 			local param = rawdata.getParam2("Env Zone "+i, null, 2)
 			// print("P" + i + "=" + param + "'")
-			if (param == ""){										// Store first found empty slot.
+			if (param == null || param == ""){										// Store first found empty slot.
 				if (!slot){
 					slot = i
 				}
@@ -757,7 +764,7 @@ class cDSaveHandler extends cDCustomHandler
 				// Check if a slot is not used by a save.
 				print("Found no slot, but saves avaliable")
 				for (local i = 63; i > 55; i--){
-					if (!(i.tostring() in Saves)){
+					if (!(i in Saves)){
 						slot = i
 					}
 				}
@@ -783,7 +790,9 @@ class cDSaveHandler extends cDCustomHandler
 			Saves = temp
 		}
 		if (!MissData)
-			MissData = ::blob() 
+			MissData = GetMissionPrint()
+			for (local i = MissData.len(); i < 63; i++)	// pad to the fixed record length: 10 print + 53 data characters
+				MissData += "-"
 		Saves[63] <- MissData
 		return MissData
 	}
@@ -809,7 +818,7 @@ class cDSaveHandler extends cDCustomHandler
 	function SetEvent(event_id, value, instantly = true){
 		assert(value >= 0 && value < 16)
 		print(MissData)
-		MissData = MissData.slice(0, -event_id) + value + MissData.slice(-event_id + 1)
+		MissData = MissData.slice(0, -event_id) + ::format("%X", value) + (event_id > 1? MissData.slice(-event_id + 1) : "")
 		print(MissData)
 		// TODO also do a backup blob
 		if (instantly)
@@ -827,8 +836,8 @@ class cDSaveHandler extends cDCustomHandler
 	}
 	
 	function GetEvent(event_id){
-		if (MissData[- event_id] != '-')
-			return ::DScript.CompileExpressions("0x",MissData[- event_id].tochar()) // HEX to int. # TODO is there really no easy way for hexstring to int???
+		if (MissData[MissData.len() - event_id] != '-')
+			return ::DScript.CompileExpressions("0x",MissData[MissData.len() - event_id].tochar()) // HEX to int. # TODO is there really no easy way for hexstring to int???
 		return null
 	}
 
@@ -875,10 +884,9 @@ EventID	= null
 			local test = DGetParam(_script + "DataMatch", null)				// gives a test string like "%d == 4"
 			if (test){
 				if (::DScript.CompileExpressions(::format(test, event_data)))	// Does the test return true?
-					base.RelayMessages("On", userparams(), _script, event_data)
+					base.DRelayMessages("On", userparams(), _script, event_data)
 			} else {
 			// Just differentiate between TRUE > 0 and FALSE == 0
-			if (event_data)
 				base.DRelayMessages(event_data? "On" : "Off", userparams(), _script, event_data)
 			}
 		}
@@ -891,7 +899,7 @@ EventID	= null
 	function DoOn(DN){
 		local EventID = DGetParam(_script + "EventID")
 		if (DGetParam(_script + "AllowNewGame")){
-			event_name = ::format("%s_%s", event_name, Quest.Get("DTimestamp"))
+			// (leftover from DPersistentSaveSimple removed: event_name does not exist here and SetEvent takes no name)
 		}
 		::DSaveHandler.SetEvent(EventID, DGetParam(_script + "Data", 1))
 	}
