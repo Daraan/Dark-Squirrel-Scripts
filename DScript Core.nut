@@ -2832,8 +2832,8 @@ class DTrapSetQVar extends DBaseTrap
 		
 		local DN = userparams()
 		local var_name 		= DGetParam(_script + action + "Name", DGetParam(_script + "Name"),DN)
-		local _Operation  	= DGetParamRaw(_script + action + "Operation", DGetParam(_script + "Operation"),DN)	
-		if (!var_name || (!_Operation && !doinit)){
+		local _Operation  	= DGetParamRaw(_script + action + "Operation", DGetParamRaw(_script + "Operation", null, DN),DN)	
+		if (!var_name || (!_Operation && doinit == false)){
 			return DPrint("FAILURE: No QVarName or Operation set, for " + var_name + action)	// This could be wanted. for no On, Off => Only Debug.
 		}
 		local _DQVarType	= DGetParam(_script + "Type", eDQVarType.kTypeAuto, DN)		
@@ -2848,7 +2848,7 @@ class DTrapSetQVar extends DBaseTrap
 			local result = ::DScript.CheckAndCompileExpression(this, _Operation)				
 			#DEBUG POINT
 			if (DPrint()){
-				if (typeof result == "table" || typeof result == "array" || typeof result == "blob" && "DTestTrap" in ::getroottable()){
+				if ((typeof result == "table" || typeof result == "array" || typeof result == "blob") && "DTestTrap" in ::getroottable()){
 					::print("Saving table, array or blob with the contents:")
 					::DTestTrap.DumpTable(result)
 				}
@@ -2873,7 +2873,7 @@ class DTrapSetQVar extends DBaseTrap
 		if (event.len() == 1 && event[0].len()){
 			print(event[0])
 			if (event[0] == "\"\"")
-				event[0] == ""
+				event[0] = ""
 			else
 				event[0] = DCheckString(event[0])
 			DPrint("Setting " + DGetParam(_script + "Name") + " to " + event[0], kDoPrint)
@@ -2882,9 +2882,9 @@ class DTrapSetQVar extends DBaseTrap
 		else if (event.len() >= 1){								// Set more than one.
 			print("0 is+ '"+event[0])
 			event.apply(::strip)									// TODO: Do this more.
-			for(local i = 0; i < event.len(); i += 2){
+			for(local i = 0; i + 1 < event.len(); i += 2){
 					if (event[i+1] == "\"\"")
-						event[i+1] == ""
+						event[i+1] = ""
 					else
 						event[i+1] = DCheckString(event[i+1])
 					DPrint("Setting " + event[i] + " to " + event[i+1], kDoPrint, ePrintTo.kMonolog)
@@ -2894,8 +2894,9 @@ class DTrapSetQVar extends DBaseTrap
 	}
 	
 	function OnSim(){	// TODO: IMPORTANT IS THIS REALLY AFTER?
-		if (::DHandler.IsDataSet("MissionInitialized") || !HasProperty("TrapQVar"))
+		if (!message().starting || IsDataSet("DQVarInitDone") || !HasProperty("TrapQVar"))
 			return
+		SetData("DQVarInitDone")
 		InitQVarFromProp()
 		::print("DID SIM")
 	}
@@ -2915,13 +2916,15 @@ DScript.Quest <-
 	Triggers = {}										// will contain instance = array(of values)
 
 	function SubscribeMsg(instance, var_name){
+		var_name = var_name.tostring().tolower()		// normalize: DScript.SetQVar lowercases names before notifying.
 		print("Saving QVar Trigger" + instance)
 		if (var_name == "*")
 			return Triggers[instance] <- false
 		if (instance in Triggers){
-			if (Triggers[instance])						// so not "*" = false
-				if (!Triggers[instance].find(var_name))	// already registered?
+			if (Triggers[instance]){						// so not "*" = false
+				if (Triggers[instance].find(var_name) == null)	// already registered?
 					Triggers[instance].append(var_name)
+			}
 			else
 				print("DScript QVar FAILURE: Trying to overwrite wildcard * with " + var_name +".\nWill not overwrite *. UnsubscribeMsg * first.")
 		}
@@ -2930,11 +2933,12 @@ DScript.Quest <-
 	}
 	
 	function UnsubscribeMsg(instance, var_name){
+		var_name = var_name.tostring().tolower()
 		if (instance in Triggers){
 			local entry = Triggers[instance]
 			if (entry){									// so not "*" = false
 				local pos = Triggers[instance].find(var_name)
-				if (pos >= 0)
+				if (pos != null)
 					return entry.remove(pos)
 			}
 			else {
@@ -2961,7 +2965,7 @@ DScript.Quest <-
 				trigger.CheckQuest(name, newval, oldval)
 			else
 			{
-				if (vars.find(name) >= 0)
+				if (vars.find(name) != null)
 					trigger.CheckQuest(name, newval, oldval)
 			}
 		}
@@ -2979,8 +2983,9 @@ DefOff 	= null
 	}
 
 	function CheckQuest(NAME, NEW, OLD){
-		RepeatForCopies(::callee(NAME, NEW, OLD))			// Doing this here because of that return down there.
-		if (NAME != DGetParam(_script + "Name"))			// Only relevant for copies.
+		local _nameraw = DGetParamRaw(_script + "Name", ::Property.Get(self,"TrapQVar"))	// Only relevant for copies; OnTest passes NAME = null.
+		if (NAME != null && typeof _nameraw == "string" && _nameraw != "*"
+			&& _nameraw.tolower().find(NAME.tolower()) == null)	// accepts single names and +lists - registration used the same raw tokens
 			return
 		local DN = userparams()								// Mostly here to be accessible by CheckAndCompileExpression
 		local _check = DGetParamRaw(_script + "Condition", ::Property.Get(self,"TrapQVar"), DN)
@@ -3011,7 +3016,8 @@ DefOff 	= null
 					DoOff(DN)
 			}
 		}
-		return SetData(_script + "WasSatisfied", satisfied)
+		SetData(_script + "WasSatisfied", satisfied)
+		return RepeatForCopies(::callee(), NAME, NEW, OLD)		// T-30: pass callee itself; run last because _script is mutated for the copy pass.
 	}
 
 	function OnDarkGameModeChange(){
@@ -3023,14 +3029,14 @@ DefOff 	= null
 	}
 
     function OnBeginScript(){
-		local vars = DGetParam(_script + "Name", ::Property.Get(self, "QuestVar"),kReturnArray)
+		local vars = DGetParam(_script + "Name", ::Property.Get(self, "TrapQVar"), null, kReturnArray)
 		if (vars){
 			foreach (var_name in vars){
 				DPrint("Listening to QVar change: " + var_name)
 				// ::DHandler.Extern.DQVarHandler.
 				::DScript.Quest.SubscribeMsg(this, var_name)  			// Instance and QVars that trigger it.
 				local _DQVarType = DGetParam(_script + "Type", eQuestDataType.kQuestDataMission)
-				if (_DQVarType >= 0)
+				if (typeof _DQVarType == "integer" && _DQVarType >= 0)
 					::Quest.SubscribeMsg(self, var_name, _DQVarType)					// For normal QVar system.
 			}
 		}
@@ -3060,7 +3066,7 @@ class DTrapDeleteQVar extends DBaseTrap
 		local deleted = ::DScript.DeleteQVar(DGetParam(_script + "Name", null, DN), DGetParam(_script + "Type",null,DN))
 		if (DGetParam(_script + "Cache", null, DN)){
 			local type = typeof deleted
-			if (deleted != "[Null]" && type != "array" && type != "table" && type != "blob")
+			if (deleted != null && type != "bool" && !(type == "string" && deleted == "[null]") && type != "array" && type != "table" && type != "blob")
 				::DHandler.SetData("qvar_deleted", deleted)
 		}
 	}
