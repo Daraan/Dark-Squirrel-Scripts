@@ -304,6 +304,8 @@ This will copy the Physics->Controls and Renderer->Transparency(Alpha) property 
 	function DoOn(DN){
 		local props  = DGetParam(_script + "Property", null, DN, kReturnArray)
 		local source = DGetParam(_script + "Source", self, DN)
+		if (!props[0])
+			return DPrint("ERROR: No Property parameter set for " + _script, kDoPrint)
 		foreach (to in DGetParam(_script + "Target", "&ScriptParams", DN, kReturnArray)){
 			foreach (prop in props){
 				::Property.CopyFrom(to, prop, source)
@@ -342,7 +344,7 @@ NOTE:
 		::Property.Add(obj, "Scripts")
 		local i = ::Property.Get(obj, "Scripts","Script 3")
 		//Check if the slot is already used by another script or the Archetype has the script already.
-		if (i == "" || ::Property.Get(::Object.Archetype(obj),"Scripts","Script 3") || i == S_OK)	// S_OK is returned if prop does not exist.
+		if (i == "" || i == ::Property.Get(::Object.Archetype(obj),"Scripts","Script 3") || i == S_OK)	// S_OK is returned if prop does not exist.
 			::Property.Set(obj,"Scripts","Script 3", newscript)
 		else
 			DPrint("Object (" + obj + ") has script slot 4 in use with " + i + " - Don't want to change that. Please fall back to adding a Metaproperty.", kDoPrint)
@@ -401,6 +403,7 @@ DefOn="+Contained+Create+Combine"
 			if (::Object.Archetype(LinkDest(link)) == type)
 				return LinkDest(link)
 		}
+		return 0				// OBJ_NULL: no matching inventory object - Property.Get tolerates 0, not Squirrel null.
 	}
 
 	function StackToQVar(qvar = false){
@@ -415,7 +418,7 @@ DefOn="+Contained+Create+Combine"
 	}
 //	|-- DoOn --|
 	function DoOn(DN){
-		StackToQVar(DGetParam("DStackToQVarVar", Property.Get(self,"TrapQVar"),DN)) //Is a QVar specified in the DN or set as property?
+		StackToQVar(DGetParam(_script + "Var", Property.Get(self,"TrapQVar"),DN)) //Is a QVar specified in the DN or set as property?
 	}
 	
 }
