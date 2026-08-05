@@ -204,8 +204,8 @@ and `§`/`»` appear in fold markers throughout.
 byte comes back as U+FFFD and the file is rewritten as UTF-8 — which breaks the `case '§'` label,
 i.e. the whole parameter parser. Confirmed the hard way (2026-08-05). This is not hypothetical: the
 same thing already happened to `DScript File&Blob.nut` before this repo was audited — its fold-marker
-banner and one comment lost their characters permanently (restored in `d3a41c2` from the `backup/`
-copy, which is still CP1252).
+banner and one comment lost their characters (restored in `4853709` from the `backup/` copy, which is
+still CP1252 — that is the fallback if it happens again).
 
 Use [`tools/latin1_patch.py`](tools/latin1_patch.py) for that file — it edits as latin-1, asserts each
 pattern matches exactly once, and refuses to write if the high-byte census changes.
