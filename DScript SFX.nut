@@ -1431,7 +1431,7 @@ class DDirector extends DObjectPanTo
 	function GetPath(){
 		Path = [LinkDest(Link.GetOne("TPathInit",self))]
 		::DScript.ObjectsInPath("TPath", Path)
-		if (DPrint("Objects in camera path: "))
+		if (DPrint("Objects in camera path: ") && "DTestTrap" in ::getroottable())
 			::DTestTrap.DumpTable(Path)
 	}
 	

@@ -881,7 +881,7 @@ DScript <- {
 					}
 				}
 				#TEST
-				if (DPrint("Contained Table data:")) ::DTestTrap.DumpTable(table)
+				if (DPrint("Contained Table data:") && "DTestTrap" in ::getroottable()) ::DTestTrap.DumpTable(table)
 					::Quest.BinSetTable(name , table)
 				break
 			case eDQVarType.kCampaignBlob :
@@ -2119,9 +2119,9 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 		#DEBUG Point
 		if (DPrint()){
 			::print("Targets")
-			DTestTrap.DumpTable(targets)
+			if ("DTestTrap" in ::getroottable()) DTestTrap.DumpTable(targets)
 			::print("Messages")
-			DTestTrap.DumpTable(messages)
+			if ("DTestTrap" in ::getroottable()) DTestTrap.DumpTable(messages)
 		}
 
 		foreach (msg in messages){
@@ -2142,7 +2142,7 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 						DGetParamRaw(_script + "TDest",
 						"&ControlDevice", DN), DN), DN), DN, kReturnArray),
 					  DGetParam(_script+"T"+OnOff,"Turn"+OnOff, DN, kReturnArray),  //Determines the messages to be sent, TurnOn/Off is semi default.
-					  DGetParam(_script + "PostMessage"),
+					  DGetParam(_script + "PostMessage", true),
 					  data, data2, data3 
 		)
 	}
@@ -2175,31 +2175,91 @@ class DTrigger extends DRelayTrap
 	function RepeatForCopies(func, ...){
 		vargv.insert(0, func)
 		vargv.insert(0, this)
-		base.RepeatForCopies.acall(vargv)
+		local result = base.RepeatForCopies.acall(vargv)
 		if (func == DBaseTrap.DBaseFunction)		// Repeating the base function does not make sense.
 			return true
 		_TModus = true
 		base.RepeatForCopies.acall(vargv)			// Now repeat with TParameters
 		_TModus = false
-		return true									// Return true to indicate that the cycle is done.
+		return result								// Result of the normal pass: true only once all copies are done.
+	}
+
+	function OnTimer(){
+	/* T-mode timers are scheduled while _script carries the "T" suffix (TriggerMessages ->
+		DCheckParameters), but fire when _script is plain again - so match them here explicitly.
+		A delayed T action relays the trigger messages; it must not call the trap's DoOn/DoOff. */
+		local TimerName = message().name
+		if (TimerName == _script + "TDelayed"){
+			local ar 	 = DGetTimerData(message().data)
+			local action = ar[0].tointeger()
+			SourceObj 	 = ar[1].tointeger()
+			ar[2] 		 = ar[2].tointeger()
+			_script += "T"
+			_TModus  = true
+			if (ar[2] != 0){							// Repeats left? Reschedule under the T namespace.
+				ar[3] = ar[3].tofloat()
+				SetData(_script+"DelayTimer", DSetTimerData(_script+"Delayed", ar[3], action, SourceObj, (ar[2] != kInfiteRepeat? ar[2] - 1 : kInfiteRepeat), ar[3]))
+			}
+			else
+				ClearData(_script+"DelayTimer")
+			_script  = _script.slice(0,-1)
+			_TModus  = false
+			BlockMessage()
+			return DRelayMessages(action? "On" : "Off", userparams())
+		}
+		if (TimerName == _script + "TFalloff"){
+			_script += "T"
+			_TModus  = true
+			base.OnTimer()								// The base Falloff branch matches the T-suffixed name now.
+			_script  = _script.slice(0,-1)
+			_TModus  = false
+			return
+		}
+		base.OnTimer()
+	}
+
+	function FrameUpdate(whichscript){
+		if (whichscript == typeof this + "T"){			// T-namespace per-frame repeat: relay the trigger messages.
+			_script = whichscript
+			local frdata = IsDataSet(_script + "InfRepeat")? GetData(_script + "InfRepeat") : null
+			local action = (typeof frdata == "string" && frdata[kGetFirstChar] == '0')? "Off" : "On"
+			_script = typeof this
+			return DRelayMessages(action, userparams())
+		}
+		base.FrameUpdate(whichscript)
+	}
+
+	function OnBeginScript(){
+		if (IsDataSet(_script + "TInfRepeat")){			// Re-register a per-frame T repeat after load.
+			local data = GetData(_script + "TInfRepeat")
+			if (typeof data == "string" && data.find("F") != null){
+				_script += "T"
+				local delay = DGetParam(_script + "Delay")
+				delay = delay.slice(0, delay.find("F")).tointeger()
+				::DHandler.PerFrame_ReRegister(this, delay)
+				_script = _script.slice(0,-1)
+			}
+		}
+		base.OnBeginScript()
 	}
 
 	function TriggerMessages(ScriptAction = kScriptTurnOn, DN = null, data= null, data2= null, data3= null){
 		if (!DN) DN = userparams()
-		if (typeof ScriptAction != "string"){							// For non standard situations, or direct "On/Off"
-			if (ScriptAction)
-				ScriptAction = "On"
+		if (typeof ScriptAction == "string"){							// Normalize: DCheckParameters needs the integer action (kScriptTurnOn/Off).
+			if (ScriptAction.tolower() == "off")
+				ScriptAction = kScriptTurnOff
 			else
-				ScriptAction = "Off"
+				ScriptAction = kScriptTurnOn
 		}
 		_TModus = true
+		local OnOff = ScriptAction? "On" : "Off"						// String form for parameter names and DRelayMessages.
 		_script = _script + "T"
-		if (DCheckCondition(DGetParamRaw(_script + ScriptAction + "Condition", DGetParamRaw(_script+"Condition", true, DN), DN))){
+		if (DCheckCondition(DGetParamRaw(_script + OnOff + "Condition", DGetParamRaw(_script+"Condition", true, DN), DN))){
 			local dotrigger = DCheckParameters(DN, ScriptAction)		// #NOTE Delays are triggered within
 			if (dotrigger){
 				_script = _script.slice(0,-1)							// Need to remove the T before going back to DRelayTrap
 				_TModus = false
-				DRelayMessages(ScriptAction, DN, data, data2, data3)
+				DRelayMessages(OnOff, DN, data, data2, data3)
 			}
 			else
 				_script = _script.slice(0,-1)
@@ -2769,7 +2829,7 @@ class DTrapSetQVar extends DBaseTrap
 			local result = ::DScript.CheckAndCompileExpression(this, _Operation)				
 			#DEBUG POINT
 			if (DPrint()){
-				if (typeof result == "table" || typeof result == "array" || typeof result == "blob"){
+				if (typeof result == "table" || typeof result == "array" || typeof result == "blob" && "DTestTrap" in ::getroottable()){
 					::print("Saving table, array or blob with the contents:")
 					::DTestTrap.DumpTable(result)
 				}
