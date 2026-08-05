@@ -1609,21 +1609,22 @@ SourceObj 	  = null	//	The actual source of a message.
 			print("yohoho")
 		//print("Constructed" + _script + " On " + self + DScript.GetObjectName(Object.Archetype(self)))
 		if (!::IsEditor()){							// Initial data is set in the Editor.
+			ConstructParameters(true)				// T-37: init missing Count/Capacitor slots for runtime-created scripts, keep persisted values.
 			return
 		}
 		ConstructParameters()
 		base.constructor()							// Creates DHandler. Function only exists in editor!
 	}
 	
-	function ConstructParameters(){
+	function ConstructParameters(keepExisting = false){
 			// NOTE! possible TODO: Counter, Capacitor objects will not work when created in game!
 			// Doing this on BeginScript would need some sorta lock so it only happens once. Don't really want to create a extra data slot for every script.
 		local DN 	 = userparams()
-		if (DGetParam(_script+"Count",		 0,DN)	  )	{SetData(_script+"Counter",		0)}	else {ClearData(_script+"Counter")} //Automatic clean up.
-		if (DGetParam(_script+"Capacitor",	 1,DN) > 1)	{SetData(_script+"Capacitor",	0)}	else {ClearData(_script+"Capacitor")}
-		if (DGetParam(_script+"OnCapacitor", 1,DN) > 1)	{SetData(_script+"OnCapacitor",	0)}	else {ClearData(_script+"OnCapacitor")}
-		if (DGetParam(_script+"OffCapacitor",1,DN) > 1)	{SetData(_script+"OffCapacitor",0)}	else {ClearData(_script+"OffCapacitor")}
-		return RepeatForCopies(::callee())				#NOTE Use callee() or worst case function on child is called.
+		if (DGetParam(_script+"Count",		 0,DN)	  )	{if (!keepExisting || !IsDataSet(_script+"Counter"))	SetData(_script+"Counter",		0)}	else {ClearData(_script+"Counter")} //Automatic clean up.
+		if (DGetParam(_script+"Capacitor",	 1,DN) > 1)	{if (!keepExisting || !IsDataSet(_script+"Capacitor"))	SetData(_script+"Capacitor",	0)}	else {ClearData(_script+"Capacitor")}
+		if (DGetParam(_script+"OnCapacitor", 1,DN) > 1)	{if (!keepExisting || !IsDataSet(_script+"OnCapacitor"))	SetData(_script+"OnCapacitor",	0)}	else {ClearData(_script+"OnCapacitor")}
+		if (DGetParam(_script+"OffCapacitor",1,DN) > 1)	{if (!keepExisting || !IsDataSet(_script+"OffCapacitor"))	SetData(_script+"OffCapacitor",0)}	else {ClearData(_script+"OffCapacitor")}
+		return RepeatForCopies(::callee(), keepExisting)				#NOTE Use callee() or worst case function on child is called.
 	}
 
 #	|-- Repeat caller for Copies --|
@@ -1666,7 +1667,7 @@ SourceObj 	  = null	//	The actual source of a message.
 			local data = GetData(_script + "InfRepeat")
 			// Negative or positive LinkID was stored,
 			if ( typeof data == "string"){
-				if (data[kGetFirstChar] == 'F'){
+				if (data.find("F") == 0 || data.find("F") == 1){		// "F<key>" (legacy) or "<action>F<key>" (T-70)
 					local delay = DGetParam( _script + "Delay")			// Delay is sent and is #Frames
 					delay = delay.slice(0, delay.find("F")).tointeger()
 					::DHandler.PerFrame_ReRegister(this, delay)
@@ -1685,7 +1686,11 @@ SourceObj 	  = null	//	The actual source of a message.
 	/* As you might see this is actually no real message handler.
 		The FrameUpdate is performed by the ::DHandler by directly calling this function with the correct _script.*/
 		_script = whichscript		// set
-		DoOn(userparams())
+		local frdata = IsDataSet(_script + "InfRepeat")? GetData(_script + "InfRepeat") : null
+		if (typeof frdata == "string" && frdata[kGetFirstChar] == '0')	// T-70: leading 0 = per-frame Off action.
+			DoOff(userparams())
+		else
+			DoOn(userparams())
 		_script = GetClassName()	// and reset.
 	}
 	
@@ -1716,9 +1721,9 @@ SourceObj 	  = null	//	The actual source of a message.
 		// Custom reply
 		if (bmsg.data){												// Use Reply() -> SendMessage feature.
 			local inter = DCheckString(bmsg.data)					// Especially for the / operator this returns false
-			if (!intern)
+			if (!inter)
 				return Reply(FALSE)
-			Reply(intern)
+			Reply(inter)
 		} 
 		else
 			ReplyWithObj(self)
@@ -1861,7 +1866,7 @@ SourceObj 	  = null	//	The actual source of a message.
 		local negate 	 = Condition[kGetFirstChar] == '!'? TRUE : FALSE	// If the string starts with ! it will be negated.
 		# Find Any
 		local condtype	 = Condition.find("||")					// Find any
-		if (condtype){
+		if (condtype != null){
 			local cond1 = DCheckString(::rstrip(Condition.slice(negate, condtype)),kReturnArray)
 			local cond2 = DCheckString(::lstrip(Condition.slice(condtype + 2)), kReturnArray)
 			
@@ -1873,7 +1878,7 @@ SourceObj 	  = null	//	The actual source of a message.
 		}
 		# Find All
 		condtype = Condition.find("&&")							// Find all
-		if (condtype){
+		if (condtype != null){
 			local cond1 = DCheckString(Condition.slice(negate, condtype), kReturnArray)
 			local cond2 = DCheckString(Condition.slice(condtype+2), kReturnArray)	
 			foreach (obj in cond2){								// fails if one object is not found.
@@ -1884,11 +1889,11 @@ SourceObj 	  = null	//	The actual source of a message.
 		}
 		# Match
 		condtype = Condition.find("==")							// Complete Match
-		if (condtype){
+		if (condtype != null){
 			local cond1 = DCheckString(Condition.slice(negate, condtype), kReturnArray)
 			local cond2 = DCheckString(Condition.slice(condtype+2), kReturnArray)
 			// Easy pre check
-			if (cond1.len() != cond2.len)
+			if (cond1.len() != cond2.len())
 				return negate? true : false
 				
 			foreach (obj in cond2){								// fails if one object is not found.
@@ -1946,8 +1951,8 @@ SourceObj 	  = null	//	The actual source of a message.
 	# |-- 		Is a Capacitor set 		--|
 		local abort = null																		
 		if (IsDataSet(_script+"Capacitor"))								{if(DCapacitorCheck(DN,""))				{abort = true}		 else {abort=false}}
-		if (IsDataSet(_script+"OnCapacitor")  && ScriptAction == kScriptTurnOn ){if(DCapacitorCheck(DN,"On")) {if (abort==null){abort = true}} else {abort=false}}
-		if (IsDataSet(_script+"OffCapacitor") && ScriptAction == kScriptTurnOff){if(DCapacitorCheck(DN,"Off")){if (abort==null){abort = true}} else {abort=false}}
+		if (IsDataSet(_script+"OnCapacitor")  && ScriptAction == kScriptTurnOn ){if(DCapacitorCheck(DN,"On")) {if (abort==null){abort = true}} else {if (abort==null){abort=false}}}
+		if (IsDataSet(_script+"OffCapacitor") && ScriptAction == kScriptTurnOff){if(DCapacitorCheck(DN,"Off")){if (abort==null){abort = true}} else {if (abort==null){abort=false}}}
 		if (abort){ //If abort changed to true.
 			#DEBUG POINT
 			DPrint("Stage 3X - Not activated as ("+ScriptAction+")Capacitor threshold is not yet reached.")
@@ -1993,7 +1998,8 @@ SourceObj 	  = null	//	The actual source of a message.
 			}
 	
 			## Stop old timers if ExlusiveDelay is set.
-			if (DGetParam(_script+"ExclusiveDelay", false, DN) && IsDataSet(_script+"DelayTimer")){
+			if (DGetParam(_script+"ExclusiveDelay", false, DN) && IsDataSet(_script+"DelayTimer")
+				&& !(IsDataSet(_script+"InfRepeat") && GetData(_script+"InfRepeat") == ScriptAction)){	// T-38: a same-action infinite repeat is handled (kept) below - do not kill its timer here.
 				KillTimer(GetData(_script+"DelayTimer"))	// TODO: BUG CHECK - exclusive Delay and inf repeat, does it cancel without restart?
 			}
 			## Stop Infinite Repeat
@@ -2023,12 +2029,10 @@ SourceObj 	  = null	//	The actual source of a message.
 			DPrint("Stage 5B - ("+ScriptAction+") Activation will be executed after a delay of "+ delay + (doPerNFrames? " ." : " seconds."))
 			if (doPerNFrames){
 				// The handler returns a key / linkID that will be the key for this _script.
-				SetData(_script+"InfRepeat", ::DHandler.PerFrame_Register(this, doPerNFrames))
-				// TODO: As the registering es easier now. Can't I add {Off} support as well. See Begin script. I could save the action in another character.
+				SetData(_script+"InfRepeat", ScriptAction + ::DHandler.PerFrame_Register(this, doPerNFrames))	// T-70: leading 0/1 stores the Off/On action for FrameUpdate.
+				// {Off} support: the action is stored as the leading character of the InfRepeat data (T-70).
 				return false
 				
-				SetData(_script+"InfRepeat", ScriptAction + ::DHandler.PerFrame_Register(this, doPerNFrames)) // this stores 0 and 1.
-																												// Need to check this in FrameUpdate.
 			}
 			local repeat = DGetParam(_script+"Repeat", FALSE, DN).tointeger()
 			if (repeat == kInfiteRepeat)
