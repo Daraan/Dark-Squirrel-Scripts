@@ -2669,6 +2669,7 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubTDest","DHubCount","DHubCap
 	}
 
 	constructor(){ 							// Initializing Script Data
+		base.constructor()					// Count/Capacitor bootstrap + DScriptHandler creation (was missing).
 		local DN  	= base.userparams()
 		local addDN	= {}
 		_script 	= GetClassName()
@@ -2677,10 +2678,12 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubTDest","DHubCount","DHubCap
 			if (startswith(entry, _script))	// TODO no general Count or Capacitor
 			{
 				// For every subDN create a real DN entry
-				if (typeof StringDN != "string" || !StringDN.find("="))	// no string or no = present, skip
+				if (typeof StringDN != "string" || StringDN.find("=") == null)	// no string or no = present, skip
 					continue
 				local ar = ::split(StringDN, "=;")
-				for (local i = 0; i < ar.len(); i+=2){
+				if (ar.len() % 2)					// odd token count: a key without =value, or an empty field (split() drops empty tokens).
+					DPrint("WARNING: DHub entry '" + entry + "' has a malformed sub-DesignNote: " + StringDN, kDoPrint, ePrintTo.kMonolog)
+				for (local i = 0; i + 1 < ar.len(); i+=2){
 						ar[i] = ::strip(ar[i])
 					local val = ::strip(ar[i+1])
 					
@@ -2706,7 +2709,17 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubTDest","DHubCount","DHubCap
 				if (base.DGetParam(entry + "Capacitor", base.DGetParam(_script + "Capacitor", FALSE, DN), addDN) > 1)
 					SetData(entry+"Capacitor", 0)			
 				else 
-					ClearData(entry+"Capacitor")	
+					ClearData(entry+"Capacitor")
+
+				// Does entry use On/OffCapacitor?
+				if (base.DGetParam(entry + "OnCapacitor", base.DGetParam(_script + "OnCapacitor", 1, DN), addDN) > 1)
+					SetData(entry+"OnCapacitor", 0)
+				else
+					ClearData(entry+"OnCapacitor")
+				if (base.DGetParam(entry + "OffCapacitor", base.DGetParam(_script + "OffCapacitor", 1, DN), addDN) > 1)
+					SetData(entry+"OffCapacitor", 0)
+				else
+					ClearData(entry+"OffCapacitor")	
 			}
 		}
 		foreach (entry, val in addDN)
@@ -2724,7 +2737,7 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubTDest","DHubCount","DHubCap
 				if (typeof data == "string"){
 					_script = entry
 					if (data[kGetFirstChar] == 'F'){
-						local delay = DGetParam(_entry + "Delay")			// Delay is sent and is #Frames
+						local delay = DGetParam(entry + "Delay")			// Delay is sent and is #Frames
 						delay = delay.slice(0, delay.find("F")).tointeger()
 						::DHandler.PerFrame_ReRegister(this, delay)
 					}
@@ -2750,7 +2763,7 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubTDest","DHubCount","DHubCap
 	["On" + kResetCountMsg] = function(){
 		// general message loop through all possible.
 		foreach (k, v in userparams()) {
-			if (!val && IsDataSet(k + "Counter")){							// Precheck. DHubMessage <- null in constructor
+			if (!v && IsDataSet(k + "Counter")){							// Precheck. DHubMessage <- null in constructor
 				SetData(k + "Counter",0)
 			}
 		}
@@ -2778,7 +2791,7 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubTDest","DHubCount","DHubCap
 			} else {
 				// general message loop through all
 				foreach (k, v in userparams()) {
-					if (::startswith(k, classname) && DHubParameters.find(k) < 0){		// this is true for not found null < 0
+					if (::startswith(k, classname) && DHubParameters.find(k) == null){		// find() returns null for not-found; null < 0 would throw
 						if (IsDataSet(k + "InfRepeat")){
 							KillTimer(ClearData( k+ "DelayTimer"))
 							ClearData(k + "InfRepeat")
