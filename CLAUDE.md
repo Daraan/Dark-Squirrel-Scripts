@@ -194,7 +194,13 @@ grep -arn "pattern" --include="*.nut" .    # for repo-wide sweeps
 Those two files are ANSI/Latin-1; the rest have drifted to UTF-8. `DScript Core.nut:1172` uses a
 literal `§` as a `case` label in `DCheckString`, and `§`/`»` appear in fold markers throughout.
 **Never bulk re-save, re-encode, or normalize line endings** (files are a mix of LF and CRLF too).
-Use `Edit` with exact byte-matched strings; avoid rewriting whole files.
+
+**Do NOT use the `Edit`/`Write` tools on `DScript Core.nut`** — they rewrite the whole file as
+UTF-8 and have been observed to replace the `§`/`°` bytes with U+FFFD (data loss, confirmed
+2026-08-05). Edit it through `tools/dsedit.py` instead: a byte-safe, marker-based line editor
+(decode latin-1 → edit lines → re-encode latin-1; atomic — a failed op writes nothing). Usage
+and op formats are documented in its header. The UTF-8 files are safe for `Edit` as long as the
+inserted text is ASCII.
 
 ### Filenames contain spaces and `&`
 
