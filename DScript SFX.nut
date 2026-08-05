@@ -518,18 +518,18 @@ pos_vector	= vector()
 		if (IsDataSet("Active") && !onreload)					// TODO: Make toggle optional
 			{return DoOff(DN)}
 		if (!rot_offset){									
-			rot_offset = DGetParam(GetClassName() + "Rotation", vector(0,0,0), DN)
+			rot_offset = DGetParam(_script + "Rotation", vector(0,0,0), DN)
 			if (typeof(rot_offset) != "vector")
 				rot_offset = vector(0,rot_offset,0)
 		}
-		SpinBase   = DGetParam(GetClassName() + "Spin", null, DN)
+		SpinBase   = DGetParam(_script + "Spin", null, DN)
 		if (SpinBase)
 			spin = 0
 		PostMessage(self, "CalcLocOffset")						// Necessary info not available before next 1.1 frames
 		if (onreload)
 			return
 		if (!item)												// base.DoOn from child.
-			item = DGetParam(_script, DarkUI.InvItem(), DN)
+			item = DGetParam(_script, (::GetDarkGame() != 1)? ::DarkUI.InvItem() : ::ShockGame.GetSelectedObj(), DN)
 		item = CreateHudObj(item, DGetParam(_script+"UseDummy", TRUE))
 		::DScript.ScaleToMaxSize(item, DGetParam(_script + "MaxSize", 0.20, DN))
 		
@@ -570,12 +570,12 @@ Use X,Y 180° Rotation to imitate a Z 180° rotation.
 		return rot_offset - v
 	}
 #	|-- On	 Off --|
-	function DoOn(DN, onreload = null){
+	function DoOn(DN, item = null, onreload = null){	// keep the base DoOn(DN, item, onreload) shape - the reload path calls with 3 args.
 		rot_offset = DGetParam(_script + "Rotation", vector(0,0,90))
 		if (typeof(rot_offset) != "vector")
 			rot_offset = ::vector(0, 0, rot_offset)
 
-		base.DoOn(DN, null, onreload)
+		base.DoOn(DN, item, onreload)
 	}
 	
 }
