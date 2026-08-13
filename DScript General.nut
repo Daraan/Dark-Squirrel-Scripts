@@ -463,7 +463,7 @@ maxAlert = 2				//Max Suspecious level 2
 	}
 
 	function OnDamage(){									// Any way to cheat this with bash dmg?
-		if (DCheckString("[culprit]") == ::PlayerID())
+		if (DCheckString("[culprit]") == ::PlayerID)		// T-16: PlayerID is an integer, not a function.
 			DoOff()
 	}
 
@@ -591,7 +591,7 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 			Property.SetSimple(::PlayerID,"SelfLit",lit)
 		}
 		
-		if (modes | 8)			//In T2 we can make the player a suspicious object as well.
+		if (modes & 8)			//In T2 we can make the player a suspicious object as well.	// T-41: & not |
 		{
 			#T2 only
 			if (GetDarkGame()==2)
@@ -615,12 +615,12 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 					
 					//Different methodes to weaken the perception of the AIs see documentation.
 					
-					if (modes | 1)		//Reduced Hearing
+					if (modes & 1)		//Reduced Hearing
 					{
 						Property.Add(t,"AI_Hearing")
 						Property.SetSimple(t,"AI_Hearing",DGetParam(_script + "Deaf",2,DN) - 1)
 					}
-					if (modes | 2)		//Reduced Vision
+					if (modes & 2)		//Reduced Vision
 					{
 						if (sight<2)	//make them completly blind
 							{
@@ -638,13 +638,13 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 							}
 						}
 					}
-					if (modes | 4)		//No investigate
+					if (modes & 4)		//No investigate
 					{
 						Property.Add(t,"AI_InvKnd")
 						Property.SetSimple(t,"AI_InvKnd",1)
 					}
 						
-					if (modes | 8 || DGetParam(_script + "AutoOff",false,DN))	//Suspicious mode or AutoOff On.
+					if (modes & 8 || DGetParam(_script + "AutoOff",false,DN))	//Suspicious mode or AutoOff On.
 					{
 						//Tries to add the DNotSuspAI script to the targeted AI so it will react accordingly.
 						Property.Add(t,"Scripts")
@@ -660,29 +660,29 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 							Object.AddMetaProperty(t,"M-DUndercover8")
 						}
 					}
-					if (modes | 8)
-					{		
-						//Setting Team	
+					if (modes & 8)
+					{
+						//Setting Team
 						Property.SetSimple(t,"AI_Team",0)
 						//Forget the player when he goes out of range.	
 						if(DGetParam(_script + "ForgetMe",false,DN))
 							Link.Create("AIWatchObj", t, self)
 					}
 				}
-				else //Use Custom Metas only.			// TODO make 123 usw...
-				{
-					if (Object.Exists(ObjID("M-DUndercoverPlayer"))){Object.AddMetaProperty(::PlayerID,"M-DUndercoverPlayer")}
-					if (modes | 1) Object.AddMetaProperty(t,"M-DUndercover1");
-					if (modes | 2) Object.AddMetaProperty(t,"M-DUndercover2");
-					if (modes | 4) Object.AddMetaProperty(t,"M-DUndercover4");
-					if (modes | 8) Object.AddMetaProperty(t,"M-DUndercover8");
-				}
-				if (modes | 16){
-					Object.AddMetaProperty(t,"M-DUndercover16")
-				}
-				if (modes | 32){
-					Object.AddMetaProperty(t,"M-DUndercover32")
-				}
+			}	// T-42: the meta branch pairs with the UseMetas check, not the alertness check.
+			else //Use Custom Metas only.			// TODO make 123 usw...
+			{
+				if (Object.Exists(ObjID("M-DUndercoverPlayer"))){Object.AddMetaProperty(::PlayerID,"M-DUndercoverPlayer")}
+				if (modes & 1) Object.AddMetaProperty(t,"M-DUndercover1");
+				if (modes & 2) Object.AddMetaProperty(t,"M-DUndercover2");
+				if (modes & 4) Object.AddMetaProperty(t,"M-DUndercover4");
+				if (modes & 8) Object.AddMetaProperty(t,"M-DUndercover8");
+			}
+			if (modes & 16){
+				Object.AddMetaProperty(t,"M-DUndercover16")
+			}
+			if (modes & 32){
+				Object.AddMetaProperty(t,"M-DUndercover32")
 			}
 		}
 	}
@@ -703,7 +703,7 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 
 		foreach (t in DGetParam(_script + "Target","@Human",DN,kReturnArray))
 		{
-			if (!DGetParam("DNotSuspAIUseMetas",false,userparams()))	//Restoring Vision and stuff.
+			if (!DGetParam(_script + "UseMetas",false,DN))	//Restoring Vision and stuff. (was hard-coded "DNotSuspAIUseMetas" - wrong script name, broke Copies too)
 			{
 				Property.Remove(t,"AI_Hearing")
 				Property.Remove(t,"AI_Vision")					
@@ -725,7 +725,7 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 			}
 			SendMessage(t,"EndIgnore")											// Resetting Team 
 		}
-		RepeatForCopies(::callee(DN))
+		RepeatForCopies(::callee(), DN)		// T-31: pass callee itself - calling it here recursed unboundedly.
 	}
 	
 }

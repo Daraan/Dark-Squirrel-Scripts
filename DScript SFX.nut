@@ -235,7 +235,7 @@ DefOn = "InvSelect"
 			SetData("DArmDummy", sfxdummy)
 		}
 		
-		if (RepeatForCopies(OnTimer))
+		if (RepeatForCopies(::callee()))		// T-32: pass callee, not the bound method.
 			base.OnTimer()
 	}
 }
@@ -283,7 +283,7 @@ class DObjectPanTo extends DTrigger
 	offset		= null
 	speed		= null
 	Viewers	 	= null
-	// removeViewer= null		// #BUG fix: store to be removed items in extra array and remove them from Viewers after iteration.
+	// T-49 fixed: UpdateAll() collects finished viewers and removes them after the iteration.
 	
 	function PanToTarget(obj, target, speed, correction){
 		local full_change = ::DScript.RelativeAngles(obj, target) + correction
@@ -313,24 +313,36 @@ class DObjectPanTo extends DTrigger
 				TriggerMessages("SingleOff", userparams(), obj)
 			}
 			// Auto Remove item from queue?
-			if (DGetParam(_script + "AutoOff", true)){
-				local idx = Viewers.find(obj)
-				Viewers.remove(idx)			// low prio todo. #NOTE BUG: One item will be skipped in the loop, but just for one frame.
-				offset.remove(idx)
-				if (Viewers.len() == 0){
-					// Sent message?
-					if (_script + "TOff" in userparams()){
-						SourceObj = obj						// message that finished it's facing queue.
-						TriggerMessages("Off", userparams(), obj)
-					}
-					return DoOff()							// LastObj, no last timer
-				}
-			}
+			if (DGetParam(_script + "AutoOff", true))
+				return "remove"			// T-49: the caller drops it after its loop - removing here skipped the next viewer and desynced offset.
 			return true
 		}
 		difference.Normalize()
 		// (difference) normalized to 1 degree * speed in degrees per frame + current facing.
 		::DScript.SetFacingForced(obj, difference * speed + facing)
+	}
+
+	function UpdateAll(){
+		// T-49: collect finished viewers, remove after the loop. Parallel offset array stays in sync.
+		local finished = []
+		foreach (i, viewer in Viewers){
+			if (PanToTarget(viewer, target, speed, offset[i]) == "remove")
+				finished.append(i)
+		}
+		local last = null
+		for (local j = finished.len() - 1; j >= 0; j--){
+			last = Viewers[finished[j]]
+			Viewers.remove(finished[j])
+			offset.remove(finished[j])
+		}
+		if (last != null && Viewers.len() == 0){
+			// Sent message?
+			if (_script + "TOff" in userparams()){
+				SourceObj = last						// message that finished it's facing queue.
+				TriggerMessages("Off", userparams(), last)
+			}
+			DoOff()										// LastObj, no last timer
+		}
 	}
 
 #	|-- Message Handlers --|
@@ -340,9 +352,7 @@ class DObjectPanTo extends DTrigger
 				ClearData("Active")			// float-interval mode: members died with the reload - let DoOn arm a fresh timer chain.
 			return DoOn(userparams())
 		}	
-		foreach (i, viewer in Viewers){		// all objects done.
-			PanToTarget(viewer, target, speed, offset[i])
-		}
+		UpdateAll()
 		return true
 	}
 
@@ -372,10 +382,9 @@ class DObjectPanTo extends DTrigger
 		Viewers = DGetParam(_script + "Viewer", self, DN, kReturnArray)
 
 		::DObjectFaceTarget.ResizeArrayToArray(offset, Viewers, 0)
-		foreach (i, viewer in Viewers){						// TODO #BUG When a viewer gets removed offset index will be wrong.
-			PanToTarget(viewer, target, speed, offset[i])
-		}
-		
+		UpdateAll()
+		if (!Viewers.len())									// everyone already faces the target - nothing to schedule.
+			return
 		if (!IsDataSet("Active")){
 			local interval = DGetParam(_script + "Interval",  2, DN)
 			if (!interval)	// Can be 0.
@@ -1235,20 +1244,22 @@ static eDrunkData =
 			if (mnA[eDrunkData.Length] <= 0 || ( mnA[eDrunkData.CurrentFade] < mnA[eDrunkData.Length] / mnA[eDrunkData.Interval] ))
 			{
 				// Continue. Start a new Timer.
-				SetData("DrunkTimer", DSetTimerData("DrunkTimer", mnA[eDrunkData.Interval], mnA[eDrunkData.Strength], mnA[eDrunkData.Interval], mnA[eDrunkData.Length], mnA[eDrunkData.Length], mnA[eDrunkData.FadeInTime], mnA[eDrunkData.Mode], mnA[eDrunkData.CurrentFade]))
+				// T-46: re-serialize in enum order - slots 3/4 wrote Length/FadeInTime into FadeInTime/FadeOutTime.
+				SetData("DrunkTimer", DSetTimerData("DrunkTimer", mnA[eDrunkData.Interval], mnA[eDrunkData.Strength], mnA[eDrunkData.Interval], mnA[eDrunkData.Length], mnA[eDrunkData.FadeInTime], mnA[eDrunkData.FadeOutTime], mnA[eDrunkData.Mode], mnA[eDrunkData.CurrentFade]))
 			}
 			else 
 				DoOff()
 
 			// Do FadeIn? Reduce the Strength effect and increase it slowly.
-			if (mnA[eDrunkData.CurrentFade] < ( mnA[eDrunkData.Length] / mnA[eDrunkData.Interval] ))
-				strengthCurrent = mnA[eDrunkData.CurrentFade] / mnA[eDrunkData.Length] * mnA[eDrunkData.Interval]
+			// T-46: fade windows read Length/FadeInTime where FadeInTime/FadeOutTime were meant; ramps now scale Strength.
+			if (mnA[eDrunkData.CurrentFade] < ( mnA[eDrunkData.FadeInTime] / mnA[eDrunkData.Interval] ))
+				strengthCurrent = mnA[eDrunkData.Strength] * mnA[eDrunkData.CurrentFade] * mnA[eDrunkData.Interval] / mnA[eDrunkData.FadeInTime]
 
 			if (mnA[eDrunkData.Length] > 0){	//Do FadeOut
-				if (mnA[eDrunkData.CurrentFade] > (mnA[eDrunkData.Length] - mnA[eDrunkData.FadeInTime]) / mnA[eDrunkData.Interval]){
-					strengthCurrent= (mnA[eDrunkData.Length]/mnA[eDrunkData.Interval]-mnA[eDrunkData.CurrentFade])/(mnA[eDrunkData.FadeInTime]/mnA[eDrunkData.Interval])
+				if (mnA[eDrunkData.FadeOutTime] > 0 && mnA[eDrunkData.CurrentFade] > (mnA[eDrunkData.Length] - mnA[eDrunkData.FadeOutTime]) / mnA[eDrunkData.Interval]){
+					strengthCurrent = mnA[eDrunkData.Strength] * (mnA[eDrunkData.Length]/mnA[eDrunkData.Interval]-mnA[eDrunkData.CurrentFade])/(mnA[eDrunkData.FadeOutTime]/mnA[eDrunkData.Interval])
 				}
-			}			
+			}
 			local seed 		= Data.RandInt(-1,1) * 70				// Sway in one direction
 			local ofacing 	= (Camera.GetFacing().z + seed) * kDegToRad
 			local orthv 	= vector(cos(ofacing), sin(ofacing), 0)	//Calculates the orthogonal vector, so relative left/right(forward) on the screen.
@@ -1307,9 +1318,9 @@ class DTPBase extends DBaseTrap
 			return v
 
 //Is one of my first scripts and still uses old non Standard Parameter fetching.
-		local x = ("DTpX" in DN)? x = DN.DTpX : 0;
-		local y = ("DTpY" in DN)? x = DN.DTpY : 0;
-		local z = ("DTpZ" in DN)? x = DN.DTpZ : 0;
+		local x = ("DTpX" in DN)? DN.DTpX : 0;		// T-44: y and z assigned to x, so DTpY/DTpZ were dead.
+		local y = ("DTpY" in DN)? DN.DTpY : 0;
+		local z = ("DTpZ" in DN)? DN.DTpZ : 0;
 		
 		if (x != 0 || y != 0 || z != 0)
 			return ::vector(x,y,z)
@@ -1330,10 +1341,10 @@ If any of the DTp_ parameters is specified and not 0 these have priority.
 		local victim = ::PlayerID
 		local dest = GetTeleportVector()
 		
-		if (!dest)
-			dest =(Object.Position(victim) + dest);
+		if (dest)											// T-43: branches were inverted - null offset ended in Position + null.
+			dest = (Object.Position(victim) + dest);		// move relative by the DTp offset
 		else
-			dest = Object.Position(self);
+			dest = Object.Position(self);					// no offset: teleport to the trap object
 		
 		DTeleportation(victim,dest);
 	}
@@ -1408,7 +1419,7 @@ DPortalTarget="+player+#88+@M-MySpecialAIs"
 	function OnTimer(){
 		if (message().name == "GoPortal"){
 			local dest = GetTeleportVector();
-			if (dest == false){	
+			if (dest == null){	// T-45: GetTeleportVector returns null, not false - the ScriptParams fallback never ran.
 				dest = (Object.Position( LinkDest(Link.GetOne("ScriptParams", self))) - Object.Position(self));
 			}
 			local targets = DGetTimerData(message().data)
@@ -1440,7 +1451,7 @@ class DModelByCount extends DStackToQVar
 //	|-- DoOn --|
 	function DoOn(DN)
 	{
-		local stack = ::StackToQVar() - 1	// -1 for Tweq Slot.
+		local stack = StackToQVar() - 1	// -1 for Tweq Slot. (T-18: inherited method, not a root-table function)
 		
 		//Limited to 5 models
 		if (stack > 5)
