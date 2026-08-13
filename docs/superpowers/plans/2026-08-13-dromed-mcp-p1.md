@@ -20,7 +20,7 @@ not contain the V2 files at all.
 - **The bridge cannot create files.** `::file(name, "w")` fails with `cannot open file` in DromEd even though the working directory is writable (`install_path = '.\'`). Payload leaves only via `print()` to the log; file creation happens only through `Debug.Command("dump_cmds", <name>)`. Confirmed by spike, 2026-08-13.
 - **`remove` and `rename` ARE available.** Deletion is not blocked, only creation.
 - **Absent from the Squirrel environment:** `getenv`, `system`, `dofile`, `loadfile`. Do not use them.
-- **Game mode only.** Squirrel scripts do not tick in edit mode.
+- **Polling is game mode only.** Squirrel scripts are instantiated in edit mode but never tick there, so the bridge cannot poll in the editor. `script_test <objid>` fires `OnTest` and pumps one request instead — that is how the editor-only scripts in `DScript_ModdingTools.nut` are driven. (Corrected after Task 4 was executed; the shipped `DScript MCPBridge.nut` has the `OnTest` pump and the code block in Task 4 below predates it.)
 - **All spool files are flat in the game root, prefixed `mcp_`.** No subdirectory — the subfolder case is unverified in both directions.
 - **New `.nut` files must be pure ASCII with LF line endings**, and must sort *after* `DScript Core.nut` in filename order so they can extend the framework. `DScript MCPBridge.nut` satisfies this (`M` > `C`).
 - **Never open `DScript Core.nut` with Edit/Write** — on this branch it is still Latin-1 (45× `0xA7`, 37× `0xB0`, and it does not decode as UTF-8), so those tools would rewrite it as UTF-8 and destroy the `case '§'` label that the parameter parser depends on. This plan does not modify it.

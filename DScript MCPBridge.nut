@@ -6,8 +6,12 @@
 // ...) refer to it, and tools/dromed_protocol.py implements the other half.
 //
 // Put DMCPBridge on one object in the mission -- the DScriptHandler marker is
-// fine -- and enter game mode. Scripts do not tick in edit mode, so the bridge
-// is game mode only by construction.
+// fine. There are two ways to drive it:
+//
+//   Game mode:  it polls by itself, every N frames.
+//   Edit mode:  scripts are instantiated but never tick, so it cannot poll.
+//               "script_test <objid>" pumps exactly one request instead. That
+//               is also the only mode where script_reload behaves properly.
 //
 // Design Note parameters:
 //   DMCPBridgeDelay=12    frames between polls (default 12, about 5/second)
@@ -16,15 +20,41 @@
 
 class DMCPBridge extends DBasics
 {
-	kSpoolIn = "mcp_in.txt"
-	lastSeq  = 0
+	kSpoolIn   = "mcp_in.txt"
+	lastSeq    = 0
+	seqLoaded  = false
+
+	// Loaded lazily rather than only in OnBeginScript, because OnTest can fire
+	// in edit mode where OnBeginScript never ran. Without this the bridge would
+	// start from lastSeq 0 there and replay an already-executed request.
+	function LoadSeq()
+	{
+		if (seqLoaded)
+			return
+		if (IsDataSet("MCPLastSeq"))
+			lastSeq = GetData("MCPLastSeq")
+		seqLoaded = true
+	}
 
 	function OnBeginScript()
 	{
-		if (IsDataSet("MCPLastSeq"))
-			lastSeq = GetData("MCPLastSeq")
-		::DHandler.PerFrame_Register(this, DGetParam(_script + "Delay", 12))
+		LoadSeq()
+		// ::DHandler is a game-mode construct. Guarding rather than assuming
+		// keeps the script loadable in the editor, where OnTest still works.
+		if ("DHandler" in ::getroottable() && ::DHandler)
+			::DHandler.PerFrame_Register(this, DGetParam(_script + "Delay", 12))
 		base.OnBeginScript()
+	}
+
+	// Edit mode entry point: "script_test <objid>" runs one request.
+	function OnTest()
+	{
+		LoadSeq()
+		try {
+			Poll()
+		} catch (e) {
+			print("MCPBridge: poll failed: " + e)
+		}
 	}
 
 	// ::DHandler calls this every N frames. It must NEVER throw: the dispatch

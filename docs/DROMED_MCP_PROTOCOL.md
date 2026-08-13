@@ -57,7 +57,7 @@ string.
 | `eval` | Squirrel **expression** | — | compile `return (A)` and print the value |
 | `msg` | object name or id | message name | `SendMessage(A, B)` |
 | `test` | object id | — | `Debug.Command("script_test", A)` |
-| `reload` | — | — | `Debug.Command("script_reload")` |
+| `reload` | — | — | `Debug.Command("script_reload")`. Best driven from edit mode; see R13 |
 | `dump` | object id | — | print name, archetype, scripts, DesignNote |
 
 **R7.** `eval` takes an expression, not statements, because it is compiled as `return ( ... )`.
@@ -95,6 +95,22 @@ no ack cannot tell a crashed bridge from a slow one, so failures must always ack
 
 **R12.** On each request the bridge deletes every `mcp_ack_*` file for a sequence lower than the
 current one, so the spool does not accumulate.
+
+## Modes
+
+**R13.** The bridge is driven two different ways, and a caller has to know which applies:
+
+| Mode | How a request gets picked up |
+|---|---|
+| Game mode | The bridge polls every N frames on its own. Write the request and wait. |
+| Edit mode | Scripts are instantiated but never tick, so nothing polls. `script_test <objid>` on the bridge object runs exactly one request. |
+
+Everything else — the request format, sequencing, framing, both completion signals — is identical
+in both modes. Only the trigger differs.
+
+Edit mode is the better place for `reload`: `script_reload` is primarily an edit-mode command, and
+`DOC/squirrel_script/ReadMe.txt:27` warns that calling it from game mode sends no
+`EndScript`/`BeginScript`/`Sim` messages and can leave scripts in a strange state.
 
 ## Agent procedure
 

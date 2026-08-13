@@ -25,7 +25,7 @@ DScript already uses in production code, so none of the transport is speculative
 | Question | Answer |
 |---|---|
 | Topology | DromEd on a Windows box; its install tree is reachable from the agent host as a shared folder. The agent side runs on the agent host and only touches files. |
-| Mode coverage | Game mode only for v1. Edit mode would need external keystroke injection; deferred. |
+| Mode coverage | Both, by different means. Game mode polls on a frame tick. Edit mode cannot poll — scripts are instantiated there but never tick — so `script_test <objid>` pumps one request. Corrected 2026-08-13: the original claim that edit mode was unreachable without keystroke injection was wrong, as the editor-only scripts in `DScript_ModdingTools.nut` demonstrate by being driven exactly that way. |
 | Tool surface | Script-debug oriented — command, eval, message, script_test, object dump, script_reload with compile-error extraction, log tail. |
 | Persistent-save trick | `dump_cmds` filename-as-signal adopted as the ack primitive. The env-map-zone payload trick is documented as a fallback only, because it mutates the mission. |
 | Agent side | Two tiers. The file protocol is the contract; the agent drives it with plain Read/Write/Bash when nothing else is available, and `tools/dromed.py` is an optional convenience wrapper where Python is installed. Neither is required by the other. |
