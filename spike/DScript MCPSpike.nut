@@ -1,47 +1,52 @@
 // -----------------------------------------------------------------------------
 // DScript MCPSpike.nut  --  THROWAWAY. Do not ship. Delete when done.
-// VERSION 3
+// VERSION 4
 //
-// Run 1 and run 2 produced no MCPSPIKE output at all, so before asking anything
-// about file writing this version establishes which of three things is true:
+// What v3 established, in DromEd (T2, API 11):
+//   - "file" IS in the root table, so the io lib is registered.
+//   - file(name, "w"), ("wb"), and a subfolder name all fail with
+//     "cannot open file". So the API exists and the OPEN is what fails.
+//   - Engine.FindFileInPath returns paths RELATIVE to the search root
+//     ("monolog.txt", not a full path), so it cannot be used to derive an
+//     absolute install directory.
 //
-//   A. The file never compiled or never loaded.
-//   B. It loaded, but the script never got attached to an object / never ran.
-//   C. It ran, and the individual probes failed.
+// Two explanations survive, and they imply different bridge designs:
+//   (a) NewDark routes file() through a read-oriented resource layer, so no
+//       squirrel-initiated write can ever succeed.
+//   (b) DromEd's working directory is simply not writable, and an absolute
+//       path to somewhere writable would work fine.
 //
-// The print below sits at FILE SCOPE, not inside the class. Squirrel executes
-// file-level code when the file is compiled, so it fires on every
-// script_reload regardless of whether any object carries this script.
-//
-//   - See "MCPSPIKE FILE LOADED v3" but no "MCPSPIKE RUN"  -> case B
-//   - See neither                                          -> case A
-//   - See both                                             -> case C, read the probes
-//
-// This version deliberately avoids closures, bindenv() and foreach-over-string,
-// so that none of them can be the reason nothing prints.
+// v4 separates them:
+//   S1  Census of which standard-lib functions are actually registered. If
+//       remove/rename/getenv are present, the io and system libs are whole
+//       and (a) becomes less likely.
+//   S2  The raw values of the engine's path config vars, which is the other
+//       way to find out where the engine thinks it is.
+//   S3  A write to an absolute path under %TEMP%, which is writable by
+//       definition. If this succeeds, the answer is (b) and the bridge can
+//       write result files after all.
+//   S4  A write to a directory you name yourself, for the case where getenv
+//       is missing. Fill in kSpikeDir below; leave it "" to skip.
 //
 // HOW TO RUN
-//   1. Copy this file into <game>/sq_scripts/ , replacing the old one.
-//   2. In DromEd:  script_reload
-//      -> "MCPSPIKE FILE LOADED v3" should appear immediately, on its own,
-//         with no object involved. If it does not, stop and report that.
-//   3. Add the script named exactly  MCPSpike  to any object (a Marker is fine).
-//      It is the CLASS name that goes in the Scripts property, not the filename.
-//   4. Fire it, whichever works:
-//         script_test <objid>      (edit mode)
-//         or enter game mode       (fires OnBeginScript / OnSim)
-//   5. Search monolog.txt for MCPSPIKE and paste every line that matches.
+//   1. Optionally set kSpikeDir, one line below, to your DromEd install
+//      directory. Use DOUBLE backslashes: "D:\\Games\\Thief2\\"
+//      Keep the trailing separator.
+//   2. Copy into <game>/sq_scripts/ , then: script_reload
+//   3. The script should still be on the Marker from last time. Enter game
+//      mode, or script_test <objid>.
+//   4. Paste every monolog.txt line matching MCPSPIKE.
 //
 // Only writes files named mcp_spike_*.
 // -----------------------------------------------------------------------------
 
-print("MCPSPIKE FILE LOADED v3")
+// Set this to your install dir to enable S4, or leave empty to skip it.
+const kSpikeDir = ""
+
+print("MCPSPIKE FILE LOADED v4")
 
 class MCPSpike extends SqRootScript
 {
-	// Write a string one byte at a time. Squirrel's file has no writestr, and
-	// this uses an index loop rather than foreach so that foreach-over-string
-	// semantics cannot be the failure.
 	function WriteStr(f, str)
 	{
 		for (local i = 0; i < str.len(); i++)
@@ -58,16 +63,15 @@ class MCPSpike extends SqRootScript
 		return s
 	}
 
-	// One write probe. No closure, so nothing here can fail for scoping reasons.
 	function TryWrite(label, name, mode)
 	{
 		try {
 			local f = ::file(name, mode)
 			WriteStr(f, "OK_" + label)
 			f.close()
-			print("  PASS  write " + label + "  mode=" + mode + "  name=" + name)
+			print("  PASS  " + label + "  name=" + name)
 		} catch (e) {
-			print("  FAIL  write " + label + "  mode=" + mode + "  name=" + name + "  -> " + e)
+			print("  FAIL  " + label + "  name=" + name + "  -> " + e)
 			return
 		}
 		try {
@@ -77,75 +81,87 @@ class MCPSpike extends SqRootScript
 		}
 	}
 
-	function Locate(name)
+	// S1 -- which standard-lib pieces did squirrel.osm actually register?
+	function Census()
 	{
-		local vars = ["install_path", "resname_base", "script_module_path"]
+		local names = ["file", "blob", "getenv", "system", "remove", "rename",
+		               "date", "clock", "time", "compilestring", "dofile", "loadfile"]
+		local root = ::getroottable()
+		local have = ""
+		local miss = ""
+		for (local i = 0; i < names.len(); i++) {
+			if (names[i] in root)
+				have += names[i] + " "
+			else
+				miss += names[i] + " "
+		}
+		print("  S1 present: " + have)
+		print("  S1 absent : " + miss)
+	}
+
+	// S2 -- what the engine says its own paths are.
+	function Paths()
+	{
+		local vars = ["install_path", "resname_base", "script_module_path",
+		              "load_path", "fm_path", "script_path", "game"]
 		for (local i = 0; i < vars.len(); i++) {
-			local full = ::string()
+			local v = ::string()
 			try {
-				if (::Engine.FindFileInPath(vars[i], name, full))
-					print("        via " + vars[i] + ": " + full.tostring())
+				if (::Engine.ConfigGetRaw(vars[i], v))
+					print("  S2 " + vars[i] + " = '" + v.tostring() + "'")
+				else
+					print("  S2 " + vars[i] + " = <not defined>")
 			} catch (e) {
-				print("        via " + vars[i] + ": threw " + e)
+				print("  S2 " + vars[i] + " threw " + e)
 			}
+		}
+	}
+
+	// S3 -- absolute path under TEMP, which is writable by definition.
+	function TempWrite()
+	{
+		if (!("getenv" in ::getroottable())) {
+			print("  S3 SKIP  getenv not registered")
+			return
+		}
+		local names = ["TEMP", "TMP", "USERPROFILE"]
+		for (local i = 0; i < names.len(); i++) {
+			local d = null
+			try {
+				d = ::getenv(names[i])
+			} catch (e) {
+				print("  S3 getenv(" + names[i] + ") threw " + e)
+				continue
+			}
+			if (d == null || d == "") {
+				print("  S3 " + names[i] + " is empty")
+				continue
+			}
+			print("  S3 " + names[i] + " = " + d)
+			TryWrite("S3-" + names[i], d + "\\mcp_spike_temp.txt", "wb")
+			return
 		}
 	}
 
 	function Run(from)
 	{
-		print("MCPSPIKE RUN from=" + from)
+		print("MCPSPIKE RUN v4 from=" + from)
 		print("  IsEditor=" + ::IsEditor() + " DarkGame=" + ::GetDarkGame() + " API=" + ::GetAPIVersion())
 
-		// Does the io lib exist at all? This is the claim that the earlier
-		// "cannot open file" wording rested on.
-		print("  'file' in root table: " + ("file" in ::getroottable()))
+		Census()
+		Paths()
 
-		// --- relative paths ------------------------------------------------
-		TryWrite("Q1-flat",   "mcp_spike_flat.txt",     "w")
-		TryWrite("Q5-binary", "mcp_spike_bin.txt",      "wb")
-		TryWrite("Q3a-subdir", "mcp/mcp_spike_sub.txt", "wb")
+		// Confirm the v3 result still holds, as the control case.
+		TryWrite("S0-relative", "mcp_spike_flat.txt", "wb")
 
-		// --- where does anything live? -------------------------------------
-		print("  locating monolog.txt:")
-		Locate("monolog.txt")
-		print("  locating mcp_spike_flat.txt:")
-		Locate("mcp_spike_flat.txt")
+		TempWrite()
 
-		// --- absolute path, derived from the engine's own answer ------------
-		local dir = null
-		local full = ::string()
-		try {
-			if (::Engine.FindFileInPath("install_path", "monolog.txt", full)) {
-				local s = full.tostring()
-				local cut = -1
-				for (local i = 0; i < s.len(); i++)
-					if (s[i] == '\\' || s[i] == '/')
-						cut = i
-				if (cut >= 0)
-					dir = s.slice(0, cut + 1)
-			}
-		} catch (e) {
-			print("  Q6 could not resolve install dir -> " + e)
-		}
-
-		if (dir == null)
-			print("  Q6 SKIP  no install dir resolved")
+		// S4 -- the directory you named, if any.
+		if (kSpikeDir == "")
+			print("  S4 SKIP  kSpikeDir not set")
 		else {
-			print("  Q6 install dir = " + dir)
-			TryWrite("Q6-absolute", dir + "mcp_spike_abs.txt", "wb")
-		}
-
-		// --- dump_cmds, the ack primitive ----------------------------------
-		// Content is irrelevant; only whether the file appears where asked.
-		try {
-			::Debug.Command("dump_cmds", "mcp_spike_ack_flat.txt")
-			::Debug.Command("dump_cmds", "mcp/mcp_spike_ack_sub.txt")
-			print("  R1 dump_cmds issued for both a flat and a subfolder name.")
-			print("     CHECK BY HAND which of these exist:")
-			print("       <game>/mcp_spike_ack_flat.txt")
-			print("       <game>/mcp/mcp_spike_ack_sub.txt")
-		} catch (e) {
-			print("  R1 dump_cmds threw -> " + e)
+			print("  S4 kSpikeDir = " + kSpikeDir)
+			TryWrite("S4-named", kSpikeDir + "mcp_spike_named.txt", "wb")
 		}
 
 		print("MCPSPIKE END")
