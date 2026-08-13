@@ -1,7 +1,7 @@
 ##		--/					 §HEADER					--/
 
-#include DConfigDefault.nut
-// This file IS NECESSARY for DScript.nut to compile.
+#include DSConfigDefault.nut
+// This file IS NECESSARY for DScript Core.nut to compile.
 //	In it are adjustable constants which you might want to change depending on your need.
 //	Like setting a minimum required version for your Fan Mission.
 //
@@ -828,9 +828,9 @@ DScript <- {
 		# |-- Test if the given type can be used
 		type = ::DScript._DoQVarChecks(name, type, value)
 		
-		# DEBUG POINT
-		DPrint("\nINFO: Saving '" + name + "' with value '" + value + "'("+typeof value+") with type level '" 
-				+ (type == eQuestDataType.kQuestDataUnknown?eQuestDataType.kQuestDataMission:type) +"'", kDoPrint, ePrintTo.kMonolog)
+		# DEBUG POINT - QVar write hot path, keep quiet. Uncomment while debugging QVar storage:
+		//DPrint("\nINFO: Saving '" + name + "' with value '" + value + "'("+typeof value+") with type level '" 
+				//+ (type == eQuestDataType.kQuestDataUnknown?eQuestDataType.kQuestDataMission:type) +"'", kDoPrint, ePrintTo.kMonolog)
 		
 		# |-- Save by type.
 		switch(type){
@@ -1227,7 +1227,6 @@ SubVersion 	= 0.72
 						origin		= message().data3
 					}
 					# Get First Object Set
-print(str+"start?" + start + " On: " + self)
 					local division = ::DScript.DivideAtNext(str, "/", true)
 					if (division[1] != ""){ 		// we are not at the end
 						local nextset  = DCheckString(division[0], kReturnArray)
@@ -1246,8 +1245,6 @@ print(str+"start?" + start + " On: " + self)
 					if (!start)
 						return false
 						
-					foreach (obj in ::gSHARED_SET)
-print("SHARED" + obj)
 					
 					return ::DScript._FormatForReturn(delete ::gSHARED_SET, returnInArray)		// TODO
 			
@@ -1295,12 +1292,11 @@ print("SHARED" + obj)
 				local sref = ::string()
 				if (::Engine.FindFileInPath("install_path", divide[2], sref))	// TODO cache location, check FM
 					{
-					print("yes in " + sref)
+					// TODO: use the resolved path in sref.
 					
 					}
 				else
 					{
-					print("nope try again")
 					return ::DScript._FormatForReturn(null, returnInArray)	// T-67: file not found - do not open an unvalidated path.
 					}
 				
@@ -1435,7 +1431,6 @@ print("SHARED" + obj)
 				}
 				if (raw.len() == 2){	// if still two items exist it must be >radius
 					values[1] = raw[1].tofloat()
-					print(divide[0])
 					if (divide[0][1] == '>')				// divide[0] is the part before the colon {>5...:
 						values[0] = true
 				}
@@ -1593,7 +1588,7 @@ class DBaseTrap extends DBasics
 //----------------------------------
 </
 Help 		= "Handles received messages and parameters. Very little use by itself."
-Help2		= "Can be used to generate a DPingingBack when it received a DPingBackmessage.\nOr to block messages to other scripts via DBaseTrapBlockMessage="
+Help2		= "Can be used to generate a DPingingBack when it received a DPingBackmessage.\nOr to block messages to other scripts via [ScriptName]ExclusiveMessage="
 SubVersion 	= 0.77
 />
 //----------------------------------
@@ -1605,8 +1600,6 @@ SourceObj 	  = null	//	The actual source of a message.
 	// In the constructor() it handles the necessary ObjectData needed for Counters and Capacitors.
 	constructor(){									// Setting up save game persistent data.
 		_script = GetClassName()					// base.constructor has to be called before using _script.
-		if (this.getclass().getbase() == "DTrigger")
-			print("yohoho")
 		//print("Constructed" + _script + " On " + self + DScript.GetObjectName(Object.Archetype(self)))
 		if (!::IsEditor()){							// Initial data is set in the Editor.
 			ConstructParameters(true)				// T-37: init missing Count/Capacitor slots for runtime-created scripts, keep persisted values.
@@ -1847,7 +1840,7 @@ SourceObj 	  = null	//	The actual source of a message.
 	
 		// print("CURRENT Copy" + _script)
 		if (_script == null)
-			print(GetClassName() +" on " + self + "_script NOT SET! - base.constructor probably missing.")
+			DPrint("_script NOT SET! - base.constructor probably missing.", kDoPrint, ePrintTo.kMonolog)
 		return RepeatForCopies(::callee(), DN)
 	}
 
@@ -2305,7 +2298,6 @@ if (IsEditor()){
 			Property.Set(core,"SlayResult","Effect", eSlayResult.kSlayDestroy)
 			
 			Object.Teleport(core,vector(4,4,4),vector())
-			print("I'm " + self)
 			print("DScript - Creating Handler Object. " + core)
 			Object.EndCreate(core)
 		}
@@ -2422,7 +2414,6 @@ class DScriptHandler extends DRelayTrap
 				::Quest.BinDelete("MissBinTables")
 			}
 			SetData("MissionInitialized")
-			print("MissionInitialized")
 		}
 	}
 
@@ -2610,7 +2601,6 @@ class DScriptHandler extends DRelayTrap
 
 	function OnDelete(){
 		DPrint("WARNING. DScript Handler deleted. This might delete some script data.\nWill recreate another instance.", kDoPrint, ePrintTo.kMonolog | ePrintTo.kLog)
-		print(Object.Exists("DScriptHandler"))
 	}
 
 // |-- Destructor
@@ -2875,33 +2865,24 @@ class DTrapSetQVar extends DBaseTrap
 		}
     }
 	
-	function OnBeginScript(){
-		::print("DID BEGIN")
-		base.OnBeginScript()
-	}
-	
 	function InitQVarFromProp(){
-		print(GetProperty("TrapQVar") + " Im " + self)
 		local event = ::split(GetProperty("TrapQVar"),":;")
-		print("Len of prop "+event.len())
 		if (event.len() == 1 && event[0].len()){
-			print(event[0])
 			if (event[0] == "\"\"")
 				event[0] = ""
 			else
 				event[0] = DCheckString(event[0])
-			DPrint("Setting " + DGetParam(_script + "Name") + " to " + event[0], kDoPrint)
+			DPrint("Setting " + DGetParam(_script + "Name") + " to " + event[0])
 			PrepareSetQVar("", event[0])
 		} 
 		else if (event.len() >= 1){								// Set more than one.
-			print("0 is+ '"+event[0])
 			event.apply(::strip)									// TODO: Do this more.
 			for(local i = 0; i + 1 < event.len(); i += 2){
 					if (event[i+1] == "\"\"")
 						event[i+1] = ""
 					else
 						event[i+1] = DCheckString(event[i+1])
-					DPrint("Setting " + event[i] + " to " + event[i+1], kDoPrint, ePrintTo.kMonolog)
+					DPrint("Setting " + event[i] + " to " + event[i+1])
 					PrepareSetQVar(event[i],event[i+1])
 			}
 		}
@@ -2912,7 +2893,6 @@ class DTrapSetQVar extends DBaseTrap
 			return
 		SetData("DQVarInitDone")
 		InitQVarFromProp()
-		::print("DID SIM")
 	}
 
     function DoOn(DN = null)
@@ -2931,7 +2911,6 @@ DScript.Quest <-
 
 	function SubscribeMsg(instance, var_name){
 		var_name = var_name.tostring().tolower()		// normalize: DScript.SetQVar lowercases names before notifying.
-		print("Saving QVar Trigger" + instance)
 		if (var_name == "*")
 			return Triggers[instance] <- false
 		if (instance in Triggers){
@@ -2974,7 +2953,6 @@ DScript.Quest <-
 	function QuestChange(name, newval, oldval){
 	/* Checks which triggers shall react to the given msg. */
 		foreach (trigger, vars in Triggers){
-			print(type(trigger) + typeof vars)
 			if (!vars)	// "*" all
 				trigger.CheckQuest(name, newval, oldval)
 			else
@@ -3036,7 +3014,7 @@ DefOff 	= null
 
 	function OnDarkGameModeChange(){
 		if (!message().suspending && !message().resuming){
-			print("MODE CHANGED")
+			// TODO: nothing to do yet. The handler itself keeps the message from reaching OnMessage.
 		
 		}
 	

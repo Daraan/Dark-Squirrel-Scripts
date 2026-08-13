@@ -1127,10 +1127,3 @@ while (Object.Archetype(obj) != 0){
 	obj++
 }*/
 
-
-local s = "alxarm"
-foreach (signal in getconsttable().eAlarmSignals){
-			if (s == signal)
-				return	print("yes")
-		}
-	print("nope")

@@ -124,8 +124,12 @@ The Object that was hit will receive the message specified by DHitScanTrapHitMsg
 By default when any object is hit a TurnOn will be sent to CD Linked objects.
 Of course these can be changed via DHitScanTrapTOn and DHitScanTrapTDest.
 
-Alternatively if just a special set of objects should trigger a TurnOn 
+Alternatively if just a special set of objects should trigger a TurnOn
 then these can be specified via DHitScanTrapTriggers.
+
+Objects that the beam should pass through are given as DHitScanTrapignore_set
+- note the spelling, this parameter is lowercase with an underscore, unlike every
+other parameter. Renaming it would break existing Design Notes, so it stays.
 */
 ####################################################################
 {
@@ -136,14 +140,18 @@ hloc = vector()
 
 	function DoOn(DN){
 	/*
-	int ObjRaycast(vector from, vector to, vector & hit_location, object & hit_object, int ShortCircuit, BOOL bSkipMesh, object ignore1, object ignore2);
+	int ObjRaycast(vector from, vector to, vector & hit_location, object & hit_object, int ShortCircuit, int flags, object ignore1, object ignore2);
 		// perform a raycast on objects and terrain (expensive, don't use excessively)
 		//   'ShortCircuit' - if 1, the raycast will return immediately upon hitting an object, without determining if there's
 		//                    any other object hit closer to ray start
 		//                    if 2, the raycast will return immediately upon hitting any terrain or object (most efficient
 		//                    when only determining if there is a line of sight or not)
 								# Means if there is a hit something obscures.
-		//   'bSkipMesh'    - if TRUE the raycast will not include mesh objects (ie. characters) in the cast
+		//   'flags'        - if bit 0 is set, the raycast will not include mesh objects (ie. characters) in the cast
+		//                    if bit 1 is set, the raycast will only include objects whose Render Type property is
+		//                    Normal or Unlit [new flag in T2 v1.27 / SS2 v2.48]
+								# The code below relies on the new int meaning: RenderedOnly (bit 1, default 2)
+								# plus IgnoreAI (bit 0) are added up and passed in this slot.
 		//   'ignore1'      - is an optional object to exclude from the raycast (useful when casting from the location of
 		//                    an object to avoid the cast hitting the source object)
 		//   'ignore2'      - is an optional object to exclude from the raycast (useful in combination with ignore2 when
@@ -407,9 +415,9 @@ DefOn="+Contained+Create+Combine"
 	}
 
 	function StackToQVar(qvar = false){
-		local invObj = self											// Create and combine is directly the script object. 
+		local invObj = self											// Contained and Combine act directly on the script object.
 		if ( message().message == "Create")
-			invObj = GetObjOnPlayer(Object.Archetype(self)) 		// When dropped, get the object in the inventory. If non exist Property.Get will return 0.
+			invObj = GetObjOnPlayer(Object.Archetype(self)) 		// Create means a copy was split off, so look up the item that stayed in the inventory. Returns null if there is none.
 		
 		if (qvar && qvar != "")										// TODO should qvar exist? create it.
 			Quest.Set(qvar,Property.Get(invObj,"StackCount"),eQuestDataType.kQuestDataMission)

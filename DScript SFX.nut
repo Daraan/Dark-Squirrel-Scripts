@@ -555,8 +555,8 @@ Similar to DHudCompass attaches the [DHudObject]{Object}; by default the selecte
 The objects facing will be constant toward the camera. With {Rotation} chose an offset.
 NOTE: Z-Rotation does not work intuitively as it is in combination with pitch.
 Use X,Y 180° Rotation to imitate a Z 180° rotation.
-
-*/#######################################
+*/
+#######################################
 {
 	function GetRotation(){
 		local v = Camera.GetFacing()
@@ -883,8 +883,7 @@ exception = null						// Fixes deselection. If an item is picked up that does be
 	function OnContained(){
 		if (message().event == eContainsEvent.kContainAdd && message().container == ::PlayerID){
 			local sub = GetInventory()
-			if (DPrint(""))
-				print("Hi I'm a " + DScript.GetObjectName(self,true) +" and would like to go to " + DScript.GetObjectName(sub,true) + sub)
+			DPrint("Would like to go to " + DScript.GetObjectName(sub,true) + sub)
 			if (::Container.IsHeld(OBJ_WILDCARD,sub) == eContainType.ECONTAIN_NULL){	// If the subinventory is not held, move it to the player.
 				//DoOn()
 				exception = true
@@ -1476,7 +1475,6 @@ class DDirector extends DObjectPanTo
 			target = LinkDest(link)
 			try speed = LinkTools.LinkGetData(link, "").tofloat()		// guard: empty/non-numeric link data must not kill the ride
 			catch(e) speed = 0
-			print("Speed is" + speed)
 			if (!speed)
 				speed = DGetParam(_script + "PanSpeed", 3)
 		}
@@ -1510,7 +1508,6 @@ class DDirector extends DObjectPanTo
 				local idx = message().data
 				foreach(link in Link.GetAll("ScriptParams", self)){
 					local data = LinkTools.LinkGetData(link, "")
-					::print("data is " + data)
 					if (data == null || data == "")
 						continue
 					local didx = null
@@ -1551,12 +1548,10 @@ class DDirector extends DObjectPanTo
 		local speed 	= LinkTools.LinkGetData(next_link, "Speed")
 		if (speed <= 0){
 			Property.Set(self,"MovingTerrain","active",FALSE);
-			print("speec" + speed)
 			if (speed == 0)
 				SetData("Jump",Path[index + 1])
 			else
 				LinkTools.LinkSetData(next_link, "Speed", -speed)
-			print("Will not start")
 			base.OnMessage()
 			return false			// Stops
 		}
@@ -1579,7 +1574,6 @@ class DDirector extends DObjectPanTo
 				Link.Create("TPathNext", self, Path[GetData("Active")+2])
 			else
 				return
-			::print("next obj is " + Path[GetData("Active")+2])
 			if (!OnMovingTerrainWaypoint())
 				return												// Pause
 		}
@@ -1688,7 +1682,6 @@ class DDirector extends DObjectPanTo
 				}
 			}
 			else ClearData("ReachedEnd")
-			::print("Cur idx = "+GetData("Active") +" len: " + Path.len())
 			if (notcanceled)
 				SendMessage(self, "ReachedEndpoint", ClearData("Active"), TRUE, Path.top())
 			else 
@@ -1696,7 +1689,6 @@ class DDirector extends DObjectPanTo
 				SendMessage(self, "Canceled", GetData("Active"), null, Path[ClearData("Active")])
 			}
 			Link.Destroy(Link.GetOne("TPathNext", self))
-			::print("Path[0]")
 			Object.Teleport(self, vector(), vector(), Path[0])
 			Link.Create("TPathNext",self,Path[1])
 			
