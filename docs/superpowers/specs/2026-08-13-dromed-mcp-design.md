@@ -2,9 +2,9 @@
 
 Date: 2026-08-13
 Status: design, not approved for implementation.
-Blocked on one spike — `spike/DScript MCPSpike.nut` must be run in DromEd before implementation
-starts, because its result decides which of two architectures this becomes (see R0 and
-"Collapse path").
+R0 partly answered on 2026-08-13: a relative-path `::file(name, "w")` fails in DromEd with
+`cannot open file`, so the log-framing architecture below is the primary one. One cheap follow-up
+(Q6, absolute path) could still simplify it; see R0 and "Collapse path".
 
 ## Context
 
@@ -241,16 +241,26 @@ game mode, or the mission has no object carrying `DMCPBridge`.
 These cannot be resolved from this repo and should be checked before or during implementation.
 R0 blocks; the rest each have a stated fallback and do not.
 
-- **R0 — does `::file(name, "w")` work?** BLOCKING, spike written, awaiting a DromEd run. Only
-  `"r"` is used anywhere in this repo (`DScript File&Blob.nut:381`, `:719`,
-  `DScript Overlays.nut:23`) and `Custom-API-reference.nut:10` explicitly declines to document the
-  standard libs, so whether `squirrel.osm` registers the io lib writable is unknown. The evidence
-  leans negative: `cDSaveHandler` goes through `Engine.SetEnvMapZone` plus a backup-and-restore
-  dance to persist roughly 53 bytes, which nobody would do with a working `file(…, "w")`.
+- **R0 — does `::file(name, "w")` work?** Answered for the relative-path case on 2026-08-13:
+  **no**. DromEd reports `cannot open file`.
 
-  If it works, most of this design collapses — see "Collapse path" below.
-  Spike: `spike/DScript MCPSpike.nut`, which also settles R1 and Q2 (where written files land)
-  in the same run.
+  The exact wording carries information. `cannot open file` is Squirrel's `fopen` failure. Had the
+  io lib been registered without write support, the failure would have been
+  `the index 'file' does not exist` instead. So the write API is present and the *open* is what
+  failed — consistent with the working directory being unwritable, or with NewDark resolving
+  relative names through its resource layer, which is read-oriented.
+
+  This matches the indirect evidence: `cDSaveHandler` goes through `Engine.SetEnvMapZone` plus a
+  backup-and-restore dance to persist roughly 53 bytes, which nobody would do with a working
+  `file(…, "w")`.
+
+  **Consequence:** the log-framing design is primary and implementation is unblocked.
+
+  **Q6, still open and worth one run:** whether an *absolute* path writes. If it does, writes are
+  available and only name resolution was the obstacle, which revives the collapse path below.
+  `spike/DScript MCPSpike.nut` derives the install directory from where the engine reports
+  `monolog.txt` lives, so it needs no hardcoded drive letter, and settles R1, Q2, append and
+  binary mode in the same run.
 - **R1 — does `dump_cmds` accept a subfolder in its filename argument?** If not, ack files land in
   the install root. Fallback: drop the `mcp/` prefix, keep the `mcp_ack_` name prefix.
 - **R2 — does DromEd write mono output to `monolog.txt` by default, and which config var controls
@@ -267,7 +277,7 @@ R0 blocks; the rest each have a stated fallback and do not.
   content, never on mtime.
 - **R6 — CRLF.** Covered by the single-line request format, but worth confirming once end to end.
 
-## Collapse path, if R0 comes back positive
+## Collapse path, only if Q6 comes back positive
 
 A writable `::file` makes the bridge able to hand back a result file directly, and most of the
 transport machinery stops earning its place:
@@ -313,8 +323,8 @@ Nothing in this repo runs locally, but most of this design can still be tested.
 
 ## Phasing
 
-- **P0** — run `spike/DScript MCPSpike.nut` in DromEd. Blocking. Settles R0, R1 and where written
-  files land, then gets deleted.
+- **P0** — run `spike/DScript MCPSpike.nut` in DromEd. No longer blocking; R0 is answered for the
+  relative-path case. Still worth one run for Q6, R1 and where written files land. Delete after.
 - **P1** — spool protocol, bridge with `ping`/`cmd`, tier 1 protocol document, and the fake-bridge
   test suite. Enough to prove the transport.
 - **P2** — remaining verbs, `script_reload` with compile-error extraction, object dump, and
