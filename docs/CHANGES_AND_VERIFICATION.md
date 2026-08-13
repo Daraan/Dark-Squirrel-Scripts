@@ -263,7 +263,7 @@ attempt on the missing file.
 **Known limitation, not fixed:** interior empty fields (`>>`) are still collapsed by `split()`.
 Only the leading empty field was restored. Do not test `a>>b` and expect a gap.
 
-### 3.10 `{` distance/box filter — radius, box, anchor (T-94, **uncommitted at time of writing**)
+### 3.10 `{` distance/box filter — radius, box, anchor (T-94, `e102993`)
 
 *Was:* the header was parsed with `split(str, "><(,%")`. NewDark's `split()` matches the separator
 as **one literal substring**, not a character set, so that call never split anything and the whole
@@ -311,11 +311,28 @@ components. Negative and fractional components must survive.
 **Old:** `cannot convert the string` from `DSubInventory.CreateHolder` via `AnchorScale`, and from
 any other vector parameter.
 
-Regression check for the same class of bug elsewhere: `DScript_ModdingTools.nut` still has three
-multi-character `split()` separator sites (tracked as T-94). If a modding tool misbehaves, suspect
-this first.
+The same class of bug was fixed in `DScript_ModdingTools.nut` in the same commit — see 3.12.
 
-### 3.12 `DPrint` honours `_script`
+### 3.12 `DAutoTxtRepl` CSV parsing — `DSplitSet` (T-94, editor only)
+
+*Was:* `AnalyzeCell` and `ImportCSVData` split on `",\n"` and `"{=}\n"`, i.e. multi-character
+separators that never matched. Both parsers were written for a splitter that splits at **every**
+character of the set **and keeps empty tokens** (their loops start at `i = 1` and test `!= ""`), so
+the new `DSplitSet` helper does exactly that rather than reusing `split()`.
+
+Editor-only. Needs `DScript_ModdingTools.nut` loaded and a texture-replacement CSV with
+
+- a cell containing several comma/newline-separated entries (`AnalyzeCell`), and
+- a cell starting with `{` holding `{key=value}` sub-fields (`ImportCSVData`).
+
+**Run:** import the CSV in DromEd and dump `gDTexTable` / `gDModTable`.
+**Pass:** multi-entry cells produce several entries and `{…}` cells produce a sub-table.
+**Old:** each cell came back as one token, so sub-entries were silently lost.
+
+The fourth candidate at `DScript_ModdingTools.nut:722` sits in the dead `/* DImportObj */` comment
+block and was intentionally left alone.
+
+### 3.13 `DPrint` honours `_script`
 
 *Was:* the Debug flag was looked up under the class name, so `Copies` and `DTrigger` namespaces
 could not be debugged separately.
@@ -1123,17 +1140,19 @@ Verify by inspection / absence of regressions only.
 
 ## 17. State of this branch
 
-### 17.1 Uncommitted work
+### 17.1 Head of the branch
 
-`DScript Core.nut` carries an **uncommitted** change at the time of writing: the T-94 rewrite of the
-`{` distance-filter header parser (section 3.10). It is the same class of bug as the vector operator
-— a multi-character `split()` separator that never split. Commit it or discard it before testing so
-the build under test is identifiable.
+The newest change is `e102993` — the T-94 sweep for the remaining multi-character `split()`
+separator sites: the `{` distance-filter header (section 3.10) and the two `DAutoTxtRepl` CSV
+parsers (section 3.12). `check_files.py` reports a raw bracket-census drift on `DScript Core.nut`
+from that commit; it is comment and string bytes only, and a comment-and-string-aware balance check
+came out even. Verify against the `{` recipes rather than the census.
 
 ### 17.2 Not fixed, by design
 
 - **T-40** — the `DHub` structural rewrite (section 15).
-- **T-94 remainder** — three multi-character `split()` separator sites in `DScript_ModdingTools.nut`.
+- **T-94 remainder** — the fourth `split()` site, `DScript_ModdingTools.nut:722`, sits inside the
+  dead `/* DImportObj */` comment block and needs no fix.
 - **`>` operator** — interior empty fields (`>>`) are still collapsed by `split()`.
 - **T-91 as a design property** — hardened at the known sites, but any new code mutating `_script`
   must still restore it on every exit path.
@@ -1169,5 +1188,6 @@ entries in `docs/KNOWN_ISSUES.md` — once DromEd confirms each area, not before
 | File & Blob | 13 | | |
 | Persistence ⚠ | 14 | | |
 | `DHub` (mechanics only) | 15 | | |
+| Editor tools — `DAutoTxtRepl` CSV | 3.12 | | |
 | Shipping build (no ModdingTools) | 1.5, 5.1 | | |
 | SS2 pass | 9.2, 10.3 | | |
