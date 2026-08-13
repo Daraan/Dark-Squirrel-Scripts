@@ -343,8 +343,8 @@ Nothing in this repo runs locally, but most of this design can still be tested.
 
 ## Phasing
 
-- **P0** — run `spike/DScript MCPSpike.nut` in DromEd. No longer blocking; R0 is answered for the
-  relative-path case. Still worth one run for Q6, R1 and where written files land. Delete after.
+- **P0** — DONE 2026-08-13. `spike/DScript MCPSpike.nut` answered R0 and R1 and produced the
+  standard-lib census. Delete the spike file as the first step of P1.
 - **P1** — spool protocol, bridge with `ping`/`cmd`, tier 1 protocol document, and the fake-bridge
   test suite. Enough to prove the transport.
 - **P2** — remaining verbs, `script_reload` with compile-error extraction, object dump, and
