@@ -4,3 +4,4 @@ obj/
 # Claude Code — personal, not shared (.claude/settings.json stays tracked)
 .claude.local.md
 .claude/settings.local.json
+__pycache__/
