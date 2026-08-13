@@ -227,7 +227,6 @@ Flags the two failures that have actually happened here: encoding damage (U+FFFD
 census) and structural damage (bracket balance drifting from a git baseline — which is what deleting
 a `print()` that was the sole body of a loop or `if` looks like). It is not a syntax check; only
 `script_reload` in DromEd is.
->>>>>>> cleanup-alpha
 
 ### Filenames contain spaces and `&`
 
@@ -271,6 +270,9 @@ tested. Verification happens in DromEd:
 
 Errors surface in `monolog.txt` (editor) or `Thief2.log` / `Shock2.log` (game). With
 `kUseIngameLog = true` the tail of that log is drawn on screen in-game.
+
+Per-change test recipes — which object, script and Design Note reproduce each fixed bug — are in
+[`docs/CHANGES_AND_VERIFICATION.md`](docs/CHANGES_AND_VERIFICATION.md).
 
 ---
 
