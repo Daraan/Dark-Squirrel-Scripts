@@ -75,8 +75,8 @@ agent
   │  MCP tool call
   ▼
 agent side  (file tools, or tools/dromed.py)
-  │  writes  <root>/mcp/mcp_in.txt      (single terminated line)
-  │  polls   <root>/mcp/mcp_ack_<seq>.dsav
+  │  writes  <root>/mcp_in.txt          (single terminated line)
+  │  polls   <root>/mcp_ack_<seq>.dsav
   │  reads   <root>/monolog.txt         (from a recorded byte offset)
   ▼
 shared folder  ──────────────  Windows box
@@ -90,15 +90,20 @@ DMCPBridge   (DScript MCPBridge.nut, one object in the mission)
 DromEd
 ```
 
-### Layer 1 — spool directory
+### Layer 1 — spool files
 
-`<install_path>/mcp/`. It must live inside the install path so `Engine.FindFileInPath` resolves it.
+Flat files in the game root, all prefixed `mcp_`. No subdirectory.
+
+The prefix is the only grouping, which is less tidy than a folder but is what the spike supports:
+`dump_cmds` demonstrably creates a flat file in the game root, whereas the subfolder case is
+unverified. A folder would also have added an untested dependency in the other direction, since
+reading a subfolder path through `dfile` was never exercised either.
 
 | File | Written by | Purpose |
 |---|---|---|
 | `mcp_in.txt` | agent side | The single outstanding request. Rewritten each call. |
-| `mcp_ack_<seq>.dsav` | bridge, via `dump_cmds` | Existence means request `<seq>` finished. Contents irrelevant. |
-| `.seq` | agent side | Monotonic sequence counter, survives restarts. |
+| `mcp_ack_<seq>.dsav` | bridge, via `dump_cmds` | Existence means request `<seq>` finished. Contents irrelevant. Confirmed working in the game root on 2026-08-13. |
+| `mcp_seq.txt` | agent side | Monotonic sequence counter, survives restarts. |
 | `monolog.txt` (install root) | DromEd | Payload stream. |
 
 Request format is exactly one line, no trailing newline, ending in the terminator `;#`:
@@ -159,7 +164,7 @@ the rest of the engine:
 ##MCP <seq> END <ok|err> <detail>
 ```
 
-Then `Debug.Command("dump_cmds", "mcp/mcp_ack_" + seq + ".dsav")`.
+Then `Debug.Command("dump_cmds", "mcp_ack_" + seq + ".dsav")`.
 
 `Execute` is wrapped in `try`/`catch`. A throw inside `FrameUpdate` would take the whole
 `PerFrame` dispatch loop down with it (`DScript Core.nut:2389` iterates the registry without
@@ -175,10 +180,10 @@ from a slow one.
 
 The agent drives the protocol directly. One command is:
 
-1. Read `<root>/mcp/.seq`, add one, write it back.
+1. Read `<root>/mcp_seq.txt`, add one, write it back.
 2. Note the byte length of the log.
-3. Write `<root>/mcp/mcp_in.txt` as a single terminated line.
-4. Poll for `mcp_ack_<seq>.dsav`.
+3. Write `<root>/mcp_in.txt` as a single terminated line.
+4. Poll for `<root>/mcp_ack_<seq>.dsav`.
 5. Read the log from the noted offset, take the `##MCP <seq>` frame.
 6. Delete the ack file.
 
@@ -230,7 +235,7 @@ game mode, or the mission has no object carrying `DMCPBridge`.
 ## Install procedure
 
 1. Copy `DScript MCPBridge.nut` into `<game>/sq_scripts/`.
-2. Create `<game>/mcp/`.
+2. Nothing to create — the spool files are flat in the game root.
 3. In DromEd, add the `DMCPBridge` script to a marker (the auto-created `DScriptHandler` marker is
    fine), `script_reload`, enter game mode.
 4. Confirm DromEd is writing `monolog.txt` — see risk R2.
@@ -261,8 +266,9 @@ R0 blocks; the rest each have a stated fallback and do not.
   `spike/DScript MCPSpike.nut` derives the install directory from where the engine reports
   `monolog.txt` lives, so it needs no hardcoded drive letter, and settles R1, Q2, append and
   binary mode in the same run.
-- **R1 — does `dump_cmds` accept a subfolder in its filename argument?** If not, ack files land in
-  the install root. Fallback: drop the `mcp/` prefix, keep the `mcp_ack_` name prefix.
+- **R1 — does `dump_cmds` accept a subfolder in its filename argument?** CLOSED 2026-08-13, by
+  going flat. A flat `dump_cmds` name verifiably creates the file in the game root; the subfolder
+  case was not confirmed and is no longer needed.
 - **R2 — does DromEd write mono output to `monolog.txt` by default, and which config var controls
   it?** The payload channel depends on this. Fallback: run the game exe with logging and read
   `Thief2.log`; last resort, the env-map-zone channel below.
@@ -284,7 +290,7 @@ transport machinery stops earning its place:
 
 | Concern | If `file(…, "w")` fails | If it works |
 |---|---|---|
-| Payload out | `print()` with `##MCP` framing, byte-offset capture, frame extraction from a log shared with the whole engine | bridge writes `mcp/mcp_out_<seq>.txt` |
+| Payload out | `print()` with `##MCP` framing, byte-offset capture, frame extraction from a log shared with the whole engine | bridge writes `mcp_out_<seq>.txt` |
 | Ack | `dump_cmds` filename trick | that same file appearing |
 | Agent loop | write, poll, tail log, extract frame | write, poll, read |
 | Log parsing | required | only for `script_reload` compile errors |
