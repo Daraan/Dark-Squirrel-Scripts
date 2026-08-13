@@ -168,12 +168,12 @@ Author's own markers, worth knowing before designing anything nearby.
 
 | ID | Priority | Item | Notes | Status |
 |---|---|---|---|---|
-| T-80 | P2 | `docs/DScript Documentation.pdf` is at **v0.28a**, code is at 0.81 | ~60% of current features are undocumented | ☐ |
-| T-81 | P2 | Document the new operators | `]` `{}` `}` `?` `->` `/` `>` `_` `&%…%` `&-` `&<` `<x,y,z>` `[culprit]` `[player]` `[message]` `[item]` `[weapon]` `[random]` `[archetype]` `[name]` `[position]` `[rotation]` `[copy]` | ☐ |
-| T-82 | P2 | Document the new universal parameters | `Condition` / `OnCondition` / `OffCondition`, `ExclusiveMessage`, `Copies`, `Debug`, frame delays (`Delay="3F"`) | ☐ |
-| T-83 | P2 | Document the QVar system | `eDQVarType`'s 7 storage tiers, `DTrapSetQVar`, `DTrigQVar`, `DTrapDeleteQVar` | ☐ |
-| T-84 | P3 | Document the new scripts | `DTrigger`, `DScriptHandler`, `DObjectFaceTarget`, `DObjectPanTo` (renamed from `DFocusObject`/`DFocusOverTime` by the 2026-08-04 merge), `DDirector`, `DHudObject`, `DInventoryMaster` family, `DRenameItem`, `DTweqDevice`, `LootSounds`, `DSpy`, `DAutoTxtRepl`, `DPerformanceTest` | ☐ |
-| T-85 | P3 | Document the `_dFROM` / `[source]` fix | `DSConfigDefault.nut:270-322` patches every `sScrMsg` subclass so `[source]` works for Frob/Contained/Stim/Phys/Room/Damage. Only mentioned in a git log line | ☐ |
+| T-80 | P2 | `docs/DScript Documentation.pdf` is at **v0.28a**, code is at 0.81 | ☑ done 2026-08-13 — new `DOC/squirrel_script/DScript0.81.odt`, derived from the 0.71 ODT by `tools/odt_docgen.py`. Review notes: `docs/review/DOCUMENTATION-0.81.md`. The v0.28a PDF is now two revisions behind and should be replaced or removed | ☑ |
+| T-81 | P2 | Document the new operators | ☑ carried over — the operator tables were already complete in the 0.71 ODT (the v0.28a PDF was the stale copy). One gap left: the now-accepted closing `>` on `<x,y,z>` is only in the 0.81 changelog section, not in the table row | ☑ |
+| T-82 | P2 | Document the new universal parameters | ☑ carried over from the 0.71 ODT; `Copies` corrected in 0.81 (the parameter is `Copies`, not `Instances`, and it is no longer capped at 9) | ☑ |
+| T-83 | P2 | Document the QVar system | ☑ done 2026-08-13 — "The QVar system" section lists all seven `eDQVarType` tiers, plus `DTrapSetQVar`, `DTrigQVar` and `DTrapDeleteQVar` sections | ☑ |
+| T-84 | P3 | Document the new scripts | ☑ done 2026-08-13 — `DTrigger`, `DStackToQVar`, `DModelByCount`, the undercover suite, the `DInventoryMaster` family, `LootSounds`, `DTweqDevice`, `DDirector`, the File & Blob library, the persistence scripts and the remaining editor tools all have sections; the two renames are noted under their headings | ☑ |
+| T-85 | P3 | Document the `_dFROM` / `[source]` fix | ☑ done 2026-08-13 — "The _dFROM source fix" section under Configuration files | ☑ |
 | T-87 | P2 | `docs/KNOWN_ISSUES.md` — user-facing list of what is known-broken in the alpha | Generated from the two wave SUMMARYs: non-functional scripts, works-but-wrong scripts, `Copies` breakage, SS2 gaps, the editor-only/`DTestTrap` packaging trap. Keep it in sync when Group B/E rows get fixed | ☑ done — new file |
 | T-86 | P3 | README | Still advertises "v1.0 is coming" and the `scripts-in-progress` branch; should point at V2, the config-file layering, and the Notepad++ language file | ☑ done — rewritten for the alpha, incl. the intended shipped file set and a link to `KNOWN_ISSUES.md` |
 

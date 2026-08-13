@@ -41,8 +41,14 @@ problem tracked as `T-01` is resolved; `docs/OPEN_TASKS.md` has the details.
 
 ### Reference
 
-- `docs/DScript Documentation.pdf` — user manual, but for **v0.28a**. Roughly 40% of current
-  features are missing from it. Trust the code.
+- `DOC/squirrel_script/DScript0.81.odt` — **the current user manual.** Derived from the 0.71 ODT
+  by [`tools/odt_docgen.py`](tools/odt_docgen.py), which is re-runnable: edit the section text in
+  that script and regenerate, never hand-edit the `.odt`. Review notes and the list of what was
+  wrong in 0.71: `docs/review/DOCUMENTATION-0.81.md`. Still trust the code where they disagree.
+- `DOC/squirrel_script/DScript0.71.odt`, `DScript0.69.odt` — the previous hand-written revisions,
+  kept as the generator's baseline. Do not edit `0.71`; it is the input.
+- `docs/DScript Documentation.pdf` — the old **v0.28a** manual, two revisions behind. Superseded
+  by the ODT above.
 - `docs/userDefineLang_Squirrel DScript.xml` — Notepad++ syntax + fold definition.
 - `backup/`, `obj/`, `strings/` — snapshots and DromEd assets, not build inputs.
 - `DOC/squirrel_script/` — **`squirrel.osm` engine API docs**, not DScript-specific. This is the
