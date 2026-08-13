@@ -67,13 +67,14 @@ All verified present in this repo or in `DOC/squirrel_script/`:
 
 ## Architecture
 
-Three layers. The middle one is the only new `.nut` file; the outer one is the only new package.
+Three layers. The middle one is the only new `.nut` file. The outer one is whatever the agent
+host can manage: bare file tools, or the optional `tools/dromed.py`.
 
 ```
 agent
   │  MCP tool call
   ▼
-dromed-mcp  (Python, stdio, agent-side)
+agent side  (file tools, or tools/dromed.py)
   │  writes  <root>/mcp/mcp_in.txt      (atomic, single line)
   │  polls   <root>/mcp/mcp_ack_<seq>.dsav
   │  reads   <root>/monolog.txt         (from a recorded byte offset)
@@ -222,7 +223,7 @@ in tier 1):
 | `dromed_object_dump(obj)` | |
 | `dromed_log_tail(lines, grep)` | Pure file read. Works when the bridge is dead, which is exactly when it is needed. |
 
-On timeout the server returns a structured failure carrying the likeliest cause: DromEd is not in
+On timeout the caller gets a structured failure carrying the likeliest cause: DromEd is not in
 game mode, or the mission has no object carrying `DMCPBridge`.
 
 ## Install procedure
@@ -232,7 +233,7 @@ game mode, or the mission has no object carrying `DMCPBridge`.
 3. In DromEd, add the `DMCPBridge` script to a marker (the auto-created `DScriptHandler` marker is
    fine), `script_reload`, enter game mode.
 4. Confirm DromEd is writing `monolog.txt` — see risk R2.
-5. Register the server in `.mcp.json` with `DROMED_ROOT` pointing at the share.
+5. Point the agent at the share: nothing to register for tier 1, or set `DROMED_ROOT` for tier 2.
 
 ## Risks to settle against a real DromEd
 
