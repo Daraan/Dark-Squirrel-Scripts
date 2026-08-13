@@ -137,9 +137,9 @@ Do this before any performance work — `DCheckString` is the hottest function i
 | T-61 | P3 | `DScript Core.nut:1596-1597` | `if (this.getclass().getbase() == "DTrigger") print("yohoho")` — class-vs-string compare, never true | ☑ done `29f3bb7` — the `if` went with the print |
 | T-62 | P3 | `DScript Core.nut:2218, 2333, 2770, 2805, 2864` | Stray `print()` / `"DID BEGIN"` / `"DID SIM"` | ☑ done `29f3bb7` — also the InitQVarFromProp traces and two `kDoPrint` DPrints that wrote on-screen text in game |
 | T-63 | P3 | `DScript SFX.nut` (`DDirector`), `DScript_ModdingTools.nut` (`DPerformanceTest`) | Several development `print()` calls | ☑ done `f284495` — DDirector's seven prints removed. `DPerformanceTest`'s prints are the tool's own output and were kept; a leftover top-level scratch snippet that printed on every compile was removed instead |
-| T-64 | P3 | `DScript Core.nut:891` | Unreachable statement after `return` in `SetQVar` — was it meant to replace the line above? | ☐ |
+| T-64 | P3 | `DScript Core.nut:891` | Unreachable statement after `return` in `SetQVar` — was it meant to replace the line above? | ☑ done `dfbd83a` — no: the reachable `DScript.Quest.QuestChange` line is the live notify path; the dead `::DHandler.Extern.DQVarHandler` line (nothing registers that handler) was deleted |
 | T-65 | P3 | `DScript Core.nut:2018-2019` | Unreachable block after `return false` — carries a real TODO about per-frame `{Off}` support (see T-70) | ☐ |
-| T-66 | P3 | `DScript SFX.nut:1603` | `if (true || DGetParam(_script + "FixedTime"))` — forced branch, `DDirector` non-fixed-time path is unreachable | ☐ |
+| T-66 | P3 | `DScript SFX.nut:1603` | `if (true || DGetParam(_script + "FixedTime"))` — forced branch, `DDirector` non-fixed-time path is unreachable | ☑ done `dfbd83a` — reads `FixedTime` with default `true` (shipped behavior unchanged; per-frame path opt-in via `FixedTime=0`, still needs DromEd verification) |
 | T-67 | P3 | `DScript Core.nut:1286-1295` | `>` file operator: `Engine.FindFileInPath` result is printed (`"yes in "` / `"nope try again"`) but never used — `dblob.open(sref)` runs with an unvalidated path | ◐ prints removed `29f3bb7`, branches kept with TODOs. The unvalidated path is still open |
 
 ---
