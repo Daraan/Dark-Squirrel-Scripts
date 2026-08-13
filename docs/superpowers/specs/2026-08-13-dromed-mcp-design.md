@@ -1,10 +1,8 @@
 # DromEd MCP — design
 
 Date: 2026-08-13
-Status: design, not approved for implementation.
-R0 partly answered on 2026-08-13: a relative-path `::file(name, "w")` fails in DromEd with
-`cannot open file`, so the log-framing architecture below is the primary one. One cheap follow-up
-(Q6, absolute path) could still simplify it; see R0 and "Collapse path".
+Status: design, not approved for implementation. All blocking unknowns resolved 2026-08-13
+against DromEd (T2, API 11); the architecture below is final.
 
 ## Context
 
@@ -63,7 +61,15 @@ All verified present in this repo or in `DOC/squirrel_script/`:
   `cDIngameLogOverlay` already works.
 - `::DHandler.PerFrame_Register(instance, doPerNFrames)` (`DScript Core.nut:2368`) calls
   `instance.FrameUpdate(_script)` every N frames and rebuilds its registry across save/load.
-- `Engine.FindFileInPath("install_path", name, string())` resolves paths inside the game tree.
+- `Engine.FindFileInPath("install_path", name, string())` resolves names inside the game tree, but
+  returns them **relative to the search root**, not absolute. It cannot tell you where the engine
+  is installed.
+- `remove(name)` and `rename(from, to)` are registered. Creation is blocked (R0) but deletion and
+  renaming are not, which is what lets the spool clean up after itself.
+- `compilestring` is registered, so the `eval` verb is viable.
+
+Deliberately **absent**, confirmed by census on 2026-08-13 — do not design against these:
+`getenv`, `system`, `dofile`, `loadfile`. `squirrel.osm` sandboxes process and environment access.
 
 ## Architecture
 
@@ -164,7 +170,16 @@ the rest of the engine:
 ##MCP <seq> END <ok|err> <detail>
 ```
 
-Then `Debug.Command("dump_cmds", "mcp_ack_" + seq + ".dsav")`.
+Completion is signalled twice, because the two signals cost nothing together and answer different
+questions:
+
+1. `remove("mcp_in.txt")` — the request has been *consumed*. A caller that sees the file vanish
+   knows the bridge is alive and reading, even if the work then fails.
+2. `Debug.Command("dump_cmds", "mcp_ack_" + seq + ".dsav")` — the work is *finished*.
+
+The bridge also removes `mcp_ack_*` files older than the current sequence on each request, so the
+spool does not accumulate. Without `remove` this would have needed the agent to clean up after
+itself, and an agent that crashes mid-command would have leaked a file every time.
 
 `Execute` is wrapped in `try`/`catch`. A throw inside `FrameUpdate` would take the whole
 `PerFrame` dispatch loop down with it (`DScript Core.nut:2389` iterates the registry without
@@ -185,7 +200,7 @@ The agent drives the protocol directly. One command is:
 3. Write `<root>/mcp_in.txt` as a single terminated line.
 4. Poll for `<root>/mcp_ack_<seq>.dsav`.
 5. Read the log from the noted offset, take the `##MCP <seq>` frame.
-6. Delete the ack file.
+6. Delete the ack file. (The bridge also sweeps stale ones, so a missed cleanup is not fatal.)
 
 Nothing to install beyond the bridge script. The protocol has to be in front of the agent for this
 to work, so it ships as a skill or a CLAUDE.md section rather than as tribal knowledge — that
@@ -246,26 +261,22 @@ game mode, or the mission has no object carrying `DMCPBridge`.
 These cannot be resolved from this repo and should be checked before or during implementation.
 R0 blocks; the rest each have a stated fallback and do not.
 
-- **R0 — does `::file(name, "w")` work?** Answered for the relative-path case on 2026-08-13:
-  **no**. DromEd reports `cannot open file`.
+- **R0 — does `::file(name, "w")` work?** CLOSED 2026-08-13: **no**, and not for any reason a
+  workaround can reach.
 
-  The exact wording carries information. `cannot open file` is Squirrel's `fopen` failure. Had the
-  io lib been registered without write support, the failure would have been
-  `the index 'file' does not exist` instead. So the write API is present and the *open* is what
-  failed — consistent with the working directory being unwritable, or with NewDark resolving
-  relative names through its resource layer, which is read-oriented.
+  `file` is in the root table, so the io lib is registered, and `remove`, `rename`, `blob` and
+  `compilestring` are registered alongside it — mutating calls were not stripped. Yet
+  `file(name, "w")` and `file(name, "wb")` both fail with `cannot open file`.
 
-  This matches the indirect evidence: `cDSaveHandler` goes through `Engine.SetEnvMapZone` plus a
-  backup-and-restore dance to persist roughly 53 bytes, which nobody would do with a working
-  `file(…, "w")`.
+  What rules out the obvious explanation is `install_path = '.\'`: squirrel's working directory is
+  the game directory itself, the same directory DromEd writes `monolog.txt` into and where
+  `dump_cmds` verifiably creates files. The directory is writable and the open still fails, so this
+  is not a permissions or working-directory problem. `squirrel.osm` wraps file access in something
+  read-only rather than exposing `fopen`.
 
-  **Consequence:** the log-framing design is primary and implementation is unblocked.
+  **Consequence:** the bridge cannot create files. Payload leaves via the log, completion is
+  signalled by `dump_cmds`, and the writable-file variant is rejected — see below.
 
-  **Q6, still open and worth one run:** whether an *absolute* path writes. If it does, writes are
-  available and only name resolution was the obstacle, which revives the collapse path below.
-  `spike/DScript MCPSpike.nut` derives the install directory from where the engine reports
-  `monolog.txt` lives, so it needs no hardcoded drive letter, and settles R1, Q2, append and
-  binary mode in the same run.
 - **R1 — does `dump_cmds` accept a subfolder in its filename argument?** CLOSED 2026-08-13, by
   going flat. A flat `dump_cmds` name verifiably creates the file in the game root; the subfolder
   case was not confirmed and is no longer needed.
@@ -283,10 +294,11 @@ R0 blocks; the rest each have a stated fallback and do not.
   content, never on mtime.
 - **R6 — CRLF.** Covered by the single-line request format, but worth confirming once end to end.
 
-## Collapse path, only if Q6 comes back positive
+## Rejected: the writable-file variant
 
-A writable `::file` makes the bridge able to hand back a result file directly, and most of the
-transport machinery stops earning its place:
+Recorded because it is the first thing anyone will propose on reading this spec. A writable
+`::file` would let the bridge hand back a result file directly and most of the transport machinery
+below would stop earning its place:
 
 | Concern | If `file(…, "w")` fails | If it works |
 |---|---|---|
@@ -296,8 +308,10 @@ transport machinery stops earning its place:
 | Log parsing | required | only for `script_reload` compile errors |
 | Tier 2 wrapper | clearly earns its place | barely — tier 1 becomes two tool calls |
 
-The bridge's verb set, the request format, the terminator rule and the game-mode constraint are
-unaffected either way, so the parts of this spec above "Layer 3" hold regardless of the outcome.
+This is not available: see R0. The column is kept so that the cost of the log-framing machinery is
+legible, and so that if a future NewDark ever exposes a writable file API the migration is already
+described. The bridge's verb set, the request format, the terminator rule and the game-mode
+constraint are unaffected either way.
 
 Note that log tailing stays useful even then: `dromed_log_tail` reads a file the engine writes on
 its own, so it is the only thing that still reports anything when the bridge is dead — which is
