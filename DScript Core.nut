@@ -626,22 +626,21 @@ DScript <- {
 			}*/
 			if (::Quest.Exists(key))								// as a little convenience, enables quest vars without _$QVarName_
 				return ::Quest.Get(key)
-			#NOTE Stack level	
-			// stack level 0: getstackinfos, 1 _get, 2 main function? 3 call (in CompileExpressions) 4 CompileExpressions
-			// via Compile:	5 calling function
-			// via CknComp:	5 acall (in CheckAndCompileExpression) 6 CheckAndCompileExpression 7 calling function.
-			local _stack = ::getstackinfos(5)
-			//if ("func" in _stack){
-				if (_stack.func != "acall"){							// Called via CompileExpressions
-					if (key in _stack.locals)
-						return _stack.locals[key]
-				}
-				else													// Called via CheckAndCompileExpression
-				{	_stack = ::getstackinfos(7).locals
-					if (key in _stack)
-						return _stack[key]
-				}
-			//}
+			#NOTE Stack level
+			// T-90: walk the stack instead of hard-coding depths 5/7. Find the CompileExpressions
+			// frame, then skip the acall / CheckAndCompileExpression wrappers above it - the next
+			// frame is the real calling function. Robust against added or removed call frames.
+			local _lvl = 2
+			local _stack = ::getstackinfos(_lvl)
+			while (_stack && _stack.func != "CompileExpressions")
+				_stack = ::getstackinfos(++_lvl)
+			if (_stack){
+				_stack = ::getstackinfos(++_lvl)
+				while (_stack && (_stack.func == "acall" || _stack.func == "CheckAndCompileExpression"))
+					_stack = ::getstackinfos(++_lvl)
+				if (_stack && (key in _stack.locals))
+					return _stack.locals[key]
+			}
 			if (key in ::getroottable())
 				return ::getroottable()[key]
 			return key.tostring()
@@ -930,13 +929,13 @@ DScript <- {
 		// 0 is this function, 1 is delegate caller, 2 is DScript.Func, 3 is DScript table, 4+ can be real caller.
 		// From outside GetInstance(3) must be used.
 		local stack = ::getstackinfos(i)
-		if (stack){
-			while (::type(stack.locals["this"]) != "instance"){
-				i++
-				stack = ::getstackinfos(i)
-			}
-			return stack.locals["this"]
+		// T-90: stop at the stack top instead of walking past it; skip frames without an instance this.
+		while (stack && !(("this" in stack.locals) && ::type(stack.locals["this"]) == "instance")){
+			i++
+			stack = ::getstackinfos(i)
 		}
+		if (stack)
+			return stack.locals["this"]
 	}
 	
 	userparams = function(){
@@ -1626,19 +1625,28 @@ SourceObj 	  = null	//	The actual source of a message.
 			Returns true when all instances have been checked.
 			See the ResetCount function how to make use of that.*/
 		#NOTE * it is best to use callee() and not the function name, else there could be an ugly loop etc. if the function got shadowed by a child.
-		if (DGetParam(GetClassName() + "Copies", false, userparams())){ // Has the base script more instances?
-			if (_script == GetClassName())		// 2nd instance.
-				_script += 2
-			else {								// All above.
-				local current = _script[-1]		// Last character 2-9
-				if (current == DGetParam(GetClassName() + "Copies", null, userparams()) + '0'){  // '0' = 48 is the difference between normal integer to ASCII representation of the number.
-					_script = GetClassName() 	// Reset.
-					return true					// Done for all copies.
-				}
-				_script = GetClassName() + (current + 1).tochar()	// increase last number by 1.
+		local name   = GetClassName()
+		local copies = DGetParam(name + "Copies", false, userparams())
+		if (copies){						// Has the base script more instances?
+			copies = copies.tointeger()
+			// T-92: parse the whole numeric suffix instead of single-character arithmetic - Copies > 9 work now.
+			local current = 1
+			if (_script != name){
+				try current = _script.slice(name.len()).tointeger()
+				catch (e) return true			// non-numeric suffix (e.g. DTrigger T mode) - not a copy pass, leave _script alone.
 			}
+			if (current >= copies){
+				_script = name 					// Reset.
+				return true					// Done for all copies.
+			}
+			_script = name + (current + 1)		// next copy suffix.
 			vargv.insert(0, this)				// this must be the first parameter, might can be used to set instance stuff directly.
-			func.acall(vargv)					// recall the function with the given parameters in an array.
+			try
+				func.acall(vargv)				// recall the function with the given parameters in an array.
+			catch (err){
+				_script = name					// T-91: restore the base name if the callee throws - else every later parameter lookup on this instance is corrupt.
+				throw err
+			}
 			return false						// Not last copy
 		}
 		return true								// No Copies
