@@ -1,2 +1,3 @@
 backup\
 obj\
+__pycache__/
