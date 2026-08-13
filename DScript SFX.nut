@@ -71,7 +71,7 @@ Each parameter can target multiple objects also more than one special effect can
 						//Only change if distance changed.
 						if (time_max != d / vel_max){
 							::Property.Set(sfxobj,"PGLaunchInfo", "Min time", d / vel_max)
-							::Property.Set(sfxobj,"PGLaunchInfo"," Max time", d / vel_max)
+							::Property.Set(sfxobj,"PGLaunchInfo", "Max time", d / vel_max)
 						}
 						//Gets the new facing vector. Trignometry is cool! 
 						if (h.y < 0)
