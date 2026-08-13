@@ -891,8 +891,7 @@ DScript <- {
 		}
 		// < 0 types are handled externally.
 		
-		return DScript.Quest.QuestChange(name, value, old_value)	// name, new, old
-		::DHandler.Extern.DQVarHandler.QuestChange(name, value, old_value)	// name, new, old
+		return DScript.Quest.QuestChange(name, value, old_value)	// name, new, old (T-64: dead ::DHandler.Extern.DQVarHandler notify line removed - superseded by DScript.Quest)
 	}
 	
 	function DeleteQVar(name, type = null){

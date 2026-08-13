@@ -1643,7 +1643,7 @@ class DDirector extends DObjectPanTo
 		else
 		{
 			Camera.StaticAttach(self)
-			if (true || DGetParam(_script + "FixedTime")){
+			if (DGetParam(_script + "FixedTime", true)){	// T-66: branch was forced with true|| - per-frame path now reachable via FixedTime=0; default keeps the shipped fixed-time behavior.
 				DN[_script + "Interval"] <- 1.0/30			// Slow it down to ~0,033 seconds.
 				base.DoOn(DN)
 				SetData("Active", -1)
