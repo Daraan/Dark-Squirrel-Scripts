@@ -1407,30 +1407,40 @@ SubVersion 	= 0.72
 					
 				local values 	= ::array(4)
 				local divide	= ::DScript.DivideAtNext(str, ":" )		// using this prevents splitting the objset!
-				local raw 		= ::split(divide[0], "><(,%" )
-				local ancpos 	= ::Object.Position(divide[0].find("%")? DCheckString(raw.pop()) : self) 
+				local head		= divide[0]
+				// T-94: split() can't take a separator set, so the header {[<|>]radius[<|>](x,y,z)%anchor% is scanned by hand.
+				local pct		= head.find("%")
+				local pend		= pct ? head.find("%", pct + 1) : null
+				local ancpos 	= ::Object.Position(pct ? DCheckString(pend ? head.slice(pct + 1, pend) : head.slice(pct + 1)) : self)
 					
-				local dovec 	= divide[0].find("(")
+				local dovec 	= head.find("(")
 				local boxlimit	= [::array(3), ::array(3)]	// nested array 2x3
 				if (dovec){									// can't be at pos 0.
-					if (divide[0][dovec - 1] == '>')
+					if (head[dovec - 1] == '>')
 						values[2] = true
-					local val = [raw.pop().tofloat(), raw.pop().tofloat(), raw.pop().tofloat()]	// zyx is returned.
-					val.reverse()
+					local vend = head.find(")", dovec)
+					if (vend == null)						// tolerate a missing ')'
+						vend = pct ? pct : head.len()
+					local val = ::split(head.slice(dovec + 1, vend), ",")
+					if (val.len() > 3)
+						val.resize(3)
 					values[3] = []
 					foreach (i,v in val){					// remove 0 from the array to only iterate over the necessary parts.
+						v = ::strip(v).tofloat()
 						if (v){
 							boxlimit[0][i] = ancpos[i] - v
 							boxlimit[1][i] = ancpos[i] + v
 							values[3].append(i)
 						}
 					}
-					raw.pop()	// remove the (
 				}
-				if (raw.len() == 2){	// if still two items exist it must be >radius
-					values[1] = raw[1].tofloat()
-					if (divide[0][1] == '>')				// divide[0] is the part before the colon {>5...:
-						values[0] = true
+				if (head[1] == '<' || head[1] == '>'){		// radius sits directly after the { and ends at the box's <|> or the anchor's %
+					local rend = dovec ? ((head[dovec - 1] == '<' || head[dovec - 1] == '>') ? dovec - 1 : dovec) : (pct ? pct : head.len())
+					if (rend > 2){							// not {<(x,y,z): there the <|> at [1] belongs to the box, no radius given.
+						values[1] = ::strip(head.slice(2, rend)).tofloat()
+						if (head[1] == '>')					// head is the part before the colon: {>5...:
+							values[0] = true
+					}
 				}
 				// Checks each obj in the returned array via the map function and generates a new array.
 				local objset = DCheckString(divide[1], kReturnArray).filter(

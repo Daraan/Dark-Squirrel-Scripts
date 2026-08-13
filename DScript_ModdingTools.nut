@@ -261,9 +261,22 @@ delegator 	= {
 				
 			  }
 # 	|-- CSV Analysis --|
+	function DSplitSet(str, seps){
+	/* T-94: NewDark split() matches a multi-char separator as ONE literal substring, so these parsers never split.
+		This splits at EVERY single character found in seps and keeps empty tokens - the semantics the parsers below were written for. */
+		local tokens = [""]
+		foreach (c in str){
+			if (seps.find(c.tochar()) != null)
+				tokens.append("")
+			else
+				tokens[tokens.len() - 1] += c.tochar()
+		}
+		return tokens
+	}
+
 	function AnalyzeCell(cell){
 		local removethese = null
-		local sub = ::split(cell, ",\n")
+		local sub = DSplitSet(cell, ",\n")
 		if (!sub.len())								// no comma present, default, continue
 			return null
 		// local modname = sub[0]	
@@ -327,7 +340,7 @@ delegator 	= {
 				if (cell[kGetFirstChar] == '{'){
 					// wanna replace the cell with a subtable, this is wanted for models with multiple fields.
 					local subtable = {}
-					local subcells = ::split(cell,"{=}\n")
+					local subcells = DSplitSet(cell, "{=}\n")	// T-94: keeps the leading empty token the i=1 loop start expects.
 					
 					for (local i = 1; i < subcells.len(); i++){
 						if (subcells[i] != ""){
