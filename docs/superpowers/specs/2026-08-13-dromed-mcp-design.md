@@ -13,7 +13,7 @@ by hand: alt-tab to a Windows box, `script_reload`, enter game mode, trigger the
 `monolog.txt`. An agent working on this repo has no way to close that loop, so it can only ever
 claim a change *looks* correct.
 
-The goal is an MCP server that lets an agent drive a running DromEd and read back what happened,
+The goal is a bridge that lets an agent drive a running DromEd and read back what happened,
 without a human in the loop for each iteration.
 
 The constraint is IO. DromEd exposes no socket, no RPC, no stdin. It only reads and writes files,
@@ -24,7 +24,7 @@ DScript already uses in production code, so none of the transport is speculative
 
 | Question | Answer |
 |---|---|
-| Topology | DromEd on a Windows box; its install tree is reachable from the agent host as a shared folder. The MCP server runs agent-side and only touches files. |
+| Topology | DromEd on a Windows box; its install tree is reachable from the agent host as a shared folder. The agent side runs on the agent host and only touches files. |
 | Mode coverage | Game mode only for v1. Edit mode would need external keystroke injection; deferred. |
 | Tool surface | Script-debug oriented — command, eval, message, script_test, object dump, script_reload with compile-error extraction, log tail. |
 | Persistent-save trick | `dump_cmds` filename-as-signal adopted as the ack primitive. The env-map-zone payload trick is documented as a fallback only, because it mutates the mission. |
@@ -75,7 +75,7 @@ agent
   │  MCP tool call
   ▼
 agent side  (file tools, or tools/dromed.py)
-  │  writes  <root>/mcp/mcp_in.txt      (atomic, single line)
+  │  writes  <root>/mcp/mcp_in.txt      (single terminated line)
   │  polls   <root>/mcp/mcp_ack_<seq>.dsav
   │  reads   <root>/monolog.txt         (from a recorded byte offset)
   ▼
@@ -96,9 +96,9 @@ DromEd
 
 | File | Written by | Purpose |
 |---|---|---|
-| `mcp_in.txt` | MCP server | The single outstanding request. Rewritten atomically each call. |
+| `mcp_in.txt` | agent side | The single outstanding request. Rewritten each call. |
 | `mcp_ack_<seq>.dsav` | bridge, via `dump_cmds` | Existence means request `<seq>` finished. Contents irrelevant. |
-| `.seq` | MCP server | Monotonic sequence counter, survives server restarts. |
+| `.seq` | agent side | Monotonic sequence counter, survives restarts. |
 | `monolog.txt` (install root) | DromEd | Payload stream. |
 
 Request format is exactly one line, no trailing newline, ending in the terminator `;#`:
@@ -113,8 +113,9 @@ Single-line is a hard requirement, not a style choice. `DScript File&Blob.nut:14
 `getParam` miscounts across line breaks on CRLF files, and this file is written from a Unix host
 and read on Windows.
 
-The server writes to `mcp_in.tmp` and then `os.replace()`s it, so the bridge can never observe a
-half-written request.
+Tier 2 additionally writes to `mcp_in.tmp` and `os.replace()`s it, which makes a torn read
+impossible rather than merely harmless. The terminator rule is what covers tier 1, and it stays
+authoritative: the bridge trusts the terminator, never the writer.
 
 ### Layer 2 — `DScript MCPBridge.nut`
 
@@ -149,7 +150,7 @@ Verbs for v1:
 | `reload` | — | — | `Debug.Command("script_reload")` |
 | `dump` | objid | — | print name, archetype, scripts, DesignNote, links |
 
-Every request is framed on the log so the server can find its own output in a stream shared with
+Every request is framed on the log so the caller can find its own output in a stream shared with
 the rest of the engine:
 
 ```
