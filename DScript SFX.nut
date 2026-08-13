@@ -436,17 +436,66 @@ SpinBase 	= null
 spin	 	= null
 pos_vector	= vector()
 
+	/* |-- Rotation math --|
+	Euler triples (x=bank, y=pitch, z=heading) can NOT be added or subtracted once more
+	than one axis is involved - that only composes correctly for single-axis rotations.
+	The old GetRotation did exactly that, which is why offsets and camera motion coupled
+	wrongly as soon as two axes were non-zero. Compose rotation matrices instead.
+	Engine convention: R = Rz(heading)*Ry(pitch)*Rx(bank), column vectors; the
+	DetailAttachement "rel rot" composes child = parent * R(rel).	*/
+	function AnglesToMatrix(a){
+		local sx = ::sin(a.x * kDegToRad), cx = ::cos(a.x * kDegToRad)	// bank
+		local sy = ::sin(a.y * kDegToRad), cy = ::cos(a.y * kDegToRad)	// pitch
+		local sz = ::sin(a.z * kDegToRad), cz = ::cos(a.z * kDegToRad)	// heading
+		return [
+			[cz*cy,	cz*sy*sx - sz*cx,	cz*sy*cx + sz*sx],
+			[sz*cy,	sz*sy*sx + cz*cx,	sz*sy*cx - cz*sx],
+			[-sy,	cy*sx,				cy*cx]
+		]
+	}
+
+	function MatMul(a, b){				// a * b
+		local m = [[0,0,0],[0,0,0],[0,0,0]]
+		for (local i = 0; i < 3; i++)
+			for (local j = 0; j < 3; j++)
+				m[i][j] = a[i][0]*b[0][j] + a[i][1]*b[1][j] + a[i][2]*b[2][j]
+		return m
+	}
+
+	function MatMulT(a, b){				// transpose(a) * b - transpose is the inverse of a rotation.
+		local m = [[0,0,0],[0,0,0],[0,0,0]]
+		for (local i = 0; i < 3; i++)
+			for (local j = 0; j < 3; j++)
+				m[i][j] = a[0][i]*b[0][j] + a[1][i]*b[1][j] + a[2][i]*b[2][j]
+		return m
+	}
+
+	function MatrixToAngles(m){
+		// Inverse of AnglesToMatrix. Gimbal case: pitch = +-90, bank folded into heading.
+		if (m[2][0] <= -0.999999 || m[2][0] >= 0.999999)
+			return ::vector(0, (m[2][0] < 0)? 90 : -90, ::atan2(-m[0][1], m[1][1]) / kDegToRad)
+		return ::vector(::atan2(m[2][1], m[2][2]) / kDegToRad,		// bank
+						::asin(-m[2][0]) / kDegToRad,				// pitch
+						::atan2(m[1][0], m[0][0]) / kDegToRad)		// heading
+	}
+
+	function GetCancelAngles(v){
+		// Which part of the camera facing the object must NOT follow.
+		// DHudObject: heading only - the object keeps a fixed compass direction
+		// ("its right always points north") while still tilting with pitch/bank.
+		return ::vector(0, 0, v.z)
+	}
+
 	function GetRotation(){
-		local v = Camera.GetFacing()
-		v.z = 0
-		
+		local m = MatMulT(AnglesToMatrix(GetCancelAngles(Camera.GetFacing())),	// undo the camera part we cancel...
+							AnglesToMatrix(rot_offset))							// ...then apply the author's offset.
 		if (SpinBase){
-			v += (SpinBase * spin)
+			m = MatMul(m, AnglesToMatrix(SpinBase * spin))						// spin in the object's own frame.
 			spin++
 			if (spin >= 360)
 				spin = 0
-		}	
-		return v + rot_offset
+		}
+		return MatrixToAngles(m)
 	}
 
 #	|-- Message Handlers --|
@@ -562,21 +611,15 @@ class DHudCompass extends DHudObject
 /*#######################################
 Similar to DHudCompass attaches the [DHudObject]{Object}; by default the selected inventory item; to the camera with the default {Offset} <0.75,0,-0.4.
 The objects facing will be constant toward the camera. With {Rotation} chose an offset.
-NOTE: Z-Rotation does not work intuitively as it is in combination with pitch.
-Use X,Y 180° Rotation to imitate a Z 180° rotation.
+NOTE: {Rotation} axes now compose as real rotations (matrix based); the old advice to
+imitate a Z 180° rotation via X,Y 180° is obsolete - a plain Z rotation works.
 */
 #######################################
 {
-	function GetRotation(){
-		local v = Camera.GetFacing()
-		v.y = 0
-		if (SpinBase){
-			v += (SpinBase * spin)
-			spin++
-			if (spin >= 360)
-				spin = 0
-		}
-		return rot_offset - v
+	function GetCancelAngles(v){
+		// Cancel heading AND bank; pitch still follows the camera (the old code's v.y = 0 choice).
+		// GetRotation itself is inherited - the matrix composition in DHudObject handles multi-axis correctly.
+		return ::vector(v.x, 0, v.z)
 	}
 #	|-- On	 Off --|
 	function DoOn(DN, item = null, onreload = null){	// keep the base DoOn(DN, item, onreload) shape - the reload path calls with 3 args.
