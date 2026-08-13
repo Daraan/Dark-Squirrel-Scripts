@@ -10,6 +10,11 @@
 
 **Spec:** [`docs/superpowers/specs/2026-08-13-dromed-mcp-design.md`](../specs/2026-08-13-dromed-mcp-design.md)
 
+**Base branch:** `DScript-2`. Every line reference in this plan and in the spec was re-verified
+against that branch on 2026-08-13. They do **not** match `cleanup-alpha`, where the same files
+differ by 45 lines in `DScript Core.nut` and 26 in `DScript File&Blob.nut`, nor `master`, which does
+not contain the V2 files at all.
+
 ## Global Constraints
 
 - **The bridge cannot create files.** `::file(name, "w")` fails with `cannot open file` in DromEd even though the working directory is writable (`install_path = '.\'`). Payload leaves only via `print()` to the log; file creation happens only through `Debug.Command("dump_cmds", <name>)`. Confirmed by spike, 2026-08-13.
@@ -18,8 +23,8 @@
 - **Game mode only.** Squirrel scripts do not tick in edit mode.
 - **All spool files are flat in the game root, prefixed `mcp_`.** No subdirectory — the subfolder case is unverified in both directions.
 - **New `.nut` files must be pure ASCII with LF line endings**, and must sort *after* `DScript Core.nut` in filename order so they can extend the framework. `DScript MCPBridge.nut` satisfies this (`M` > `C`).
-- **Never open `DScript Core.nut` with Edit/Write** — it is Latin-1 and the tools corrupt it. This plan does not modify it.
-- **After any `.nut` change run** `python3 tools/check_files.py --base HEAD~1`.
+- **Never open `DScript Core.nut` with Edit/Write** — on this branch it is still Latin-1 (45× `0xA7`, 37× `0xB0`, and it does not decode as UTF-8), so those tools would rewrite it as UTF-8 and destroy the `case '§'` label that the parameter parser depends on. This plan does not modify it.
+- **Branch is `DScript-2`.** All line references in the plan and spec are against that branch. `tools/check_files.py` and `tools/latin1_patch.py` do **not** exist here — they live on `cleanup-alpha`. The plan's `.nut` verification is the inline check in Task 4 Step 3, not `check_files.py`.
 - **Nothing Squirrel can be run, built, or tested locally.** Do not claim the bridge is tested. Only the Python side has automated tests.
 - **`split()` drops empty tokens**, `find()` returns `null` and not `-1`, and `Data.RandInt` is inclusive. Test `== null` explicitly.
 - **A specific handler suppresses `OnMessage()`** — any `OnBeginScript` override must call `base.OnBeginScript()`.
@@ -1022,7 +1027,7 @@ class DMCPBridge extends DBasics
 	}
 
 	// ::DHandler calls this every N frames. It must NEVER throw: the dispatch
-	// loop in DScript Core.nut:2389 iterates the registry without per-instance
+	// loop in DScript Core.nut:2397 iterates the registry without per-instance
 	// guarding, so one exception here stops every registered script, not just
 	// this one.
 	function FrameUpdate(script)
@@ -1239,9 +1244,12 @@ class DMCPBridge extends DBasics
 
 - [ ] **Step 3: Check the file for encoding and structural damage**
 
+`tools/check_files.py` is not on this branch, so this inline check is the whole verification. It
+catches the two failures that have actually happened in this repo: encoding damage and bracket
+balance drifting.
+
 Run:
 ```bash
-python3 tools/check_files.py --base HEAD~1
 python3 - <<'EOF'
 data = open("DScript MCPBridge.nut", "rb").read()
 print("pure ASCII:", all(byte < 128 for byte in data))
@@ -1297,13 +1305,19 @@ step assumes the ones above passed.
   higher counter can leave older acks behind; they are harmless.
 ````
 
-- [ ] **Step 5: Add the bridge to the README file table**
+- [ ] **Step 5: Mention the bridge in the README**
 
-In `README.md` the file-set table runs from line 34 to line 45, with the columns
-`| file | ship it? | what it is |`. Add this row immediately after the `T2OverlaySample.nut` row:
+`README.md` on this branch is a 15-line prose blurb with no file table, so there is no row to add.
+Append this section to the end of the file instead, matching the surrounding separator style:
 
 ```markdown
-| `DScript MCPBridge.nut` | no, tooling | External command bridge: lets a tool drive DromEd over flat files. Game mode only. See `docs/DROMED_MCP_PROTOCOL.md` |
+____________________________________________________________________________________________
+
+**Tooling — `DScript MCPBridge.nut`.** An optional bridge that lets an external tool drive DromEd
+over flat files: it polls a request file, runs one command, and prints the result to `monolog.txt`.
+Game mode only, and not something a mission should ship. See
+[`docs/DROMED_MCP_PROTOCOL.md`](docs/DROMED_MCP_PROTOCOL.md) for the wire format and
+[`docs/DROMED_MCP_CHECKLIST.md`](docs/DROMED_MCP_CHECKLIST.md) for how to verify it.
 ```
 
 - [ ] **Step 6: Re-run the Python suite**

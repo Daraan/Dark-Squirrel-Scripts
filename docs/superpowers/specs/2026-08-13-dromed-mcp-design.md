@@ -1,8 +1,10 @@
 # DromEd MCP — design
 
 Date: 2026-08-13
-Status: design, not approved for implementation. All blocking unknowns resolved 2026-08-13
-against DromEd (T2, API 11); the architecture below is final.
+Status: approved. All blocking unknowns resolved 2026-08-13 against DromEd (T2, API 11); the
+architecture below is final.
+Base branch: `DScript-2`. All line references were re-verified against it — they differ on
+`cleanup-alpha`, and `master` does not contain the V2 files at all.
 
 ## Context
 
@@ -51,15 +53,15 @@ atomicity requirement rather than papering over it, and it costs one comparison 
 All verified present in this repo or in `DOC/squirrel_script/`:
 
 - `Debug.Command(cmd, arg)` — squirrel executes DromEd console commands.
-  Used at `DScript File&Blob.nut:779`, `:787`, `:603`.
+  Used at `DScript File&Blob.nut:777`, `:786`, `:601`.
 - `Debug.Command("dump_cmds", "<name>")` — script chooses the output filename, DromEd creates the
-  file. `DScript File&Blob.nut:603`.
+  file. `DScript File&Blob.nut:601`.
 - `print()` / `Debug.MPrint` / `Debug.Log` — output reaches `monolog.txt` in the editor,
   `Thief2.log` when running the game exe (`DOC/squirrel_script/ReadMe.txt:20`).
 - `dfile` (`DScript File&Blob.nut:19`) wraps `::file(name, "r")`. Its own header states files are
   streamed from the OS, so changing the file changes what the script reads — this is how
   `cDIngameLogOverlay` already works.
-- `::DHandler.PerFrame_Register(instance, doPerNFrames)` (`DScript Core.nut:2368`) calls
+- `::DHandler.PerFrame_Register(instance, doPerNFrames)` (`DScript Core.nut:2376`) calls
   `instance.FrameUpdate(_script)` every N frames and rebuilds its registry across save/load.
 - `Engine.FindFileInPath("install_path", name, string())` resolves names inside the game tree, but
   returns them **relative to the search root**, not absolute. It cannot tell you where the engine
@@ -182,7 +184,7 @@ spool does not accumulate. Without `remove` this would have needed the agent to 
 itself, and an agent that crashes mid-command would have leaked a file every time.
 
 `Execute` is wrapped in `try`/`catch`. A throw inside `FrameUpdate` would take the whole
-`PerFrame` dispatch loop down with it (`DScript Core.nut:2389` iterates the registry without
+`PerFrame` dispatch loop down with it (`DScript Core.nut:2397` iterates the registry without
 per-instance guarding), so the bridge must never propagate an exception. On error it prints
 `END err <message>` and acks anyway — a caller that gets no ack cannot distinguish a crashed bridge
 from a slow one.
@@ -258,8 +260,7 @@ game mode, or the mission has no object carrying `DMCPBridge`.
 
 ## Risks to settle against a real DromEd
 
-These cannot be resolved from this repo and should be checked before or during implementation.
-R0 blocks; the rest each have a stated fallback and do not.
+Settled against DromEd (T2, API 11) on 2026-08-13. Line references are to branch `DScript-2`.
 
 - **R0 — does `::file(name, "w")` work?** CLOSED 2026-08-13: **no**, and not for any reason a
   workaround can reach.
