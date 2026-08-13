@@ -13,3 +13,12 @@ Old: Besides one or two  script ideas I'm about to say that the DScript is nearl
 
 New: DScript currently is undergoing a massive improvement and new additions in the scripts-in-progress branch.
 v1.0 is coming
+
+____________________________________________________________________________________________
+
+**Tooling — `DScript MCPBridge.nut`.** An optional bridge that lets an external tool drive DromEd
+over flat files: it polls a request file, runs one command, and prints the result to `monolog.txt`.
+In game mode it polls by itself; in the editor, where scripts never tick, `script_test <objid>`
+pumps one request. Not something a mission should ship. See
+[`docs/DROMED_MCP_PROTOCOL.md`](docs/DROMED_MCP_PROTOCOL.md) for the wire format and
+[`docs/DROMED_MCP_CHECKLIST.md`](docs/DROMED_MCP_CHECKLIST.md) for how to verify it.
