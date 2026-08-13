@@ -11,6 +11,10 @@
 //   Q3  Does a relative subfolder in the filename work, for both ::file() and
 //       for Debug.Command("dump_cmds", ...)?
 //   Q4  Does append mode ("a") work?
+//   Q5  Does binary mode ("wb") work?
+//   Q6  Does an absolute path work when a relative one does not? A first run
+//       reported "cannot open file", which is fopen failing rather than the
+//       write API being absent -- Q6 tells those apart.
 //
 // HOW TO RUN
 //   1. Copy this file into <game>/sq_scripts/
@@ -134,6 +138,41 @@ class MCPSpike extends SqRootScript
 			f.close()
 			return "'" + ReadBack("mcp_spike_bin.txt") + "'"
 		}.bindenv(this))
+
+		// --- Q6: absolute path -------------------------------------------
+		// A first run reported 'cannot open file', which is fopen failing
+		// rather than file() being missing -- if the io lib were registered
+		// read-only we would instead get "the index 'file' does not exist".
+		// So the open is what failed, and the likely causes are the working
+		// directory or NewDark resolving relative names through its resource
+		// layer. Writing to an absolute path separates those cases.
+		//
+		// The directory is derived from where the engine says monolog.txt is,
+		// so this needs no hardcoded drive letter.
+		local dir = null
+		local full = ::string()
+		if (::Engine.FindFileInPath("install_path", "monolog.txt", full)) {
+			local s = full.tostring()
+			print("  Q6 monolog.txt resolves to: " + s)
+			local cut = -1
+			for (local i = 0; i < s.len(); i++)
+				if (s[i] == '\\' || s[i] == '/')
+					cut = i
+			if (cut >= 0)
+				dir = s.slice(0, cut + 1)
+		} else {
+			print("  Q6 SKIP  could not locate monolog.txt via install_path")
+		}
+
+		if (dir != null) {
+			print("  Q6 install dir: " + dir)
+			Report("Q6 file(<absolute>mcp_spike_abs.txt,'wb')", function() {
+				local f = ::file(dir + "mcp_spike_abs.txt", "wb")
+				WriteStr(f, "ABSOLUTE_OK")
+				f.close()
+				return "'" + ReadBack(dir + "mcp_spike_abs.txt") + "'"
+			}.bindenv(this))
+		}
 
 		print("MCPSPIKE END")
 	}
