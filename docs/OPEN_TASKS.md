@@ -87,6 +87,7 @@ flow through here.
 | T-25 | P2 | `DScript Core.nut:492` | `ObjectsLinkedFromSet(onlyfirst)` returns `[foundobjs[0]]` without an empty check | return `[]` when empty | ☐ |
 | T-26 | P3 | `DScript Core.nut:1083` | `if (str[1] == '|')` can index past the end for a 1-char `"["` parameter | length guard | ☐ |
 | T-27 | P3 | `DScript Core.nut:1370` | `+-` subset removal is O(n·m) and leaves a `.map` TODO; duplicates from `+` are deliberately not removed (documented decision) | optional | ⊘ |
+| T-94 | P2 | `DScript Core.nut:1414` (`{` distance op), `DScript_ModdingTools.nut:266, 330, 722` | NewDark `split()` matches multi-char separators as one literal substring, not a char set — these calls never split, the whole string comes back as one token. Found in-game 2026-08-13 via the `<x,y,z>` vector operator (fixed same day with a single-char rewrite); these sibling sites are still latently broken | rewrite each with single-char `split()` passes or a manual scan | ☐ |
 
 ---
 

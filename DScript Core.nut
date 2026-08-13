@@ -1462,8 +1462,12 @@ SubVersion 	= 0.72
 			
 			# |-- Interpretation of other data types if they come as string.
 			case '<':	//vector
-				local ar = ::split(str, "<,> ")	// tolerate the documented closing '>' and spaces - "0.25>".tofloat() threw "cannot convert the string"
-				return ::DScript._FormatForReturn( ::vector(ar[0].tofloat(), ar[1].tofloat(), ar[2].tofloat()), returnInArray) 
+				// NewDark split() matches the separator as ONE literal substring, not a char set - only single-char separators actually split.
+				local ar = ::split(str.slice(1), ",")				// drop the leading '<', split on ',' alone.
+				local z  = ::strip(ar[2])
+				if (z[z.len()-1] == '>')							// documented syntax <x,y,z> - drop the closing bracket.
+					z = z.slice(0, -1)
+				return ::DScript._FormatForReturn( ::vector(::strip(ar[0]).tofloat(), ::strip(ar[1]).tofloat(), z.tofloat()), returnInArray) 
 			case '#':	//needed for +#ID+ identification.	#NOTE: Not needed anymore but highly recommended.
 				return ::DScript._FormatForReturn(str.slice(1).tointeger(), returnInArray)
 			case '.':	//Here for completion: .5.25 - but the case of an unexpected float normally doesn't happen.

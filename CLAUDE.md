@@ -158,6 +158,10 @@ Always build parameter names as `_script + "Foo"`, never a hard-coded string.
 - **`#` is a line comment.** The `##  /-- §# … --\` banners are Notepad++ **fold markers**, not
   decoration. Leave them alone.
 - **`split()` drops empty tokens.** `split("]a]b", "]")` → `["a","b"]`, *not* `["","a","b"]`.
+- **`split()` matches the separator as ONE literal substring, not a char set.** `split(str, "<,")`
+  only splits where the exact sequence `<,` occurs (confirmed in-game 2026-08-13: the `<x,y,z>`
+  vector operator never parsed because of this). Use single-char separators only; multi-char
+  "separator sets" silently return the whole string as one token — see T-94 for remaining sites.
 - **`find()` returns `null` when absent but `0` is a valid index.** Always test `== null`. `if (!x)`
   is a bug — it already is one in `ObjectsInNet` (`Core:453`) and `ObjectsLinkedFromSet` (`Core:485`).
 - **`Data.RandInt(low, high)` is inclusive** — `RandInt(0, arr.len())` overruns.
