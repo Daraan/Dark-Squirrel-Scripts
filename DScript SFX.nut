@@ -656,16 +656,19 @@ anchor_rotation = null
 	}
 
 	function OnBeginScript(){
-		if (GetClassName() == "DInventoryMaster"){					// Not DSubInventory
-			if (!("DInventoryMaster" in ::DHandler.Extern)){
-				::DHandler.RegisterExternHandler("DInventoryMaster", this)
-				//::getroottable()[GetClassName()] <- this					// this looks a bit dangerous but it's on a Squirrel level only.
-			}
-		}
+		// Init the members BEFORE anything that can throw - a dead registration must not leave the offsets null.
 		pos_offset 		= DGetParam(_script + "ItemPosition", v_zero)
 		rot_offset 		= DGetParam(_script + "ItemRotation", v_zero)
 		anchor_offset 	= DGetParam(_script + "AnchorPosition",::vector(0.3,0,0))
 		anchor_rotation = DGetParam(_script + "AnchorRotation",v_zero)
+		if (GetClassName() == "DInventoryMaster"){					// Not DSubInventory
+			if (::DHandler){										// script construction order is arbitrary - the handler may not exist yet.
+				::DHandler.RegisterExternHandler("DInventoryMaster", this)	// skips duplicates itself.
+				//::getroottable()[GetClassName()] <- this					// this looks a bit dangerous but it's on a Squirrel level only.
+			}
+			else
+				print("DScript FAILURE: no ::DHandler when " + GetClassName() + " on " + self + " started - DScriptHandler marker missing?")
+		}
 		base.OnBeginScript()
 	}
 
@@ -823,6 +826,15 @@ anchor_rotation = null
 		if (IsDataSet("DInvAttacher"))										// already open (InvSelect/InvFocus re-fire): don't create a duplicate dummy set.
 			return
 			
+		if (typeof anchor_offset != "vector"){								// BeginScript died mid-init (construction order) - retry once.
+			OnBeginScript()
+			if (typeof anchor_offset != "vector"){
+				print("DScript FAILURE: " + _script + "AnchorPosition on " + self + " did not evaluate to a vector - using the default.")
+				anchor_offset = ::vector(0.3,0,0)
+			}
+			if (typeof anchor_rotation != "vector")
+				anchor_rotation = v_zero
+		}
 		local v = vector()
 		Object.CalcRelTransform(::PlayerID, ::PlayerID, v, v_zero, 4, 0)	// vector from camera to player, so negate it. v_zero will stay 0
 		// Rotation, Position to allow user offset.
@@ -849,10 +861,13 @@ class DSubInventory extends DInventoryMaster
 	beenremoved = false
 	
 	function OnBeginScript(){	// Making sure ::DHandler is constructed
+		base.OnBeginScript()						// init the offset members first - registration below can fail.
 		if (DGetParam(_script + "Name", false)){
-			::DHandler.RegisterExternHandler("SubInv" + DGetParam(_script + "Name"),this)
+			if (::DHandler)							// script construction order is arbitrary - the handler may not exist yet.
+				::DHandler.RegisterExternHandler("SubInv" + DGetParam(_script + "Name"),this)
+			else
+				print("DScript FAILURE: no ::DHandler when " + GetClassName() + " on " + self + " started - DScriptHandler marker missing?")
 		}
-		base.OnBeginScript()
 	}
 	 
 	// Idea to remove the Inventory if it is empty, but if the last item is temporarily given to the player
