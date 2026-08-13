@@ -1462,7 +1462,7 @@ SubVersion 	= 0.72
 			
 			# |-- Interpretation of other data types if they come as string.
 			case '<':	//vector
-				local ar = ::split(str, "<,")
+				local ar = ::split(str, "<,> ")	// tolerate the documented closing '>' and spaces - "0.25>".tofloat() threw "cannot convert the string"
 				return ::DScript._FormatForReturn( ::vector(ar[0].tofloat(), ar[1].tofloat(), ar[2].tofloat()), returnInArray) 
 			case '#':	//needed for +#ID+ identification.	#NOTE: Not needed anymore but highly recommended.
 				return ::DScript._FormatForReturn(str.slice(1).tointeger(), returnInArray)
