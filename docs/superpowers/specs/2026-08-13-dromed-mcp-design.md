@@ -1,7 +1,10 @@
 # DromEd MCP — design
 
 Date: 2026-08-13
-Status: design, not approved for implementation
+Status: design, not approved for implementation.
+Blocked on one spike — `spike/DScript MCPSpike.nut` must be run in DromEd before implementation
+starts, because its result decides which of two architectures this becomes (see R0 and
+"Collapse path").
 
 ## Context
 
@@ -25,6 +28,25 @@ DScript already uses in production code, so none of the transport is speculative
 | Mode coverage | Game mode only for v1. Edit mode would need external keystroke injection; deferred. |
 | Tool surface | Script-debug oriented — command, eval, message, script_test, object dump, script_reload with compile-error extraction, log tail. |
 | Persistent-save trick | `dump_cmds` filename-as-signal adopted as the ack primitive. The env-map-zone payload trick is documented as a fallback only, because it mutates the mission. |
+| Agent side | Two tiers. The file protocol is the contract; the agent drives it with plain Read/Write/Bash when nothing else is available, and `tools/dromed.py` is an optional convenience wrapper where Python is installed. Neither is required by the other. |
+
+### Can it all be `.nut`?
+
+The DromEd half can. The agent half cannot, and this is structural rather than a gap to engineer
+around: MCP is JSON-RPC 2.0 over stdio or streamable HTTP, which needs a process the client spawns
+or a socket it can dial. `squirrel.osm` offers neither, and `.nut` code only executes inside a
+running DromEd.
+
+What follows from that is that no MCP server is *required*. The contract is the file protocol
+below. Tier 1 is an agent driving that protocol with its ordinary file tools — nothing to install
+beyond dropping one `.nut` into `sq_scripts/`. Tier 2 is `tools/dromed.py`, a single file that
+collapses the write-poll-extract sequence into one call, for hosts that have Python. A full MCP
+server with typed schemas remains a later option, not a prerequisite.
+
+Because tier 1 has no atomic rename, the request file is instead validated by content: a request
+is only acted on when its line ends with the terminator `;#`. A partially written file has no
+terminator, so the bridge skips that tick and picks it up on the next one. This removes the
+atomicity requirement rather than papering over it, and it costs one comparison per poll.
 
 ## Primitives this is built on
 
@@ -78,11 +100,13 @@ DromEd
 | `.seq` | MCP server | Monotonic sequence counter, survives server restarts. |
 | `monolog.txt` (install root) | DromEd | Payload stream. |
 
-Request format is exactly one line, no trailing newline:
+Request format is exactly one line, no trailing newline, ending in the terminator `;#`:
 
 ```
-SEQ=<n>;OP=<verb>;A=<arg>;B=<arg>
+SEQ=<n>;OP=<verb>;A=<arg>;B=<arg>;#
 ```
+
+The terminator is what makes a non-atomic writer safe; see "Can it all be `.nut`?" above.
 
 Single-line is a hard requirement, not a style choice. `DScript File&Blob.nut:14` warns that
 `getParam` miscounts across line breaks on CRLF files, and this file is written from a Unix host
@@ -143,10 +167,33 @@ from a slow one.
 
 `lastSeq` is kept in `SetData` so a save/load or an OSM reload does not replay the last request.
 
-### Layer 3 — `dromed-mcp` Python package
+### Layer 3 — the agent side
 
-Configured by environment: `DROMED_ROOT` (the shared folder), `DROMED_LOG` (default
-`<root>/monolog.txt`), `DROMED_TIMEOUT` (default 10s).
+#### Tier 1 — no server
+
+The agent drives the protocol directly. One command is:
+
+1. Read `<root>/mcp/.seq`, add one, write it back.
+2. Note the byte length of the log.
+3. Write `<root>/mcp/mcp_in.txt` as a single terminated line.
+4. Poll for `mcp_ack_<seq>.dsav`.
+5. Read the log from the noted offset, take the `##MCP <seq>` frame.
+6. Delete the ack file.
+
+Nothing to install beyond the bridge script. The protocol has to be in front of the agent for this
+to work, so it ships as a skill or a CLAUDE.md section rather than as tribal knowledge — that
+document is part of the deliverable, not an afterthought.
+
+#### Tier 2 — `tools/dromed.py`
+
+The same six steps in one file, so the agent spends one Bash call per command instead of a polling
+loop. Configured by environment: `DROMED_ROOT` (the shared folder), `DROMED_LOG` (default
+`<root>/monolog.txt`), `DROMED_TIMEOUT` (default 10s). Invoked as
+`python3 tools/dromed.py <verb> [args]`, printing the extracted frame on stdout and using the exit
+code for status.
+
+Optional. Tier 1 stays supported, and the two must not drift — tier 2 is a wrapper over the same
+contract, never an extension of it.
 
 One internal primitive, `_call(op, a, b, timeout)`:
 
@@ -161,7 +208,8 @@ One internal primitive, `_call(op, a, b, timeout)`:
 Byte-offset capture before the write is what makes this safe against a log that other engine
 subsystems are also writing to, and against frames from earlier requests.
 
-Tools exposed:
+Verbs exposed (as MCP tools if a server is ever added, as subcommands in tier 2, as protocol verbs
+in tier 1):
 
 | Tool | Notes |
 |---|---|
@@ -189,8 +237,18 @@ game mode, or the mission has no object carrying `DMCPBridge`.
 ## Risks to settle against a real DromEd
 
 These cannot be resolved from this repo and should be checked before or during implementation.
-Each has a stated fallback so none of them blocks the design.
+R0 blocks; the rest each have a stated fallback and do not.
 
+- **R0 — does `::file(name, "w")` work?** BLOCKING, spike written, awaiting a DromEd run. Only
+  `"r"` is used anywhere in this repo (`DScript File&Blob.nut:381`, `:719`,
+  `DScript Overlays.nut:23`) and `Custom-API-reference.nut:10` explicitly declines to document the
+  standard libs, so whether `squirrel.osm` registers the io lib writable is unknown. The evidence
+  leans negative: `cDSaveHandler` goes through `Engine.SetEnvMapZone` plus a backup-and-restore
+  dance to persist roughly 53 bytes, which nobody would do with a working `file(…, "w")`.
+
+  If it works, most of this design collapses — see "Collapse path" below.
+  Spike: `spike/DScript MCPSpike.nut`, which also settles R1 and Q2 (where written files land)
+  in the same run.
 - **R1 — does `dump_cmds` accept a subfolder in its filename argument?** If not, ack files land in
   the install root. Fallback: drop the `mcp/` prefix, keep the `mcp_ack_` name prefix.
 - **R2 — does DromEd write mono output to `monolog.txt` by default, and which config var controls
@@ -206,6 +264,26 @@ Each has a stated fallback so none of them blocks the design.
 - **R5 — SMB latency and mtime granularity** on the shared folder. Poll on file existence and
   content, never on mtime.
 - **R6 — CRLF.** Covered by the single-line request format, but worth confirming once end to end.
+
+## Collapse path, if R0 comes back positive
+
+A writable `::file` makes the bridge able to hand back a result file directly, and most of the
+transport machinery stops earning its place:
+
+| Concern | If `file(…, "w")` fails | If it works |
+|---|---|---|
+| Payload out | `print()` with `##MCP` framing, byte-offset capture, frame extraction from a log shared with the whole engine | bridge writes `mcp/mcp_out_<seq>.txt` |
+| Ack | `dump_cmds` filename trick | that same file appearing |
+| Agent loop | write, poll, tail log, extract frame | write, poll, read |
+| Log parsing | required | only for `script_reload` compile errors |
+| Tier 2 wrapper | clearly earns its place | barely — tier 1 becomes two tool calls |
+
+The bridge's verb set, the request format, the terminator rule and the game-mode constraint are
+unaffected either way, so the parts of this spec above "Layer 3" hold regardless of the outcome.
+
+Note that log tailing stays useful even then: `dromed_log_tail` reads a file the engine writes on
+its own, so it is the only thing that still reports anything when the bridge is dead — which is
+precisely when a diagnosis is wanted.
 
 ## Fallback payload channel (not v1)
 
@@ -233,8 +311,11 @@ Nothing in this repo runs locally, but most of this design can still be tested.
 
 ## Phasing
 
-- **P1** — spool protocol, bridge with `ping`/`cmd`, `_call`, `dromed_status`, `dromed_command`,
-  `dromed_log_tail`, and the fake-bridge test suite. Enough to prove the transport.
-- **P2** — remaining verbs, `dromed_script_reload` with compile-error extraction, object dump.
+- **P0** — run `spike/DScript MCPSpike.nut` in DromEd. Blocking. Settles R0, R1 and where written
+  files land, then gets deleted.
+- **P1** — spool protocol, bridge with `ping`/`cmd`, tier 1 protocol document, and the fake-bridge
+  test suite. Enough to prove the transport.
+- **P2** — remaining verbs, `script_reload` with compile-error extraction, object dump, and
+  `tools/dromed.py` as the tier 2 wrapper.
 - **P3, optional** — edit-mode path via a `user.bnd` binding plus external keystroke injection,
   which would remove the game-mode requirement.
