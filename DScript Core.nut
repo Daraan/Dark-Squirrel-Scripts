@@ -1,7 +1,7 @@
 ##		--/					 §HEADER					--/
 
-#include DConfigDefault.nut
-// This file IS NECESSARY for DScript.nut to compile.
+#include DSConfigDefault.nut
+// This file IS NECESSARY for DScript Core.nut to compile.
 //	In it are adjustable constants which you might want to change depending on your need.
 //	Like setting a minimum required version for your Fan Mission.
 //
@@ -204,6 +204,8 @@ DScript <- {
 	/* Creates a long string out of your array data separated by "+" 
 		#NOTE Constants are defined in DConfig*.nut					*/
 		local data 		= ""
+		if (ar.len() == 0)
+			return ""
 		local maxIndex	= ar.len() - 1
 		for( local i = 0; i < maxIndex; i++)		// Appends your next indexed value and your divide operator
 			data += ar[i] + separator				
@@ -434,11 +436,11 @@ DScript <- {
 	function FindClosestObjectInSet(anchor, objset){
 	/* Want to use this function use with array.reduce but without the Squirrel 3.2 Update which allows passing the anchor, nah */
 		local apos 	  = ::Object.Position(anchor)
-		local minDist = 8000		// random big value
+		local minDist = null
 		local retObj  = null
 		foreach (obj in objset){
 			local curDist = (::Object.Position(obj) - apos).Length()
-			if (curDist < minDist){
+			if (minDist == null || curDist < minDist){
 				minDist = curDist
 				retObj  = obj
 			}
@@ -450,12 +452,12 @@ DScript <- {
 	/* Get all objects in a Path witch branches. The set is ordered by distance to the start point.*/
 		foreach ( link in ::Link.GetAll(linktype, objset[cur_idx]) ){
 			local nextobj = ::SqRootScript.LinkDest(link)
-			if ( !objset.find(nextobj) )					// Checks if next object is already present.
+			if ( objset.find(nextobj) == null )					// Checks if next object is already present.
 			{
 				objset.append(nextobj)
 			}
 		}
-		if ( !objset.len() == cur_idx )						// Ends when the current object is the last one in the set. minor todo: could be a parameter, probably faster.
+		if ( objset.len() - 1 != cur_idx )						// Ends when the current object is the last one in the set. minor todo: could be a parameter, probably faster.
 			return ObjectsInNet(linktype, objset, cur_idx + 1)//return enables a Tail Recursion with call stack collapse.
 	}
 
@@ -482,14 +484,14 @@ DScript <- {
 				if(::Link.AnyExist(linktype, curobj)){
 					foreach (link in ::Link.GetAll(linktype, curobj)){	// if there are multiple linked, get them.
 						local nextobj = ::SqRootScript.LinkDest(link)
-						if (!objset.find(nextobj))						// Checks if next object is already present.
+						if (objset.find(nextobj) == null)						// Checks if next object is already present.
 							foundobjs.append(nextobj)
 					}
 				}
 			}
 		}
 		if (onlyfirst)
-			return [foundobjs[0]]										// we work with obj arrays so return first found in in one.
+			return foundobjs.len()? [foundobjs[0]] : []										// we work with obj arrays so return first found in in one.
 		return foundobjs
 	}
 	
@@ -504,12 +506,33 @@ DScript <- {
 			return [str, ""]
 		return [str.slice(0,i)	, str.slice( include ? i : i+1 )]
 	}
+
+	function SplitAny(str, separators){
+	/* T-94: NewDark's split() matches its separator argument as ONE literal substring, so a call like
+		split(s, "=;") never splits at all and hands back the whole string as a single token. This is the
+		"separator set" the call sites were written against: it breaks at EVERY character listed in
+		`separators` and, like split(), drops empty tokens - so index-pair loops over the result stay valid.
+		If you need the empty tokens kept, see DSplitSet in DScript_ModdingTools.nut. */
+		local tokens  = []
+		local current = ""
+		foreach (c in str){
+			if (separators.find(c.tochar()) != null){
+				if (current != "")
+					tokens.append(current)
+				current = ""
+			} else
+				current += c.tochar()
+		}
+		if (current != "")
+			tokens.append(current)
+		return tokens
+	}
 	
 	function DGetStringParamRaw(param, defaultValue, str, separators = eSeparator.kStringData){
 	/* Like the class DGetParam function but works with strings instead of a table/class. */
 		str 		= str.tostring()
 		local key 	= str.find(param)
-		if (key >= 0){
+		if (key != null){
 			// Problem are substrings like TOn and On
 			// So make sure it is ;TOn and On or start of string.
 			// Could be done easier but less efficient with split, array find.
@@ -548,6 +571,7 @@ DScript <- {
 							switch(typeof to){
 								case "array"  :
 									to.append(value)
+									rv = to
 									break
 								case "string" :
 									rv = to + value
@@ -561,6 +585,7 @@ DScript <- {
 							}
 							if (rv.len() > maxLength)
 								return rv.slice(-maxLength)
+							return rv
 						}
 		OBJSET			= function(str){
 							return ::DBasics.DCheckString.call(THIS, str, kReturnArray)
@@ -622,22 +647,21 @@ DScript <- {
 			}*/
 			if (::Quest.Exists(key))								// as a little convenience, enables quest vars without _$QVarName_
 				return ::Quest.Get(key)
-			#NOTE Stack level	
-			// stack level 0: getstackinfos, 1 _get, 2 main function? 3 call (in CompileExpressions) 4 CompileExpressions
-			// via Compile:	5 calling function
-			// via CknComp:	5 acall (in CheckAndCompileExpression) 6 CheckAndCompileExpression 7 calling function.
-			local _stack = ::getstackinfos(5)
-			//if ("func" in _stack){
-				if (_stack.func != "acall"){							// Called via CompileExpressions
-					if (key in _stack.locals)
-						return _stack.locals[key]
-				}
-				else													// Called via CheckAndCompileExpression
-				{	_stack = ::getstackinfos(7).locals
-					if (key in _stack)
-						return _stack[key]
-				}
-			//}
+			#NOTE Stack level
+			// T-90: walk the stack instead of hard-coding depths 5/7. Find the CompileExpressions
+			// frame, then skip the acall / CheckAndCompileExpression wrappers above it - the next
+			// frame is the real calling function. Robust against added or removed call frames.
+			local _lvl = 2
+			local _stack = ::getstackinfos(_lvl)
+			while (_stack && _stack.func != "CompileExpressions")
+				_stack = ::getstackinfos(++_lvl)
+			if (_stack){
+				_stack = ::getstackinfos(++_lvl)
+				while (_stack && (_stack.func == "acall" || _stack.func == "CheckAndCompileExpression"))
+					_stack = ::getstackinfos(++_lvl)
+				if (_stack && (key in _stack.locals))
+					return _stack.locals[key]
+			}
 			if (key in ::getroottable())
 				return ::getroottable()[key]
 			return key.tostring()
@@ -709,7 +733,7 @@ DScript <- {
 			}
 			catch(wasblob){return eDQVarType.kCampaignBlob}
 		}
-		if (name in ::Quest.BinGetTable(kSharedBinTable))
+		if (::Quest.BinExists(kSharedBinTable) && name in ::Quest.BinGetTable(kSharedBinTable))
 			return eDQVarType.kScalarCampaign
 		if (::DHandler.IsDataSet("qvar_" + name))
 			return eDQVarType.kScalarMission
@@ -824,9 +848,9 @@ DScript <- {
 		# |-- Test if the given type can be used
 		type = ::DScript._DoQVarChecks(name, type, value)
 		
-		# DEBUG POINT
-		DPrint("\nINFO: Saving '" + name + "' with value '" + value + "'("+typeof value+") with type level '" 
-				+ (type == eQuestDataType.kQuestDataUnknown?eQuestDataType.kQuestDataMission:type) +"'", kDoPrint, ePrintTo.kMonolog)
+		# DEBUG POINT - QVar write hot path, keep quiet. Uncomment while debugging QVar storage:
+		//DPrint("\nINFO: Saving '" + name + "' with value '" + value + "'("+typeof value+") with type level '" 
+				//+ (type == eQuestDataType.kQuestDataUnknown?eQuestDataType.kQuestDataMission:type) +"'", kDoPrint, ePrintTo.kMonolog)
 		
 		# |-- Save by type.
 		switch(type){
@@ -861,11 +885,11 @@ DScript <- {
 					// add an extra entry.
 					table._MissionOnly <- true
 					// Need to store the names of the tables in a campain var as well to find them later.
-					if (::Quest.BinExists("MisBinTables")){
-						local tables = ::Quest.BinGetTable("MisBinTables")
+					if (::Quest.BinExists("MissBinTables")){
+						local tables = ::Quest.BinGetTable("MissBinTables")
 						if (tables.names.find(name) == null){
 							tables.names.append(name)
-							::Quest.BinSetTable("MisBinTables", tables)
+							::Quest.BinSetTable("MissBinTables", tables)
 						}
 					}
 					else 
@@ -873,11 +897,11 @@ DScript <- {
 						// create new miss table.
 						local s = ::string()
 						::Version.GetMap(s)
-						::Quest.BinSetTable("MisBinTables", {Miss = s.tostring(), names = [name]})	// TODO: store in s. Re: What?
+						::Quest.BinSetTable("MissBinTables", {Miss = s.tostring(), names = [name]})	// TODO: store in s. Re: What?
 					}
 				}
 				#TEST
-				if (DPrint("Contained Table data:")) ::DTestTrap.DumpTable(table)
+				if (DPrint("Contained Table data:") && "DTestTrap" in ::getroottable()) ::DTestTrap.DumpTable(table)
 					::Quest.BinSetTable(name , table)
 				break
 			case eDQVarType.kCampaignBlob :
@@ -887,8 +911,7 @@ DScript <- {
 		}
 		// < 0 types are handled externally.
 		
-		return DScript.Quest.QuestChange(name, value, old_value)	// name, new, old
-		::DHandler.Extern.DQVarHandler.QuestChange(name, value, old_value)	// name, new, old
+		return DScript.Quest.QuestChange(name, value, old_value)	// name, new, old (T-64: dead ::DHandler.Extern.DQVarHandler notify line removed - superseded by DScript.Quest)
 	}
 	
 	function DeleteQVar(name, type = null){
@@ -896,23 +919,23 @@ DScript <- {
 			return DPrint("ERROR: No QVar name given", kDoPrint)
 		local temp = "[null]"
 		name = name.tolower()
-		if (::Quest.BinExists(name) && type==null || type < eDQVarType.kNonScalarCampaign){
+		if (::Quest.BinExists(name) && (type == null || type < eDQVarType.kNonScalarCampaign)){
 			try
 				temp = Quest.BinGetTable(name)
 			catch(wasblob)
 				temp = Quest.BinGet(name)
 			::Quest.BinDelete(name)
 		}
-		if (Quest.BinExists(kSharedBinTable) && type==null || type == eDQVarType.kScalarCampaign){
+		if (Quest.BinExists(kSharedBinTable) && (type == null || type == eDQVarType.kScalarCampaign)){
 			local table = ::Quest.BinGetTable(kSharedBinTable)
 			if (name in table){
 				temp = delete table[name]
 				::Quest.BinSetTable(kSharedBinTable, table)
 			}
 		}
-		if (::DHandler.IsDataSet("qvar_" + name) && type==null || type == eDQVarType.kScalarMission)
+		if (::DHandler.IsDataSet("qvar_" + name) && (type == null || type == eDQVarType.kScalarMission))
 			temp = ::DHandler.ClearData("qvar_" + name)
-		if (::Quest.Exists(name) && !type || type >= eDQVarType.kIntegerMission){
+		if (::Quest.Exists(name) && (type == null || type >= eDQVarType.kIntegerMission)){
 			temp = Quest.Get(name)
 			::Quest.Delete(name)
 		}
@@ -927,13 +950,13 @@ DScript <- {
 		// 0 is this function, 1 is delegate caller, 2 is DScript.Func, 3 is DScript table, 4+ can be real caller.
 		// From outside GetInstance(3) must be used.
 		local stack = ::getstackinfos(i)
-		if (stack){
-			while (::type(stack.locals["this"]) != "instance"){
-				i++
-				stack = ::getstackinfos(i)
-			}
-			return stack.locals["this"]
+		// T-90: stop at the stack top instead of walking past it; skip frames without an instance this.
+		while (stack && !(("this" in stack.locals) && ::type(stack.locals["this"]) == "instance")){
+			i++
+			stack = ::getstackinfos(i)
 		}
+		if (stack)
+			return stack.locals["this"]
 	}
 	
 	userparams = function(){
@@ -1030,6 +1053,8 @@ SubVersion 	= 0.72
 		}
 		return "" */
 		# |-- 	Operator Analysis 	--|
+		if (str == "")			// Guard: empty parameter value (e.g. 'Foo=;') - nothing to analyze.
+			return ::DScript._FormatForReturn(str, returnInArray)
 		switch (str[kGetFirstChar]){
 			# |-- Sugar Coded parameters --|
 			case '[' :
@@ -1056,10 +1081,10 @@ SubVersion 	= 0.72
 					case "message" : 
 						return ::DScript._FormatForReturn(DCheckString(message()[div_str[1]], returnInArray), returnInArray)
 					case "copy":
-						if (str[6] == '{'){
-							return ::DScript._FormatForReturn(DCheckString(userparams()[GetClassName() + str.slice(7,-1)], returnInArray))
+						if (str.len() > 6 && str[6] == '{'){
+							return ::DScript._FormatForReturn(DCheckString(userparams()[GetClassName() + str.slice(7,-1)], returnInArray), returnInArray)
 						}
-						return ::DScript._FormatForReturn(DCheckString(userparams()[div_str[1]], returnInArray))
+						return ::DScript._FormatForReturn(DCheckString(userparams()[div_str[1]], returnInArray), returnInArray)
 					case "random":
 						local values = ::DScript.DivideAtNext(div_str[1], ",")					// this allows nesting.
 						return ::DScript._FormatForReturn(::Data.RandInt(DCheckString(values[0]),DCheckString(values[1])), returnInArray)
@@ -1080,7 +1105,7 @@ SubVersion 	= 0.72
 							return ::DScript._FormatForReturn(::Object.Facing(self), returnInArray)
 						return ::DScript._FormatForReturn(::Object.Facing(DCheckString(div_str[1])), returnInArray)
 				}
-				if (str[1] == '|'){				// #HACK This is a work around for objectsets in DScript.CheckAndCompileExpression, als strings can't be passed with \".
+				if (str.len() > 1 && str[1] == '|'){				// #HACK This is a work around for objectsets in DScript.CheckAndCompileExpression, als strings can't be passed with \".
 					local end = str.find("|]")
 					if (end){
 						local result = ::callee()(::strip(str.slice(2,end)), kReturnArray)
@@ -1120,16 +1145,18 @@ SubVersion 	= 0.72
 				return ::DScript._FormatForReturn(objset, returnInArray)	
 				
 			case ']' :								// [&ControlDevice[+TPathInit+TPathNext	// TODO slice only until next?
-				local s 		= ::split(str,"]")			// [1]=objset [2]=linkset		[0]=""[
+				local s 		= ::split(str,"]")			// [0]=objset [1]=linkset (leading ']' token is dropped by split)
 				local firstone  = false
-				if (s[2][kGetFirstChar] == '^'){	// [&ControlDevice[^+TPathInit+TPathNext will return the first found attached obj, not all
+				if (s.len() == 2 && s[1][kGetFirstChar] == '^'){	// [&ControlDevice[^+TPathInit+TPathNext will return the first found attached obj, not all
 					firstone = true
-					s[2] = s[2].slice(kRemoveFirstChar)
+					s[1] = s[1].slice(kRemoveFirstChar)
 				}
 				#DEBUG ERROR
-				if (s.len() != 3)
+				if (s.len() != 2){
 					DPrint("ERROR: ']' operator formatting is wrong ]objects]links", kDoPrint, ePrintTo.kUI | ePrintTo.kMonolog)
-				return ::DScript._FormatForReturn(::DScript.ObjectsLinkedFromSet(DCheckString(s[1], kReturnArray), DCheckString(s[2], kReturnArray) , firstone),returnInArray) 
+					return ::DScript._FormatForReturn([], returnInArray)
+				}
+				return ::DScript._FormatForReturn(::DScript.ObjectsLinkedFromSet(DCheckString(s[0], kReturnArray), DCheckString(s[1], kReturnArray) , firstone),returnInArray) 
 			
 			# |-- * @ $ ^ Parameters
 			# Object of Type, without descendants
@@ -1162,8 +1189,8 @@ SubVersion 	= 0.72
 					return ::DScript._FormatForReturn(DCheckString(ref.tostring(),returnInArray), returnInArray)
 				}
 				// Else DSCustomConfig?
-				if (str in getconsttable().MissionsConstants){
-					local value = getconsttable().MissionsConstants[str]
+				if (str in getconsttable().MissionConstants){
+					local value = getconsttable().MissionConstants[str]
 					if (typeof value == "function")							// allows you to define functions.
 						value = value()
 					return ::DScript._FormatForReturn(DCheckString(value, returnInArray), returnInArray)
@@ -1219,7 +1246,6 @@ SubVersion 	= 0.72
 						origin		= message().data3
 					}
 					# Get First Object Set
-print(str+"start?" + start + " On: " + self)
 					local division = ::DScript.DivideAtNext(str, "/", true)
 					if (division[1] != ""){ 		// we are not at the end
 						local nextset  = DCheckString(division[0], kReturnArray)
@@ -1238,8 +1264,6 @@ print(str+"start?" + start + " On: " + self)
 					if (!start)
 						return false
 						
-					foreach (obj in ::gSHARED_SET)
-print("SHARED" + obj)
 					
 					return ::DScript._FormatForReturn(delete ::gSHARED_SET, returnInArray)		// TODO
 			
@@ -1249,6 +1273,7 @@ print("SHARED" + obj)
 						// >strings/book>/Green.str>MyKey  // >strings/>testfile.txt>MyKey>Offset>" 	
 						// Offsetkey or #Offsetnumber
 				local divide = ::split(str,">")
+				divide.insert(0, "")		// split() drops the leading empty token; restore the documented 0-based field numbering.
 				
 				
 				// Objects native name.
@@ -1286,12 +1311,12 @@ print("SHARED" + obj)
 				local sref = ::string()
 				if (::Engine.FindFileInPath("install_path", divide[2], sref))	// TODO cache location, check FM
 					{
-					print("yes in " + sref)
+					// TODO: use the resolved path in sref.
 					
 					}
 				else
 					{
-					print("nope try again")
+					return ::DScript._FormatForReturn(null, returnInArray)	// T-67: file not found - do not open an unvalidated path.
 					}
 				
 				/*
@@ -1328,7 +1353,7 @@ print("SHARED" + obj)
 						}
 					}
 				}
-				if (divide.len() > 5)	// Keyname, return value if not found, begin, end, offset from start
+				if (divide.len() > 6)	// Keyname, return value if not found, begin, end, offset from start
 					return ::DScript._FormatForReturn(DCheckString(ofile.getParam2(divide[3], null, divide[6], divide[7], offset ), returnInArray),returnInArray)
 				// else Search for separator: Keyname, return value if not found, separator, offset from start	
 				return ::DScript._FormatForReturn(DCheckString(ofile.getParam(divide[3], null, separator, offset), returnInArray), returnInArray)
@@ -1340,8 +1365,8 @@ print("SHARED" + obj)
 				// to be compatible with old: // ^%^TrolPt%Guard	would for example give you the closest guard, relative to the closest Patrol Point.
 				if (str[kGetFirstChar] == '%'){		
 					local str2    = ::split(str,"%")
-					anchor  = DCheckString(str2[1])
-					str    = div_str[1]
+					anchor  = DCheckString(str2[0])
+					str    = str2[1]
 				}
 				if (::Object.Exists(str)){
 					return ::DScript._FormatForReturn(Object.FindClosestObjectNamed(anchor,str), returnInArray)
@@ -1376,7 +1401,9 @@ print("SHARED" + obj)
 			# Return one Random Object
 			case '?': 	// random return
 				local objset = DCheckString(str.slice(1), kReturnArray)
-				return ::DScript._FormatForReturn(objset[Data.RandInt(0, objset.len())],returnInArray)  // One random item.
+				if (objset.len() == 0)
+					return ::DScript._FormatForReturn(null, returnInArray)
+				return ::DScript._FormatForReturn(objset[Data.RandInt(0, objset.len() - 1)],returnInArray)  // One random item.
 
 			# Filter rendered objects
 			case '}':
@@ -1401,31 +1428,40 @@ print("SHARED" + obj)
 					
 				local values 	= ::array(4)
 				local divide	= ::DScript.DivideAtNext(str, ":" )		// using this prevents splitting the objset!
-				local raw 		= ::split(divide[0], "><(,%" )
-				local ancpos 	= ::Object.Position(divide[0].find("%")? DCheckString(raw.pop()) : self) 
+				local head		= divide[0]
+				// T-94: split() can't take a separator set, so the header {[<|>]radius[<|>](x,y,z)%anchor% is scanned by hand.
+				local pct		= head.find("%")
+				local pend		= pct ? head.find("%", pct + 1) : null
+				local ancpos 	= ::Object.Position(pct ? DCheckString(pend ? head.slice(pct + 1, pend) : head.slice(pct + 1)) : self)
 					
-				local dovec 	= divide[0].find("(")
-				local boxlimit	= ::array(2, ::array(3))	// nested array 2x3
+				local dovec 	= head.find("(")
+				local boxlimit	= [::array(3), ::array(3)]	// nested array 2x3
 				if (dovec){									// can't be at pos 0.
-					if (divide[0][dovec - 1] == '>')
+					if (head[dovec - 1] == '>')
 						values[2] = true
-					local val = [raw.pop().tofloat(), raw.pop().tofloat(), raw.pop().tofloat()]	// zyx is returned.
-					val.reverse()
+					local vend = head.find(")", dovec)
+					if (vend == null)						// tolerate a missing ')'
+						vend = pct ? pct : head.len()
+					local val = ::split(head.slice(dovec + 1, vend), ",")
+					if (val.len() > 3)
+						val.resize(3)
 					values[3] = []
 					foreach (i,v in val){					// remove 0 from the array to only iterate over the necessary parts.
+						v = ::strip(v).tofloat()
 						if (v){
 							boxlimit[0][i] = ancpos[i] - v
 							boxlimit[1][i] = ancpos[i] + v
 							values[3].append(i)
 						}
 					}
-					raw.pop()	// remove the (
 				}
-				if (raw.len() == 2){	// if still two items exist it must be >radius
-					values[1] = raw[1].tofloat()
-					print(divide[0])
-					if (divide[0][1] == '>')				// divide[0] is the part before the colon {>5...:
-						values[0] = true
+				if (head.len() > 1 && (head[1] == '<' || head[1] == '>')){		// radius sits directly after the { and ends at the box's <|> or the anchor's %
+					local rend = dovec ? ((head[dovec - 1] == '<' || head[dovec - 1] == '>') ? dovec - 1 : dovec) : (pct ? pct : head.len())
+					if (rend > 2){							// not {<(x,y,z): there the <|> at [1] belongs to the box, no radius given.
+						values[1] = ::strip(head.slice(2, rend)).tofloat()
+						if (head[1] == '>')					// head is the part before the colon: {>5...:
+							values[0] = true
+					}
 				}
 				// Checks each obj in the returned array via the map function and generates a new array.
 				local objset = DCheckString(divide[1], kReturnArray).filter(
@@ -1457,8 +1493,16 @@ print("SHARED" + obj)
 			
 			# |-- Interpretation of other data types if they come as string.
 			case '<':	//vector
-				local ar = ::split(str, "<,")
-				return ::DScript._FormatForReturn( ::vector(ar[1].tofloat(), ar[2].tofloat(), ar[3].tofloat()), returnInArray) 
+				// NewDark split() matches the separator as ONE literal substring, not a char set - only single-char separators actually split.
+				local ar = ::split(str.slice(1), ",")				// drop the leading '<', split on ',' alone.
+				if (ar.len() < 3)								// T-97: fewer than three components - the indexes below threw.
+					return ::DScript._FormatForReturn(::vector(), returnInArray)
+				local z  = ::strip(ar[2])
+				if (z == "")									// T-97: an empty third component made z[z.len()-1] throw.
+					z = "0"
+				if (z[z.len()-1] == '>')							// documented syntax <x,y,z> - drop the closing bracket.
+					z = z.slice(0, -1)
+				return ::DScript._FormatForReturn( ::vector(::strip(ar[0]).tofloat(), ::strip(ar[1]).tofloat(), z.tofloat()), returnInArray) 
 			case '#':	//needed for +#ID+ identification.	#NOTE: Not needed anymore but highly recommended.
 				return ::DScript._FormatForReturn(str.slice(1).tointeger(), returnInArray)
 			case '.':	//Here for completion: .5.25 - but the case of an unexpected float normally doesn't happen.
@@ -1470,11 +1514,11 @@ print("SHARED" + obj)
 					if (str[2] == '%'){		
 						local str2    = ::split(str,"%")
 						anchor  = DCheckString(str2[1])
-						str     = div_str[1]
+						str     = str2[2]
 					} else
 						str 	= str.slice(2)
 					local prop_field = ::DScript.DivideAtNext(str,":")
-					return ::DScript._FormatForReturn(::Property.Get(anchor,prop_field[0],prop_field[1]))
+					return ::DScript._FormatForReturn(::Property.Get(anchor,prop_field[0],prop_field[1]), returnInArray)
 				}
 			case '1' : case '2' : case '3': case '4' : case '5' : case '6': case '7' : case '8' : case '9' : case '0' :
 				if (::DScript._IntExp.match(str))
@@ -1536,7 +1580,7 @@ print("SHARED" + obj)
 	{
 		if (!DoPrint){
 			// Enabled via user parameter?
-			mode = DGetParamRaw(GetClassName()+"Debug", false)
+			mode = DGetParamRaw((("_script" in this)? _script : GetClassName())+"Debug", false)
 		}
 		if (mode){	//*magic trick*
 			if (dbgMessage)
@@ -1581,7 +1625,7 @@ class DBaseTrap extends DBasics
 //----------------------------------
 </
 Help 		= "Handles received messages and parameters. Very little use by itself."
-Help2		= "Can be used to generate a DPingingBack when it received a DPingBackmessage.\nOr to block messages to other scripts via DBaseTrapBlockMessage="
+Help2		= "Can be used to generate a DPingingBack when it received a DPingBackmessage.\nOr to block messages to other scripts via [ScriptName]ExclusiveMessage="
 SubVersion 	= 0.77
 />
 //----------------------------------
@@ -1593,25 +1637,24 @@ SourceObj 	  = null	//	The actual source of a message.
 	// In the constructor() it handles the necessary ObjectData needed for Counters and Capacitors.
 	constructor(){									// Setting up save game persistent data.
 		_script = GetClassName()					// base.constructor has to be called before using _script.
-		if (this.getclass().getbase() == "DTrigger")
-			print("yohoho")
 		//print("Constructed" + _script + " On " + self + DScript.GetObjectName(Object.Archetype(self)))
 		if (!::IsEditor()){							// Initial data is set in the Editor.
+			ConstructParameters(true)				// T-37: init missing Count/Capacitor slots for runtime-created scripts, keep persisted values.
 			return
 		}
 		ConstructParameters()
 		base.constructor()							// Creates DHandler. Function only exists in editor!
 	}
 	
-	function ConstructParameters(){
+	function ConstructParameters(keepExisting = false){
 			// NOTE! possible TODO: Counter, Capacitor objects will not work when created in game!
 			// Doing this on BeginScript would need some sorta lock so it only happens once. Don't really want to create a extra data slot for every script.
 		local DN 	 = userparams()
-		if (DGetParam(_script+"Count",		 0,DN)	  )	{SetData(_script+"Counter",		0)}	else {ClearData(_script+"Counter")} //Automatic clean up.
-		if (DGetParam(_script+"Capacitor",	 1,DN) > 1)	{SetData(_script+"Capacitor",	0)}	else {ClearData(_script+"Capacitor")}
-		if (DGetParam(_script+"OnCapacitor", 1,DN) > 1)	{SetData(_script+"OnCapacitor",	0)}	else {ClearData(_script+"OnCapacitor")}
-		if (DGetParam(_script+"OffCapacitor",1,DN) > 1)	{SetData(_script+"OffCapacitor",0)}	else {ClearData(_script+"OffCapacitor")}
-		return RepeatForCopies(::callee())				#NOTE Use callee() or worst case function on child is called.
+		if (DGetParam(_script+"Count",		 0,DN)	  )	{if (!keepExisting || !IsDataSet(_script+"Counter"))	SetData(_script+"Counter",		0)}	else {ClearData(_script+"Counter")} //Automatic clean up.
+		if (DGetParam(_script+"Capacitor",	 1,DN) > 1)	{if (!keepExisting || !IsDataSet(_script+"Capacitor"))	SetData(_script+"Capacitor",	0)}	else {ClearData(_script+"Capacitor")}
+		if (DGetParam(_script+"OnCapacitor", 1,DN) > 1)	{if (!keepExisting || !IsDataSet(_script+"OnCapacitor"))	SetData(_script+"OnCapacitor",	0)}	else {ClearData(_script+"OnCapacitor")}
+		if (DGetParam(_script+"OffCapacitor",1,DN) > 1)	{if (!keepExisting || !IsDataSet(_script+"OffCapacitor"))	SetData(_script+"OffCapacitor",0)}	else {ClearData(_script+"OffCapacitor")}
+		return RepeatForCopies(::callee(), keepExisting)				#NOTE Use callee() or worst case function on child is called.
 	}
 
 #	|-- Repeat caller for Copies --|
@@ -1621,19 +1664,28 @@ SourceObj 	  = null	//	The actual source of a message.
 			Returns true when all instances have been checked.
 			See the ResetCount function how to make use of that.*/
 		#NOTE * it is best to use callee() and not the function name, else there could be an ugly loop etc. if the function got shadowed by a child.
-		if (DGetParam(GetClassName() + "Copies", false, userparams())){ // Has the base script more instances?
-			if (_script == GetClassName())		// 2nd instance.
-				_script += 2
-			else {								// All above.
-				local current = _script[-1]		// Last character 2-9
-				if (current == DGetParam(GetClassName() + "Copies", null, userparams()) + '0'){  // '0' = 48 is the difference between normal integer to ASCII representation of the number.
-					_script = GetClassName() 	// Reset.
-					return true					// Done for all copies.
-				}
-				_script = GetClassName() + (current + 1).tochar()	// increase last number by 1.
+		local name   = GetClassName()
+		local copies = DGetParam(name + "Copies", false, userparams())
+		if (copies){						// Has the base script more instances?
+			copies = copies.tointeger()
+			// T-92: parse the whole numeric suffix instead of single-character arithmetic - Copies > 9 work now.
+			local current = 1
+			if (_script != name){
+				try current = _script.slice(name.len()).tointeger()
+				catch (e) return true			// non-numeric suffix (e.g. DTrigger T mode) - not a copy pass, leave _script alone.
 			}
+			if (current >= copies){
+				_script = name 					// Reset.
+				return true					// Done for all copies.
+			}
+			_script = name + (current + 1)		// next copy suffix.
 			vargv.insert(0, this)				// this must be the first parameter, might can be used to set instance stuff directly.
-			func.acall(vargv)					// recall the function with the given parameters in an array.
+			try
+				func.acall(vargv)				// recall the function with the given parameters in an array.
+			catch (err){
+				_script = name					// T-91: restore the base name if the callee throws - else every later parameter lookup on this instance is corrupt.
+				throw err
+			}
 			return false						// Not last copy
 		}
 		return true								// No Copies
@@ -1654,7 +1706,7 @@ SourceObj 	  = null	//	The actual source of a message.
 			local data = GetData(_script + "InfRepeat")
 			// Negative or positive LinkID was stored,
 			if ( typeof data == "string"){
-				if (data[kGetFirstChar] == 'F'){
+				if (data.find("F") == 0 || data.find("F") == 1){		// "F<key>" (legacy) or "<action>F<key>" (T-70)
 					local delay = DGetParam( _script + "Delay")			// Delay is sent and is #Frames
 					delay = delay.slice(0, delay.find("F")).tointeger()
 					::DHandler.PerFrame_ReRegister(this, delay)
@@ -1673,7 +1725,11 @@ SourceObj 	  = null	//	The actual source of a message.
 	/* As you might see this is actually no real message handler.
 		The FrameUpdate is performed by the ::DHandler by directly calling this function with the correct _script.*/
 		_script = whichscript		// set
-		DoOn(userparams())
+		local frdata = IsDataSet(_script + "InfRepeat")? GetData(_script + "InfRepeat") : null
+		if (typeof frdata == "string" && frdata[kGetFirstChar] == '0')	// T-70: leading 0 = per-frame Off action.
+			DoOff(userparams())
+		else
+			DoOn(userparams())
 		_script = GetClassName()	// and reset.
 	}
 	
@@ -1704,9 +1760,9 @@ SourceObj 	  = null	//	The actual source of a message.
 		// Custom reply
 		if (bmsg.data){												// Use Reply() -> SendMessage feature.
 			local inter = DCheckString(bmsg.data)					// Especially for the / operator this returns false
-			if (!intern)
+			if (!inter)
 				return Reply(FALSE)
-			Reply(intern)
+			Reply(inter)
 		} 
 		else
 			ReplyWithObj(self)
@@ -1830,7 +1886,7 @@ SourceObj 	  = null	//	The actual source of a message.
 	
 		// print("CURRENT Copy" + _script)
 		if (_script == null)
-			print(GetClassName() +" on " + self + "_script NOT SET! - base.constructor probably missing.")
+			DPrint("_script NOT SET! - base.constructor probably missing.", kDoPrint, ePrintTo.kMonolog)
 		return RepeatForCopies(::callee(), DN)
 	}
 
@@ -1849,7 +1905,7 @@ SourceObj 	  = null	//	The actual source of a message.
 		local negate 	 = Condition[kGetFirstChar] == '!'? TRUE : FALSE	// If the string starts with ! it will be negated.
 		# Find Any
 		local condtype	 = Condition.find("||")					// Find any
-		if (condtype){
+		if (condtype != null){
 			local cond1 = DCheckString(::rstrip(Condition.slice(negate, condtype)),kReturnArray)
 			local cond2 = DCheckString(::lstrip(Condition.slice(condtype + 2)), kReturnArray)
 			
@@ -1861,7 +1917,7 @@ SourceObj 	  = null	//	The actual source of a message.
 		}
 		# Find All
 		condtype = Condition.find("&&")							// Find all
-		if (condtype){
+		if (condtype != null){
 			local cond1 = DCheckString(Condition.slice(negate, condtype), kReturnArray)
 			local cond2 = DCheckString(Condition.slice(condtype+2), kReturnArray)	
 			foreach (obj in cond2){								// fails if one object is not found.
@@ -1872,11 +1928,11 @@ SourceObj 	  = null	//	The actual source of a message.
 		}
 		# Match
 		condtype = Condition.find("==")							// Complete Match
-		if (condtype){
+		if (condtype != null){
 			local cond1 = DCheckString(Condition.slice(negate, condtype), kReturnArray)
 			local cond2 = DCheckString(Condition.slice(condtype+2), kReturnArray)
 			// Easy pre check
-			if (cond1.len() != cond2.len)
+			if (cond1.len() != cond2.len())
 				return negate? true : false
 				
 			foreach (obj in cond2){								// fails if one object is not found.
@@ -1934,8 +1990,8 @@ SourceObj 	  = null	//	The actual source of a message.
 	# |-- 		Is a Capacitor set 		--|
 		local abort = null																		
 		if (IsDataSet(_script+"Capacitor"))								{if(DCapacitorCheck(DN,""))				{abort = true}		 else {abort=false}}
-		if (IsDataSet(_script+"OnCapacitor")  && ScriptAction == kScriptTurnOn ){if(DCapacitorCheck(DN,"On")) {if (abort==null){abort = true}} else {abort=false}}
-		if (IsDataSet(_script+"OffCapacitor") && ScriptAction == kScriptTurnOff){if(DCapacitorCheck(DN,"Off")){if (abort==null){abort = true}} else {abort=false}}
+		if (IsDataSet(_script+"OnCapacitor")  && ScriptAction == kScriptTurnOn ){if(DCapacitorCheck(DN,"On")) {if (abort==null){abort = true}} else {if (abort==null){abort=false}}}
+		if (IsDataSet(_script+"OffCapacitor") && ScriptAction == kScriptTurnOff){if(DCapacitorCheck(DN,"Off")){if (abort==null){abort = true}} else {if (abort==null){abort=false}}}
 		if (abort){ //If abort changed to true.
 			#DEBUG POINT
 			DPrint("Stage 3X - Not activated as ("+ScriptAction+")Capacitor threshold is not yet reached.")
@@ -1981,7 +2037,8 @@ SourceObj 	  = null	//	The actual source of a message.
 			}
 	
 			## Stop old timers if ExlusiveDelay is set.
-			if (DGetParam(_script+"ExclusiveDelay", false, DN) && IsDataSet(_script+"DelayTimer")){
+			if (DGetParam(_script+"ExclusiveDelay", false, DN) && IsDataSet(_script+"DelayTimer")
+				&& !(IsDataSet(_script+"InfRepeat") && GetData(_script+"InfRepeat") == ScriptAction)){	// T-38: a same-action infinite repeat is handled (kept) below - do not kill its timer here.
 				KillTimer(GetData(_script+"DelayTimer"))	// TODO: BUG CHECK - exclusive Delay and inf repeat, does it cancel without restart?
 			}
 			## Stop Infinite Repeat
@@ -2011,12 +2068,10 @@ SourceObj 	  = null	//	The actual source of a message.
 			DPrint("Stage 5B - ("+ScriptAction+") Activation will be executed after a delay of "+ delay + (doPerNFrames? " ." : " seconds."))
 			if (doPerNFrames){
 				// The handler returns a key / linkID that will be the key for this _script.
-				SetData(_script+"InfRepeat", ::DHandler.PerFrame_Register(this, doPerNFrames))
-				// TODO: As the registering es easier now. Can't I add {Off} support as well. See Begin script. I could save the action in another character.
+				SetData(_script+"InfRepeat", ScriptAction + ::DHandler.PerFrame_Register(this, doPerNFrames))	// T-70: leading 0/1 stores the Off/On action for FrameUpdate.
+				// {Off} support: the action is stored as the leading character of the InfRepeat data (T-70).
 				return false
 				
-				SetData(_script+"InfRepeat", ScriptAction + ::DHandler.PerFrame_Register(this, doPerNFrames)) // this stores 0 and 1.
-																												// Need to check this in FrameUpdate.
 			}
 			local repeat = DGetParam(_script+"Repeat", FALSE, DN).tointeger()
 			if (repeat == kInfiteRepeat)
@@ -2032,6 +2087,22 @@ SourceObj 	  = null	//	The actual source of a message.
 		return true		// #NOTE #NEW: DCheckParameters does not auto start anymore.
 	}
 	
+	function DStopInfRepeat(DN = null){
+	/* Stops an active infinite repeat (timer or per-frame) without burning Count/Capacitor
+		charges or re-rolling FailChance the way a full DCheckParameters call would. */
+		if (!IsDataSet(_script + "InfRepeat"))
+			return false
+		local data = GetData(_script + "InfRepeat")
+		ClearData(_script + "InfRepeat")
+		if (typeof data == "string" && (data.find("F") == 0 || data.find("F") == 1))	// per-frame registration ("F<key>" / "<action>F<key>")
+			::DHandler.PerFrame_DeRegister(this)
+		else if (typeof data == "string")
+			::DHandler.PerMidFrame_DeRegister(this)			// T-112: every-frame registration - was never deregistered.
+		else if (IsDataSet(_script + "DelayTimer"))
+			KillTimer(ClearData(_script + "DelayTimer"))
+		return true
+	}
+
 # 	|-- On Off --| #
 	// These are the function that will get called when all activation checks pass.
 	function DoOn(DN){
@@ -2103,9 +2174,9 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 		#DEBUG Point
 		if (DPrint()){
 			::print("Targets")
-			DTestTrap.DumpTable(targets)
+			if ("DTestTrap" in ::getroottable()) DTestTrap.DumpTable(targets)
 			::print("Messages")
-			DTestTrap.DumpTable(messages)
+			if ("DTestTrap" in ::getroottable()) DTestTrap.DumpTable(messages)
 		}
 
 		foreach (msg in messages){
@@ -2126,7 +2197,7 @@ SQUIRREL NOTE: Can be used as RootScript to use the DSendMessage; DRelayMessages
 						DGetParamRaw(_script + "TDest",
 						"&ControlDevice", DN), DN), DN), DN, kReturnArray),
 					  DGetParam(_script+"T"+OnOff,"Turn"+OnOff, DN, kReturnArray),  //Determines the messages to be sent, TurnOn/Off is semi default.
-					  DGetParam(_script + "PostMessage"),
+					  DGetParam(_script + "PostMessage", true),
 					  data, data2, data3 
 		)
 	}
@@ -2159,31 +2230,91 @@ class DTrigger extends DRelayTrap
 	function RepeatForCopies(func, ...){
 		vargv.insert(0, func)
 		vargv.insert(0, this)
-		base.RepeatForCopies.acall(vargv)
+		local result = base.RepeatForCopies.acall(vargv)
 		if (func == DBaseTrap.DBaseFunction)		// Repeating the base function does not make sense.
 			return true
 		_TModus = true
 		base.RepeatForCopies.acall(vargv)			// Now repeat with TParameters
 		_TModus = false
-		return true									// Return true to indicate that the cycle is done.
+		return result								// Result of the normal pass: true only once all copies are done.
+	}
+
+	function OnTimer(){
+	/* T-mode timers are scheduled while _script carries the "T" suffix (TriggerMessages ->
+		DCheckParameters), but fire when _script is plain again - so match them here explicitly.
+		A delayed T action relays the trigger messages; it must not call the trap's DoOn/DoOff. */
+		local TimerName = message().name
+		if (TimerName == _script + "TDelayed"){
+			local ar 	 = DGetTimerData(message().data)
+			local action = ar[0].tointeger()
+			SourceObj 	 = ar[1].tointeger()
+			ar[2] 		 = ar[2].tointeger()
+			_script += "T"
+			_TModus  = true
+			if (ar[2] != 0){							// Repeats left? Reschedule under the T namespace.
+				ar[3] = ar[3].tofloat()
+				SetData(_script+"DelayTimer", DSetTimerData(_script+"Delayed", ar[3], action, SourceObj, (ar[2] != kInfiteRepeat? ar[2] - 1 : kInfiteRepeat), ar[3]))
+			}
+			else
+				ClearData(_script+"DelayTimer")
+			_script  = _script.slice(0,-1)
+			_TModus  = false
+			BlockMessage()
+			return DRelayMessages(action? "On" : "Off", userparams())
+		}
+		if (TimerName == _script + "TFalloff"){
+			_script += "T"
+			_TModus  = true
+			base.OnTimer()								// The base Falloff branch matches the T-suffixed name now.
+			_script  = _script.slice(0,-1)
+			_TModus  = false
+			return
+		}
+		base.OnTimer()
+	}
+
+	function FrameUpdate(whichscript){
+		if (whichscript == typeof this + "T"){			// T-namespace per-frame repeat: relay the trigger messages.
+			_script = whichscript
+			local frdata = IsDataSet(_script + "InfRepeat")? GetData(_script + "InfRepeat") : null
+			local action = (typeof frdata == "string" && frdata[kGetFirstChar] == '0')? "Off" : "On"
+			_script = typeof this
+			return DRelayMessages(action, userparams())
+		}
+		base.FrameUpdate(whichscript)
+	}
+
+	function OnBeginScript(){
+		if (IsDataSet(_script + "TInfRepeat")){			// Re-register a per-frame T repeat after load.
+			local data = GetData(_script + "TInfRepeat")
+			if (typeof data == "string" && data.find("F") != null){
+				_script += "T"
+				local delay = DGetParam(_script + "Delay")
+				delay = delay.slice(0, delay.find("F")).tointeger()
+				::DHandler.PerFrame_ReRegister(this, delay)
+				_script = _script.slice(0,-1)
+			}
+		}
+		base.OnBeginScript()
 	}
 
 	function TriggerMessages(ScriptAction = kScriptTurnOn, DN = null, data= null, data2= null, data3= null){
 		if (!DN) DN = userparams()
-		if (typeof ScriptAction != "string"){							// For non standard situations, or direct "On/Off"
-			if (ScriptAction)
-				ScriptAction = "On"
+		if (typeof ScriptAction == "string"){							// Normalize: DCheckParameters needs the integer action (kScriptTurnOn/Off).
+			if (ScriptAction.tolower() == "off")
+				ScriptAction = kScriptTurnOff
 			else
-				ScriptAction = "Off"
+				ScriptAction = kScriptTurnOn
 		}
 		_TModus = true
+		local OnOff = ScriptAction? "On" : "Off"						// String form for parameter names and DRelayMessages.
 		_script = _script + "T"
-		if (DCheckCondition(DGetParamRaw(_script + ScriptAction + "Condition", DGetParamRaw(_script+"Condition", true, DN), DN))){
+		if (DCheckCondition(DGetParamRaw(_script + OnOff + "Condition", DGetParamRaw(_script+"Condition", true, DN), DN))){
 			local dotrigger = DCheckParameters(DN, ScriptAction)		// #NOTE Delays are triggered within
 			if (dotrigger){
 				_script = _script.slice(0,-1)							// Need to remove the T before going back to DRelayTrap
 				_TModus = false
-				DRelayMessages(ScriptAction, DN, data, data2, data3)
+				DRelayMessages(OnOff, DN, data, data2, data3)
 			}
 			else
 				_script = _script.slice(0,-1)
@@ -2215,7 +2346,6 @@ if (IsEditor()){
 			Property.Set(core,"SlayResult","Effect", eSlayResult.kSlayDestroy)
 			
 			Object.Teleport(core,vector(4,4,4),vector())
-			print("I'm " + self)
 			print("DScript - Creating Handler Object. " + core)
 			Object.EndCreate(core)
 		}
@@ -2308,6 +2438,8 @@ class DScriptHandler extends DRelayTrap
 		}
 		if (IsDataSet("PerMidFrame_Active"))
 			OverlayHandlers.FrameUpdater <- cDHandlerFrameUpdater()
+		if (IsDataSet("PerFrame_Active"))				// Restart the DoUpdates chain after a load; the pending PostMessage does not survive save/load.
+			PostMessage(self, "DoUpdates", 0)
 		
 		if (OverlayHandlers){
 			foreach (handler in OverlayHandlers)
@@ -2315,7 +2447,7 @@ class DScriptHandler extends DRelayTrap
 		}
 		base.OnBeginScript()							// For the DoOn part.		
 		# Stuff to do only at mission start.
-		if (!IsDataSet("MissionInizialzed")){
+		if (!IsDataSet("MissionInitialized")){
 			// Clean MissionOnly Bin Tables
 			if (::Quest.BinExists("MissBinTables")){
 				local table = Quest.BinGetTable("MissBinTables")
@@ -2330,14 +2462,13 @@ class DScriptHandler extends DRelayTrap
 				::Quest.BinDelete("MissBinTables")
 			}
 			SetData("MissionInitialized")
-			print("MissionInitialized")
 		}
 	}
 
 // |-- Hashkey for lookup
 	// simple id+_script combi
 	function CreateHashKey(instance){
-		return ::format("%04u%s",instance.self, ("_script" in instance)? instance._script : instance.GetClassName())
+		return ::format("%d_%s",instance.self, ("_script" in instance)? instance._script : instance.GetClassName())
 	}
 
 	function ReRegisterWithKey(instance, key, data = null){
@@ -2407,7 +2538,8 @@ class DScriptHandler extends DRelayTrap
 	}
 // |-- PerMidFrame Updates via Overlay
 	function PerMidFrame_DoUpdates(){
-		::Object.CalcRelTransform(::PlayerID, ::PlayerID, DHudObject.pos_vector, vector(), 4, 0)	// Doing this here once, instead of letting every instance do it.
+		if ("DHudObject" in ::getroottable())			// T-39: DHudObject lives in DScript SFX.nut, which may not be shipped.
+			::Object.CalcRelTransform(::PlayerID, ::PlayerID, DHudObject.pos_vector, vector(), 4, 0)	// Doing this here once, instead of letting every instance do it.
 		foreach ( data in PerMidFrame_database){		// [instance, _script]						
 			data[0].FrameUpdate(data[1])
 		}
@@ -2419,6 +2551,7 @@ class DScriptHandler extends DRelayTrap
 		if (!PerMidFrame_database.len()){
 			ClearData("PerMidFrame_Active");
 			::gGameOverlay.RemoveHandler(OverlayHandlers.FrameUpdater);
+			delete OverlayHandlers.FrameUpdater		// else the next PerMidFrame_Register's NewOverlay refuses to re-attach a fresh updater.
 		}
 	}
 		
@@ -2457,10 +2590,10 @@ class DScriptHandler extends DRelayTrap
 	}
 	
 	function DeRegisterAll(instance){
-		local key = CreateHashKey(instance)
-		switch (IsRegistered(instance)){
-			case 'F': return delete PerFrame_database[key]
-			case 'M': return delete PerMidFrame_database[key]
+		local key = ::DHandler.CreateHashKey(instance)
+		switch (::DHandler.IsRegistered(instance)){
+			case 'F': return delete ::DHandler.PerFrame_database[key]
+			case 'M': return delete ::DHandler.PerMidFrame_database[key]
 		}
 		RepeatForCopies.call(instance, ::callee(), instance)		// using call so non DScripts can use this one.
 	}
@@ -2484,10 +2617,10 @@ class DScriptHandler extends DRelayTrap
 		{
 			if (Name in OverlayHandlers){				// Check if already registered
 				if (multiple){
-					Name + "2"
+					local basename = Name
 					local i = 2
 					while (Name in OverlayHandlers){
-						Name = Name.slice(0,-1) + i
+						Name = basename + i
 						i++
 					}
 				} else return							// Already active & not multiple allowed
@@ -2504,9 +2637,11 @@ class DScriptHandler extends DRelayTrap
 		}
 		else
 		{
-			foreach (ol in OverlayHandlers){
-				if (ol.getclass() == Name_or_class)
+			foreach (name, ol in OverlayHandlers){
+				if (ol.getclass() == Name_or_class){
 					::gGameOverlay.RemoveHandler(ol)
+					delete OverlayHandlers[name]			// deleting the current foreach key is safe for tables
+				}
 			}
 		}
 	}
@@ -2514,7 +2649,6 @@ class DScriptHandler extends DRelayTrap
 
 	function OnDelete(){
 		DPrint("WARNING. DScript Handler deleted. This might delete some script data.\nWill recreate another instance.", kDoPrint, ePrintTo.kMonolog | ePrintTo.kLog)
-		print(Object.Exists("DScriptHandler"))
 	}
 
 // |-- Destructor
@@ -2587,6 +2721,7 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubTDest","DHubCount","DHubCap
 	}
 
 	constructor(){ 							// Initializing Script Data
+		base.constructor()					// Count/Capacitor bootstrap + DScriptHandler creation (was missing).
 		local DN  	= base.userparams()
 		local addDN	= {}
 		_script 	= GetClassName()
@@ -2595,10 +2730,12 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubTDest","DHubCount","DHubCap
 			if (startswith(entry, _script))	// TODO no general Count or Capacitor
 			{
 				// For every subDN create a real DN entry
-				if (typeof StringDN != "string" || !StringDN.find("="))	// no string or no = present, skip
+				if (typeof StringDN != "string" || StringDN.find("=") == null)	// no string or no = present, skip
 					continue
-				local ar = ::split(StringDN, "=;")
-				for (local i = 0; i < ar.len(); i+=2){
+				local ar = ::DScript.SplitAny(StringDN, "=;")		// T-94: split() takes one literal separator, not a set.
+				if (ar.len() % 2)					// odd token count: a key without =value, or an empty field (split() drops empty tokens).
+					DPrint("WARNING: DHub entry '" + entry + "' has a malformed sub-DesignNote: " + StringDN, kDoPrint, ePrintTo.kMonolog)
+				for (local i = 0; i + 1 < ar.len(); i+=2){
 						ar[i] = ::strip(ar[i])
 					local val = ::strip(ar[i+1])
 					
@@ -2624,7 +2761,17 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubTDest","DHubCount","DHubCap
 				if (base.DGetParam(entry + "Capacitor", base.DGetParam(_script + "Capacitor", FALSE, DN), addDN) > 1)
 					SetData(entry+"Capacitor", 0)			
 				else 
-					ClearData(entry+"Capacitor")	
+					ClearData(entry+"Capacitor")
+
+				// Does entry use On/OffCapacitor?
+				if (base.DGetParam(entry + "OnCapacitor", base.DGetParam(_script + "OnCapacitor", 1, DN), addDN) > 1)
+					SetData(entry+"OnCapacitor", 0)
+				else
+					ClearData(entry+"OnCapacitor")
+				if (base.DGetParam(entry + "OffCapacitor", base.DGetParam(_script + "OffCapacitor", 1, DN), addDN) > 1)
+					SetData(entry+"OffCapacitor", 0)
+				else
+					ClearData(entry+"OffCapacitor")	
 			}
 		}
 		foreach (entry, val in addDN)
@@ -2642,7 +2789,7 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubTDest","DHubCount","DHubCap
 				if (typeof data == "string"){
 					_script = entry
 					if (data[kGetFirstChar] == 'F'){
-						local delay = DGetParam(_entry + "Delay")			// Delay is sent and is #Frames
+						local delay = DGetParam(entry + "Delay")			// Delay is sent and is #Frames
 						delay = delay.slice(0, delay.find("F")).tointeger()
 						::DHandler.PerFrame_ReRegister(this, delay)
 					}
@@ -2668,7 +2815,7 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubTDest","DHubCount","DHubCap
 	["On" + kResetCountMsg] = function(){
 		// general message loop through all possible.
 		foreach (k, v in userparams()) {
-			if (!val && IsDataSet(k + "Counter")){							// Precheck. DHubMessage <- null in constructor
+			if (!v && IsDataSet(k + "Counter")){							// Precheck. DHubMessage <- null in constructor
 				SetData(k + "Counter",0)
 			}
 		}
@@ -2696,7 +2843,7 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubTDest","DHubCount","DHubCap
 			} else {
 				// general message loop through all
 				foreach (k, v in userparams()) {
-					if (::startswith(k, classname) && DHubParameters.find(k) < 0){		// this is true for not found null < 0
+					if (::startswith(k, classname) && DHubParameters.find(k) == null){		// find() returns null for not-found; null < 0 would throw
 						if (IsDataSet(k + "InfRepeat")){
 							KillTimer(ClearData( k+ "DelayTimer"))
 							ClearData(k + "InfRepeat")
@@ -2737,8 +2884,8 @@ class DTrapSetQVar extends DBaseTrap
 		
 		local DN = userparams()
 		local var_name 		= DGetParam(_script + action + "Name", DGetParam(_script + "Name"),DN)
-		local _Operation  	= DGetParamRaw(_script + action + "Operation", DGetParam(_script + "Operation"),DN)	
-		if (!var_name || (!_Operation && !doinit)){
+		local _Operation  	= DGetParamRaw(_script + action + "Operation", DGetParamRaw(_script + "Operation", null, DN),DN)	
+		if (!var_name || (!_Operation && doinit == false)){
 			return DPrint("FAILURE: No QVarName or Operation set, for " + var_name + action)	// This could be wanted. for no On, Off => Only Debug.
 		}
 		local _DQVarType	= DGetParam(_script + "Type", eDQVarType.kTypeAuto, DN)		
@@ -2753,7 +2900,7 @@ class DTrapSetQVar extends DBaseTrap
 			local result = ::DScript.CheckAndCompileExpression(this, _Operation)				
 			#DEBUG POINT
 			if (DPrint()){
-				if (typeof result == "table" || typeof result == "array" || typeof result == "blob"){
+				if ((typeof result == "table" || typeof result == "array" || typeof result == "blob") && "DTestTrap" in ::getroottable()){
 					::print("Saving table, array or blob with the contents:")
 					::DTestTrap.DumpTable(result)
 				}
@@ -2766,43 +2913,34 @@ class DTrapSetQVar extends DBaseTrap
 		}
     }
 	
-	function OnBeginScript(){
-		::print("DID BEGIN")
-		base.OnBeginScript()
-	}
-	
 	function InitQVarFromProp(){
-		print(GetProperty("TrapQVar") + " Im " + self)
-		local event = ::split(GetProperty("TrapQVar"),":;")
-		print("Len of prop "+event.len())
+		local event = ::DScript.SplitAny(GetProperty("TrapQVar"), ":;")	// T-94: split() takes one literal separator, not a set.
 		if (event.len() == 1 && event[0].len()){
-			print(event[0])
 			if (event[0] == "\"\"")
-				event[0] == ""
+				event[0] = ""
 			else
 				event[0] = DCheckString(event[0])
-			DPrint("Setting " + DGetParam(_script + "Name") + " to " + event[0], kDoPrint)
+			DPrint("Setting " + DGetParam(_script + "Name") + " to " + event[0])
 			PrepareSetQVar("", event[0])
 		} 
 		else if (event.len() >= 1){								// Set more than one.
-			print("0 is+ '"+event[0])
 			event.apply(::strip)									// TODO: Do this more.
-			for(local i = 0; i < event.len(); i += 2){
+			for(local i = 0; i + 1 < event.len(); i += 2){
 					if (event[i+1] == "\"\"")
-						event[i+1] == ""
+						event[i+1] = ""
 					else
 						event[i+1] = DCheckString(event[i+1])
-					DPrint("Setting " + event[i] + " to " + event[i+1], kDoPrint, ePrintTo.kMonolog)
+					DPrint("Setting " + event[i] + " to " + event[i+1])
 					PrepareSetQVar(event[i],event[i+1])
 			}
 		}
 	}
 	
 	function OnSim(){	// TODO: IMPORTANT IS THIS REALLY AFTER?
-		if (::DHandler.IsDataSet("MissionInizialzed") || !HasProperty("TrapQVar"))
+		if (!message().starting || IsDataSet("DQVarInitDone") || !HasProperty("TrapQVar"))
 			return
+		SetData("DQVarInitDone")
 		InitQVarFromProp()
-		::print("DID SIM")
 	}
 
     function DoOn(DN = null)
@@ -2820,13 +2958,14 @@ DScript.Quest <-
 	Triggers = {}										// will contain instance = array(of values)
 
 	function SubscribeMsg(instance, var_name){
-		print("Saving QVar Trigger" + instance)
+		var_name = var_name.tostring().tolower()		// normalize: DScript.SetQVar lowercases names before notifying.
 		if (var_name == "*")
 			return Triggers[instance] <- false
 		if (instance in Triggers){
-			if (Triggers[instance])						// so not "*" = false
-				if (!Triggers[instance].find(var_name))	// already registered?
+			if (Triggers[instance]){						// so not "*" = false
+				if (Triggers[instance].find(var_name) == null)	// already registered?
 					Triggers[instance].append(var_name)
+			}
 			else
 				print("DScript QVar FAILURE: Trying to overwrite wildcard * with " + var_name +".\nWill not overwrite *. UnsubscribeMsg * first.")
 		}
@@ -2835,11 +2974,12 @@ DScript.Quest <-
 	}
 	
 	function UnsubscribeMsg(instance, var_name){
+		var_name = var_name.tostring().tolower()
 		if (instance in Triggers){
 			local entry = Triggers[instance]
 			if (entry){									// so not "*" = false
 				local pos = Triggers[instance].find(var_name)
-				if (pos >= 0)
+				if (pos != null)
 					return entry.remove(pos)
 			}
 			else {
@@ -2861,12 +3001,11 @@ DScript.Quest <-
 	function QuestChange(name, newval, oldval){
 	/* Checks which triggers shall react to the given msg. */
 		foreach (trigger, vars in Triggers){
-			print(type(trigger) + typeof vars)
 			if (!vars)	// "*" all
 				trigger.CheckQuest(name, newval, oldval)
 			else
 			{
-				if (vars.find(name) >= 0)
+				if (vars.find(name) != null)
 					trigger.CheckQuest(name, newval, oldval)
 			}
 		}
@@ -2884,8 +3023,9 @@ DefOff 	= null
 	}
 
 	function CheckQuest(NAME, NEW, OLD){
-		RepeatForCopies(::callee(NAME, NEW, OLD))			// Doing this here because of that return down there.
-		if (NAME != DGetParam(_script + "Name"))			// Only relevant for copies.
+		local _nameraw = DGetParamRaw(_script + "Name", ::Property.Get(self,"TrapQVar"))	// Only relevant for copies; OnTest passes NAME = null.
+		if (NAME != null && typeof _nameraw == "string" && _nameraw != "*"
+			&& _nameraw.tolower().find(NAME.tolower()) == null)	// accepts single names and +lists - registration used the same raw tokens
 			return
 		local DN = userparams()								// Mostly here to be accessible by CheckAndCompileExpression
 		local _check = DGetParamRaw(_script + "Condition", ::Property.Get(self,"TrapQVar"), DN)
@@ -2916,26 +3056,27 @@ DefOff 	= null
 					DoOff(DN)
 			}
 		}
-		return SetData(_script + "WasSatisfied", satisfied)
+		SetData(_script + "WasSatisfied", satisfied)
+		return RepeatForCopies(::callee(), NAME, NEW, OLD)		// T-30: pass callee itself; run last because _script is mutated for the copy pass.
 	}
 
 	function OnDarkGameModeChange(){
 		if (!message().suspending && !message().resuming){
-			print("MODE CHANGED")
+			// TODO: nothing to do yet. The handler itself keeps the message from reaching OnMessage.
 		
 		}
 	
 	}
 
     function OnBeginScript(){
-		local vars = DGetParam(_script + "Name", ::Property.Get(self, "QuestVar"),kReturnArray)
+		local vars = DGetParam(_script + "Name", ::Property.Get(self, "TrapQVar"), null, kReturnArray)
 		if (vars){
 			foreach (var_name in vars){
 				DPrint("Listening to QVar change: " + var_name)
 				// ::DHandler.Extern.DQVarHandler.
 				::DScript.Quest.SubscribeMsg(this, var_name)  			// Instance and QVars that trigger it.
 				local _DQVarType = DGetParam(_script + "Type", eQuestDataType.kQuestDataMission)
-				if (_DQVarType >= 0)
+				if (typeof _DQVarType == "integer" && _DQVarType >= 0)
 					::Quest.SubscribeMsg(self, var_name, _DQVarType)					// For normal QVar system.
 			}
 		}
@@ -2965,7 +3106,7 @@ class DTrapDeleteQVar extends DBaseTrap
 		local deleted = ::DScript.DeleteQVar(DGetParam(_script + "Name", null, DN), DGetParam(_script + "Type",null,DN))
 		if (DGetParam(_script + "Cache", null, DN)){
 			local type = typeof deleted
-			if (deleted != "[Null]" && type != "array" && type != "table" && type != "blob")
+			if (deleted != null && type != "bool" && !(type == "string" && deleted == "[null]") && type != "array" && type != "table" && type != "blob")
 				::DHandler.SetData("qvar_deleted", deleted)
 		}
 	}

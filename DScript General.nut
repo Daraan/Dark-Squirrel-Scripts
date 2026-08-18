@@ -13,7 +13,8 @@ which allows to skip the opposite message and will trigger the last one again.
 	}
 
 	function OnTweqComplete(){
-		Object.RemoveMetaProperty(self,"FrobInert")
+		if (message().Type == eTweqType.kTweqTypeJoints)	// only the joint animation locks frobbing
+			Object.RemoveMetaProperty(self,"FrobInert")
 	}
 }
 
@@ -48,7 +49,8 @@ DefOff = null
 	}
 
 	function OnEndScript(){
-		Physics.UnsubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);	//I'm not sure why they always clean them up, but I keep it that way.
+		Physics.UnsubscribeMsg(self,ePhysScriptMsgType.kCollisionMsg);
+		base.OnEndScript()	//I'm not sure why they always clean them up, but I keep it that way.
 	}
 		
 	function ButtonPush(){
@@ -59,7 +61,8 @@ DefOff = null
 		}
 		Sound.PlayEnvSchema(self, "Event Activate", self, null,eEnvSoundLoc.kEnvSoundAtObjLoc)
 		ActReact.React("tweq_control", 1.0, self, OBJ_NULL, eTweqType.kTweqTypeJoints, eTweqDo.kTweqDoActivate)
-		DarkGame.FoundObject(self);		//Marks Secret found if there is one associated with the button press. TODO: T1 comability?
+		if (::GetDarkGame() != 1)		// Thief-only service.
+			DarkGame.FoundObject(self);		//Marks Secret found if there is one associated with the button press. TODO: T1 comability?
 		
 		local trapflags = FALSE
 		local 		 on = true
@@ -70,23 +73,25 @@ DefOff = null
 		if(trapflags & TRAPF_ONCE)
 			Property.SetSimple(self,"Locked",true);
 				
+		if(trapflags & TRAPF_INVERT)		// Apply INVERT first; NOON/NOOFF filter the actual (possibly inverted) action.
+			on = !on;
 		if((on && !(trapflags & TRAPF_NOON))
 			|| (!on && !(trapflags & TRAPF_NOOFF))){
-			if(trapflags & TRAPF_INVERT)
-				on = !on;
 			if (on){
-				if (DCheckParameters(userparams(), kScriptTurnOn))	// TODO: Test
+				if (DCheckCondition(DGetParamRaw(_script+"OnCondition", DGetParamRaw(_script+"Condition", true, userparams()), userparams()))
+					&& DCheckParameters(userparams(), kScriptTurnOn))	// TODO: Test
 					DoOn(userparams())
 			}
 			else{
-				if (DCheckParameters(userparams(), kScriptTurnOff))
+				if (DCheckCondition(DGetParamRaw(_script+"OffCondition", DGetParamRaw(_script+"Condition", true, userparams()), userparams()))
+					&& DCheckParameters(userparams(), kScriptTurnOff))
 					DoOff(userparams())
 			}
 		}
 	}
 	
 	function OnPhysCollision(){
-		if(message().collSubmod == 4)	// Collision with the button part. Arrows for example.
+		if(message().Submod == 4)	// Collision with the button part. Arrows for example.
 		{
 			if(!DGetParam(_script + "RealFrobOnly", false) 
 				&& !(Object.InheritsFrom(message().collObj,"Avatar")
@@ -119,8 +124,12 @@ The Object that was hit will receive the message specified by DHitScanTrapHitMsg
 By default when any object is hit a TurnOn will be sent to CD Linked objects.
 Of course these can be changed via DHitScanTrapTOn and DHitScanTrapTDest.
 
-Alternatively if just a special set of objects should trigger a TurnOn 
+Alternatively if just a special set of objects should trigger a TurnOn
 then these can be specified via DHitScanTrapTriggers.
+
+Objects that the beam should pass through are given as DHitScanTrapignore_set
+- note the spelling, this parameter is lowercase with an underscore, unlike every
+other parameter. Renaming it would break existing Design Notes, so it stays.
 */
 ####################################################################
 {
@@ -131,14 +140,18 @@ hloc = vector()
 
 	function DoOn(DN){
 	/*
-	int ObjRaycast(vector from, vector to, vector & hit_location, object & hit_object, int ShortCircuit, BOOL bSkipMesh, object ignore1, object ignore2);
+	int ObjRaycast(vector from, vector to, vector & hit_location, object & hit_object, int ShortCircuit, int flags, object ignore1, object ignore2);
 		// perform a raycast on objects and terrain (expensive, don't use excessively)
 		//   'ShortCircuit' - if 1, the raycast will return immediately upon hitting an object, without determining if there's
 		//                    any other object hit closer to ray start
 		//                    if 2, the raycast will return immediately upon hitting any terrain or object (most efficient
 		//                    when only determining if there is a line of sight or not)
 								# Means if there is a hit something obscures.
-		//   'bSkipMesh'    - if TRUE the raycast will not include mesh objects (ie. characters) in the cast
+		//   'flags'        - if bit 0 is set, the raycast will not include mesh objects (ie. characters) in the cast
+		//                    if bit 1 is set, the raycast will only include objects whose Render Type property is
+		//                    Normal or Unlit [new flag in T2 v1.27 / SS2 v2.48]
+								# The code below relies on the new int meaning: RenderedOnly (bit 1, default 2)
+								# plus IgnoreAI (bit 0) are added up and passed in this slot.
 		//   'ignore1'      - is an optional object to exclude from the raycast (useful when casting from the location of
 		//                    an object to avoid the cast hitting the source object)
 		//   'ignore2'      - is an optional object to exclude from the raycast (useful in combination with ignore2 when
@@ -158,12 +171,12 @@ hloc = vector()
 			else vfrom = ::Object.Position(from)
 		}
 		else {
-			vrom = from
+			vfrom = from
 			from = OBJ_NULL
 		}
 		if (typeof to != "vector"){
 			if (from == ::PlayerID && to == ::PlayerID)
-				vto = ::Camera.CameraToWorld(50,0,0)			// 50 units in frot of player view.
+				vto = ::Camera.CameraToWorld(vector(50,0,0))			// 50 units in frot of player view.
 			else
 				vto = ::Object.Position(to)
 		} else {
@@ -171,12 +184,16 @@ hloc = vector()
 			to = OBJ_NULL
 		}
 #		|--  Ignore Set --|
-		local ignore_set = DGetParamRaw(_script + "ignore_set", null, DN)	// Getting this raw to not create empty arrays if not needed.
+		local ignore_set = DGetParamRaw(_script + "ignore_set", null, DN)
+		local ignore_org = null	// Getting this raw to not create empty arrays if not needed.
 		if (ignore_set){
 			ignore_set = DCheckString(ignore_set, kReturnArray)
+			ignore_org = ignore_set.map(@(obj) [::Property.PossessedSimple(obj,"RenderType"), ::Property.Get(obj,"RenderType")])	// T-116: Possessed() is true for inherited properties too.
 			foreach (obj in ignore_set)
 				Property.SetSimple(obj,"RenderType",1)					// This does not actually affect the rendering. ObjRaycast will check if the property is set and before the next frame it is reset.
 		}
+		local hobj = object()				// per-activation out-params: the class-member defaults are shared across instances.
+		local hloc = vector()
 #		|--  Actual Scan --|		
 		local result = (1 + Engine.ObjRaycast(vfrom, vto, hloc, hobj, 
 				FALSE, 																					// ShortCircuit
@@ -185,34 +202,39 @@ hloc = vector()
 				).tostring()																			// Doing tostring to easier check for valid parameters via (3,4).find(result)
 				
 		local hobjID = hobj.tointeger()													// Need an integer, and DONT overwrite.
+		if ("34".find(result) != null)												// Only when the raycast hit an object/mesh - never a stale/0 id.
 		foreach (msg in DGetParam(_script + "HitMsg", "DHitScan",DN,kReturnArray))		//Sent Hit messages to hit object
 			DSendMessage(hobjID, msg)
 #		|--  Check Result --|		
-		if (DGetParam(_script + "TOnResult","",DN).tostring().find(result) != null){	
+		if (DGetParam(_script + "TOnResult","34",DN).tostring().find(result) != null){	
 			local triggers  = DGetParam( _script + "Triggers",null,DN,kReturnArray)
-			if (triggers[0]==null || triggers.find(hobjID) != null){							// Now optional again.
+			if (triggers[0]==null || triggers.map(@(t) typeof t == "string"? ObjID(t) : t).find(hobjID) != null){							// Now optional again.
 				TriggerMessages("On", DN) 											// TODO: Test
 				if (DGetParam(_script + "AutoOff", false, DN))
-					DCheckParameters(DN, kScriptTurnOff)							// This will disable an infinite repeating TurnOn
+					DStopInfRepeat()							// This will disable an infinite repeating TurnOn
 			}
 		}
 		else if (DGetParam(_script + "TOffResult","",DN).tostring().find(result) != null){
 			local triggers  = DGetParam( _script + "Triggers", null, DN, kReturnArray)
-			if (triggers[0]==null || triggers.find(hobjID) != null){
+			if (triggers[0]==null || triggers.map(@(t) typeof t == "string"? ObjID(t) : t).find(hobjID) != null){
 				TriggerMessages("Off", DN)
 				if (DGetParam(_script + "AutoOff", false, DN))
-					DCheckParameters(DN, kScriptTurnOff)							// Yes Off here as well as we are in the {On} action.
+					DStopInfRepeat()							// Yes Off here as well as we are in the {On} action.
 			}
 		}
 #		|-- Restoring Ignore set --|
 		if (ignore_set){
-			foreach (obj in ignore_set)
-				Property.SetSimple(obj,"RenderType", 0)
+			foreach (i, obj in ignore_set){			// restore the original values - a forced 0 rewrote Unlit/EditorOnly/inherited objects permanently.
+				if (ignore_org[i][0])
+					Property.SetSimple(obj,"RenderType", ignore_org[i][1])
+				else
+					::Property.Remove(obj,"RenderType")	// not locally possessed - don't leave a local override behind
+			}
 		}		
 
 	}
 	
-	function DoOff()
+	function DoOff(DN)
 	{
 		// If we are here infinite {On} repeats are now already stopped.
 		// Wanna stop {T[On/Off]} as well.
@@ -290,6 +312,8 @@ This will copy the Physics->Controls and Renderer->Transparency(Alpha) property 
 	function DoOn(DN){
 		local props  = DGetParam(_script + "Property", null, DN, kReturnArray)
 		local source = DGetParam(_script + "Source", self, DN)
+		if (!props[0])
+			return DPrint("ERROR: No Property parameter set for " + _script, kDoPrint)
 		foreach (to in DGetParam(_script + "Target", "&ScriptParams", DN, kReturnArray)){
 			foreach (prop in props){
 				::Property.CopyFrom(to, prop, source)
@@ -328,7 +352,7 @@ NOTE:
 		::Property.Add(obj, "Scripts")
 		local i = ::Property.Get(obj, "Scripts","Script 3")
 		//Check if the slot is already used by another script or the Archetype has the script already.
-		if (i == "" || ::Property.Get(::Object.Archetype(obj),"Scripts","Script 3") || i == S_OK)	// S_OK is returned if prop does not exist.
+		if (i == "" || i == ::Property.Get(::Object.Archetype(obj),"Scripts","Script 3") || i == S_OK)	// S_OK is returned if prop does not exist.
 			::Property.Set(obj,"Scripts","Script 3", newscript)
 		else
 			DPrint("Object (" + obj + ") has script slot 4 in use with " + i + " - Don't want to change that. Please fall back to adding a Metaproperty.", kDoPrint)
@@ -387,12 +411,13 @@ DefOn="+Contained+Create+Combine"
 			if (::Object.Archetype(LinkDest(link)) == type)
 				return LinkDest(link)
 		}
+		return 0				// OBJ_NULL: no matching inventory object - Property.Get tolerates 0, not Squirrel null.
 	}
 
 	function StackToQVar(qvar = false){
-		local invObj = self											// Create and combine is directly the script object. 
+		local invObj = self											// Contained and Combine act directly on the script object.
 		if ( message().message == "Create")
-			invObj = GetObjOnPlayer(Object.Archetype(self)) 		// When dropped, get the object in the inventory. If non exist Property.Get will return 0.
+			invObj = GetObjOnPlayer(Object.Archetype(self)) 		// Create means a copy was split off, so look up the item that stayed in the inventory. Returns null if there is none.
 		
 		if (qvar && qvar != "")										// TODO should qvar exist? create it.
 			Quest.Set(qvar,Property.Get(invObj,"StackCount"),eQuestDataType.kQuestDataMission)
@@ -401,7 +426,7 @@ DefOn="+Contained+Create+Combine"
 	}
 //	|-- DoOn --|
 	function DoOn(DN){
-		StackToQVar(DGetParam("DStackToQVarVar", Property.Get(self,"TrapQVar"),DN)) //Is a QVar specified in the DN or set as property?
+		StackToQVar(DGetParam(_script + "Var", Property.Get(self,"TrapQVar"),DN)) //Is a QVar specified in the DN or set as property?
 	}
 	
 }
@@ -438,7 +463,7 @@ maxAlert = 2				//Max Suspecious level 2
 	}
 
 	function OnDamage(){									// Any way to cheat this with bash dmg?
-		if (DCheckString("[culprit]") == ::PlayerID())
+		if (DCheckString("[culprit]") == ::PlayerID)		// T-16: PlayerID is an integer, not a function.
 			DoOff()
 	}
 
@@ -456,7 +481,7 @@ maxAlert = 2				//Max Suspecious level 2
 	function DoOff(DN = null){
 		//ClearData("OldTeam")
 		Property.SetSimple(self,"AI_Team",GetData("OldTeam"))
-		if (!DGetParam("DNotSuspAIUseMetas", false)){
+		if (!DGetParam(_script + "UseMetas", false)){		// T-99: hard-coded name missed the DNotSuspAI1/3 subclasses and Copies.
 			Property.Remove(self,"AI_Hearing")
 			Property.Remove(self,"AI_Vision")					
 			Property.Remove(self,"AI_InvKnd")
@@ -525,7 +550,7 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 		if (!IsEditor()){return} //AI Watch values are set in the editor.
 		
 		//TODO: Explain next step. AIs will always create Links to the player. Triggering the script off, even when not in direct sight will aggro them when he was seen before.
-		if(DGetParam("DImUndercoverForgetMe",false,userparams()))
+		if(DGetParam(_script + "ForgetMe",false,userparams()))	// T-99: hard-coded name broke under Copies.
 		{
 			Property.Add(self,"AI_WtchPnt")
 			Property.Set(self,"AI_WtchPnt","Watch kind","Player intrusion")
@@ -566,7 +591,7 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 			Property.SetSimple(::PlayerID,"SelfLit",lit)
 		}
 		
-		if (modes | 8)			//In T2 we can make the player a suspicious object as well.
+		if (modes & 8)			//In T2 we can make the player a suspicious object as well.	// T-41: & not |
 		{
 			#T2 only
 			if (GetDarkGame()==2)
@@ -590,12 +615,12 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 					
 					//Different methodes to weaken the perception of the AIs see documentation.
 					
-					if (modes | 1)		//Reduced Hearing
+					if (modes & 1)		//Reduced Hearing
 					{
 						Property.Add(t,"AI_Hearing")
 						Property.SetSimple(t,"AI_Hearing",DGetParam(_script + "Deaf",2,DN) - 1)
 					}
-					if (modes | 2)		//Reduced Vision
+					if (modes & 2)		//Reduced Vision
 					{
 						if (sight<2)	//make them completly blind
 							{
@@ -613,13 +638,13 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 							}
 						}
 					}
-					if (modes | 4)		//No investigate
+					if (modes & 4)		//No investigate
 					{
 						Property.Add(t,"AI_InvKnd")
 						Property.SetSimple(t,"AI_InvKnd",1)
 					}
 						
-					if (modes | 8 || DGetParam(_script + "AutoOff",false,DN))	//Suspicious mode or AutoOff On.
+					if (modes & 8 || DGetParam(_script + "AutoOff",false,DN))	//Suspicious mode or AutoOff On.
 					{
 						//Tries to add the DNotSuspAI script to the targeted AI so it will react accordingly.
 						Property.Add(t,"Scripts")
@@ -635,29 +660,29 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 							Object.AddMetaProperty(t,"M-DUndercover8")
 						}
 					}
-					if (modes | 8)
-					{		
-						//Setting Team	
+					if (modes & 8)
+					{
+						//Setting Team
 						Property.SetSimple(t,"AI_Team",0)
 						//Forget the player when he goes out of range.	
 						if(DGetParam(_script + "ForgetMe",false,DN))
 							Link.Create("AIWatchObj", t, self)
 					}
 				}
-				else //Use Custom Metas only.			// TODO make 123 usw...
-				{
-					if (Object.Exists(ObjID("M-DUndercoverPlayer"))){Object.AddMetaProperty(::PlayerID,"M-DUndercoverPlayer")}
-					if (modes | 1) Object.AddMetaProperty(t,"M-DUndercover1");
-					if (modes | 2) Object.AddMetaProperty(t,"M-DUndercover2");
-					if (modes | 4) Object.AddMetaProperty(t,"M-DUndercover4");
-					if (modes | 8) Object.AddMetaProperty(t,"M-DUndercover8");
-				}
-				if (modes | 16){
-					Object.AddMetaProperty(t,"M-DUndercover16")
-				}
-				if (modes | 32){
-					Object.AddMetaProperty(t,"M-DUndercover32")
-				}
+			}	// T-42: the meta branch pairs with the UseMetas check, not the alertness check.
+			else //Use Custom Metas only.			// TODO make 123 usw...
+			{
+				if (Object.Exists(ObjID("M-DUndercoverPlayer"))){Object.AddMetaProperty(::PlayerID,"M-DUndercoverPlayer")}
+				if (modes & 1) Object.AddMetaProperty(t,"M-DUndercover1");
+				if (modes & 2) Object.AddMetaProperty(t,"M-DUndercover2");
+				if (modes & 4) Object.AddMetaProperty(t,"M-DUndercover4");
+				if (modes & 8) Object.AddMetaProperty(t,"M-DUndercover8");
+			}
+			if (modes & 16){
+				Object.AddMetaProperty(t,"M-DUndercover16")
+			}
+			if (modes & 32){
+				Object.AddMetaProperty(t,"M-DUndercover32")
 			}
 		}
 	}
@@ -678,7 +703,7 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 
 		foreach (t in DGetParam(_script + "Target","@Human",DN,kReturnArray))
 		{
-			if (!DGetParam("DNotSuspAIUseMetas",false,userparams()))	//Restoring Vision and stuff.
+			if (!DGetParam(_script + "UseMetas",false,DN))	//Restoring Vision and stuff. (was hard-coded "DNotSuspAIUseMetas" - wrong script name, broke Copies too)
 			{
 				Property.Remove(t,"AI_Hearing")
 				Property.Remove(t,"AI_Vision")					
@@ -700,7 +725,7 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 			}
 			SendMessage(t,"EndIgnore")											// Resetting Team 
 		}
-		RepeatForCopies(::callee(DN))
+		RepeatForCopies(::callee(), DN)		// T-31: pass callee itself - calling it here recursed unboundedly.
 	}
 	
 }

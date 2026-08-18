@@ -104,7 +104,7 @@ gDTexTable <-
 			"2":["jbg-pillow-$",["c","g","d","b","b","g","d","d","b","h","c","g","b","d","b","h","b","e","b","d","h","b","c","c","e","b","c","h"],"jbg-pillow-$",["b","c","d","e","f","g","h","h","g","g","e","b","c","f","f","b","c","b","e","e","g","e","h","b","c"]]
 		}
 	}
-	//These might Require ep, only add if they are found:
+	//These might Require ep, only add if they are found: #NOTE this function does not check subfolders like obj. Checking for individual textures is not possible.
 	if (Engine.FindFileInPath("resname_base","EP.crf",string()) || Engine.FindFileInPath("resname_base","ep2.crf",string())){
 		// gDTexTable.Pictures.extend()
 	}

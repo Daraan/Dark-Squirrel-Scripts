@@ -48,8 +48,11 @@ Each parameter can target multiple objects also more than one special effect can
 					//Checking if a SFX is already present or if it should be updated.
 					foreach (link in ::Link.GetAll("ScriptParams", from)){				// This is slow.
 						if (LinkDest(link) == to){
-							local data = split(::LinkTools.LinkGetData(link, ""), "+")	//See below. SFX Type and created SFX ObjID is saved
-							if (data[1].tointeger() == sfx){
+							local raw = ::LinkTools.LinkGetData(link, "")
+							if (typeof raw != "string")						// unrelated ScriptParams link
+								continue
+							local data = split(raw, "+")	//See below. SFX Type and created SFX ObjID is saved
+							if (data.len() == 3 && data[0] == "DRay" && data[1] == sfx.tostring()){
 								sfxobj = data[2].tointeger()
 								break
 							}
@@ -71,7 +74,7 @@ Each parameter can target multiple objects also more than one special effect can
 						//Only change if distance changed.
 						if (time_max != d / vel_max){
 							::Property.Set(sfxobj,"PGLaunchInfo", "Min time", d / vel_max)
-							::Property.Set(sfxobj,"PGLaunchInfo"," Max time", d / vel_max)
+							::Property.Set(sfxobj,"PGLaunchInfo", "Max time", d / vel_max)
 						}
 						//Gets the new facing vector. Trignometry is cool! 
 						if (h.y < 0)
@@ -127,13 +130,17 @@ Each parameter can target multiple objects also more than one special effect can
 
 	function DoOff(DN)
 	{
-		foreach (from in DGetParam("DRayFrom",self,DN,kReturnArray))
+		foreach (from in DGetParam(_script + "From",self,DN,kReturnArray))
 		{
 			foreach (link in ::Link.GetAll("ScriptParams", from))
 			{
-				local data = split(::LinkTools.LinkGetData(link,null),"+")
-				if (data[0] == "DRay"){
+				local raw = ::LinkTools.LinkGetData(link, "")
+				if (typeof raw != "string")					// unrelated ScriptParams link
+					continue
+				local data = split(raw,"+")
+				if (data.len() == 3 && data[0] == "DRay"){
 					//DEBUG print("destroy:  "+data[2]+"   "+Object.Destroy(data[2].tointeger()))
+					::Object.Destroy(data[2].tointeger())		// the effect object itself used to leak (its destroy sat inside a comment)
 					::Link.Destroy(link)
 				}
 			}
@@ -176,6 +183,8 @@ DefOn = "InvSelect"
 	function OnTimer()
 	{
 		if (message().name == "Equip"){ 
+			if (IsDataSet("DArmDummy"))					// one dummy was leaked per InvSelect
+				::Object.Destroy(ClearData("DArmDummy"))
 			local DN		= userparams()
 			local sfxdummy 	= null
 			local userealobj= DGetParam(_script+"UseObject", FALSE, DN)
@@ -223,9 +232,10 @@ DefOn = "InvSelect"
 			::LinkTools.LinkSetData(l,"rel pos",v_relpos)
 			::LinkTools.LinkSetData(l,"rel rot",v_relrot)
 			Object.EndCreate(sfxdummy)
+			SetData("DArmDummy", sfxdummy)
 		}
 		
-		if (RepeatForCopies(OnTimer))
+		if (RepeatForCopies(::callee()))		// T-32: pass callee, not the bound method.
 			base.OnTimer()
 	}
 }
@@ -273,7 +283,7 @@ class DObjectPanTo extends DTrigger
 	offset		= null
 	speed		= null
 	Viewers	 	= null
-	// removeViewer= null		// #BUG fix: store to be removed items in extra array and remove them from Viewers after iteration.
+	// T-49 fixed: UpdateAll() collects finished viewers and removes them after the iteration.
 	
 	function PanToTarget(obj, target, speed, correction){
 		local full_change = ::DScript.RelativeAngles(obj, target) + correction
@@ -303,19 +313,8 @@ class DObjectPanTo extends DTrigger
 				TriggerMessages("SingleOff", userparams(), obj)
 			}
 			// Auto Remove item from queue?
-			if (DGetParam(_script + "AutoOff", true)){
-				local idx = Viewers.find(obj)
-				Viewers.remove(idx)			// low prio todo. #NOTE BUG: One item will be skipped in the loop, but just for one frame.
-				offset.remove(idx)
-				if (Viewers.len() == 0){
-					// Sent message?
-					if (_script + "TOff" in userparams()){
-						SourceObj = obj						// message that finished it's facing queue.
-						TriggerMessages("Off", userparams(), obj)
-					}
-					return DoOff()							// LastObj, no last timer
-				}
-			}
+			if (DGetParam(_script + "AutoOff", true))
+				return "remove"			// T-49: the caller drops it after its loop - removing here skipped the next viewer and desynced offset.
 			return true
 		}
 		difference.Normalize()
@@ -323,20 +322,44 @@ class DObjectPanTo extends DTrigger
 		::DScript.SetFacingForced(obj, difference * speed + facing)
 	}
 
+	function UpdateAll(){
+		// T-49: collect finished viewers, remove after the loop. Parallel offset array stays in sync.
+		local finished = []
+		foreach (i, viewer in Viewers){
+			if (PanToTarget(viewer, target, speed, offset[i]) == "remove")
+				finished.append(i)
+		}
+		local last = null
+		for (local j = finished.len() - 1; j >= 0; j--){
+			last = Viewers[finished[j]]
+			Viewers.remove(finished[j])
+			offset.remove(finished[j])
+		}
+		if (last != null && Viewers.len() == 0){
+			// Sent message?
+			if (_script + "TOff" in userparams()){
+				SourceObj = last						// message that finished it's facing queue.
+				TriggerMessages("Off", userparams(), last)
+			}
+			DoOff()										// LastObj, no last timer
+		}
+	}
+
 #	|-- Message Handlers --|
 	function FrameUpdate(script = null){
-		if (!target)						// on Reload.
-			return DoOn(userparams())	
-		foreach (i, viewer in Viewers){		// all objects done.
-			PanToTarget(viewer, target, speed, offset[i])
-		}
+		if (!target){						// on Reload.
+			if (typeof GetData("Active") != "string")
+				ClearData("Active")			// float-interval mode: members died with the reload - let DoOn arm a fresh timer chain.
+			return DoOn(userparams())
+		}	
+		UpdateAll()
 		return true
 	}
 
 	function OnTimer(){
 		if (message().name == "DFaceUpdate"){
 			if (FrameUpdate() && IsDataSet("Active")){			// false on reload->!target->DoOn() was called and new timer started there.
-				SetData(SetOneShotTimer("DFaceUpdate", message().data, message().data))
+				SetData("Active", SetOneShotTimer("DFaceUpdate", message().data, message().data))
 			}
 		}
 		base.OnTimer()
@@ -359,10 +382,9 @@ class DObjectPanTo extends DTrigger
 		Viewers = DGetParam(_script + "Viewer", self, DN, kReturnArray)
 
 		::DObjectFaceTarget.ResizeArrayToArray(offset, Viewers, 0)
-		foreach (i, viewer in Viewers){						// TODO #BUG When a viewer gets removed offset index will be wrong.
-			PanToTarget(viewer, target, speed, offset[i])
-		}
-		
+		UpdateAll()
+		if (!Viewers || !Viewers.len())						// T-114: everyone already faced the target, so UpdateAll() called
+			return											// DoOff(), which nulls Viewers - .len() on null threw here.
 		if (!IsDataSet("Active")){
 			local interval = DGetParam(_script + "Interval",  2, DN)
 			if (!interval)	// Can be 0.
@@ -414,17 +436,66 @@ SpinBase 	= null
 spin	 	= null
 pos_vector	= vector()
 
+	/* |-- Rotation math --|
+	Euler triples (x=bank, y=pitch, z=heading) can NOT be added or subtracted once more
+	than one axis is involved - that only composes correctly for single-axis rotations.
+	The old GetRotation did exactly that, which is why offsets and camera motion coupled
+	wrongly as soon as two axes were non-zero. Compose rotation matrices instead.
+	Engine convention: R = Rz(heading)*Ry(pitch)*Rx(bank), column vectors; the
+	DetailAttachement "rel rot" composes child = parent * R(rel).	*/
+	function AnglesToMatrix(a){
+		local sx = ::sin(a.x * kDegToRad), cx = ::cos(a.x * kDegToRad)	// bank
+		local sy = ::sin(a.y * kDegToRad), cy = ::cos(a.y * kDegToRad)	// pitch
+		local sz = ::sin(a.z * kDegToRad), cz = ::cos(a.z * kDegToRad)	// heading
+		return [
+			[cz*cy,	cz*sy*sx - sz*cx,	cz*sy*cx + sz*sx],
+			[sz*cy,	sz*sy*sx + cz*cx,	sz*sy*cx - cz*sx],
+			[-sy,	cy*sx,				cy*cx]
+		]
+	}
+
+	function MatMul(a, b){				// a * b
+		local m = [[0,0,0],[0,0,0],[0,0,0]]
+		for (local i = 0; i < 3; i++)
+			for (local j = 0; j < 3; j++)
+				m[i][j] = a[i][0]*b[0][j] + a[i][1]*b[1][j] + a[i][2]*b[2][j]
+		return m
+	}
+
+	function MatMulT(a, b){				// transpose(a) * b - transpose is the inverse of a rotation.
+		local m = [[0,0,0],[0,0,0],[0,0,0]]
+		for (local i = 0; i < 3; i++)
+			for (local j = 0; j < 3; j++)
+				m[i][j] = a[0][i]*b[0][j] + a[1][i]*b[1][j] + a[2][i]*b[2][j]
+		return m
+	}
+
+	function MatrixToAngles(m){
+		// Inverse of AnglesToMatrix. Gimbal case: pitch = +-90, bank folded into heading.
+		if (m[2][0] <= -0.999999 || m[2][0] >= 0.999999)
+			return ::vector(0, (m[2][0] < 0)? 90 : -90, ::atan2(-m[0][1], m[1][1]) / kDegToRad)
+		return ::vector(::atan2(m[2][1], m[2][2]) / kDegToRad,		// bank
+						::asin(-m[2][0]) / kDegToRad,				// pitch
+						::atan2(m[1][0], m[0][0]) / kDegToRad)		// heading
+	}
+
+	function GetCancelAngles(v){
+		// Which part of the camera facing the object must NOT follow.
+		// DHudObject: heading only - the object keeps a fixed compass direction
+		// ("its right always points north") while still tilting with pitch/bank.
+		return ::vector(0, 0, v.z)
+	}
+
 	function GetRotation(){
-		local v = Camera.GetFacing()
-		v.z = 0
-		
+		local m = MatMulT(AnglesToMatrix(GetCancelAngles(Camera.GetFacing())),	// undo the camera part we cancel...
+							AnglesToMatrix(rot_offset))							// ...then apply the author's offset.
 		if (SpinBase){
-			v += (SpinBase * spin)
+			m = MatMul(m, AnglesToMatrix(SpinBase * spin))						// spin in the object's own frame.
 			spin++
 			if (spin >= 360)
 				spin = 0
-		}	
-		return v + rot_offset
+		}
+		return MatrixToAngles(m)
 	}
 
 #	|-- Message Handlers --|
@@ -505,18 +576,18 @@ pos_vector	= vector()
 		if (IsDataSet("Active") && !onreload)					// TODO: Make toggle optional
 			{return DoOff(DN)}
 		if (!rot_offset){									
-			rot_offset = DGetParam(GetClassName() + "Rotation", vector(0,0,0), DN)
+			rot_offset = DGetParam(_script + "Rotation", vector(0,0,0), DN)
 			if (typeof(rot_offset) != "vector")
 				rot_offset = vector(0,rot_offset,0)
 		}
-		SpinBase   = DGetParam(GetClassName() + "Spin", null, DN)
+		SpinBase   = DGetParam(_script + "Spin", null, DN)
 		if (SpinBase)
 			spin = 0
 		PostMessage(self, "CalcLocOffset")						// Necessary info not available before next 1.1 frames
 		if (onreload)
 			return
 		if (!item)												// base.DoOn from child.
-			item = DGetParam(_script, DarkUI.InvItem(), DN)
+			item = DGetParam(_script, (::GetDarkGame() != 1)? ::DarkUI.InvItem() : ::ShockGame.GetSelectedObj(), DN)
 		item = CreateHudObj(item, DGetParam(_script+"UseDummy", TRUE))
 		::DScript.ScaleToMaxSize(item, DGetParam(_script + "MaxSize", 0.20, DN))
 		
@@ -540,29 +611,23 @@ class DHudCompass extends DHudObject
 /*#######################################
 Similar to DHudCompass attaches the [DHudObject]{Object}; by default the selected inventory item; to the camera with the default {Offset} <0.75,0,-0.4.
 The objects facing will be constant toward the camera. With {Rotation} chose an offset.
-NOTE: Z-Rotation does not work intuitively as it is in combination with pitch.
-Use X,Y 180° Rotation to imitate a Z 180° rotation.
-
-*/#######################################
+NOTE: {Rotation} axes now compose as real rotations (matrix based); the old advice to
+imitate a Z 180° rotation via X,Y 180° is obsolete - a plain Z rotation works.
+*/
+#######################################
 {
-	function GetRotation(){
-		local v = Camera.GetFacing()
-		v.y = 0
-		if (SpinBase){
-			v += (SpinBase * spin)
-			spin++
-			if (spin >= 360)
-				spin = 0
-		}
-		return rot_offset - v
+	function GetCancelAngles(v){
+		// Cancel heading AND bank; pitch still follows the camera (the old code's v.y = 0 choice).
+		// GetRotation itself is inherited - the matrix composition in DHudObject handles multi-axis correctly.
+		return ::vector(v.x, 0, v.z)
 	}
 #	|-- On	 Off --|
-	function DoOn(DN, onreload = null){
+	function DoOn(DN, item = null, onreload = null){	// keep the base DoOn(DN, item, onreload) shape - the reload path calls with 3 args.
 		rot_offset = DGetParam(_script + "Rotation", vector(0,0,90))
 		if (typeof(rot_offset) != "vector")
 			rot_offset = ::vector(0, 0, rot_offset)
 
-		base.DoOn(DN, null, onreload)
+		base.DoOn(DN, item, onreload)
 	}
 	
 }
@@ -591,16 +656,19 @@ anchor_rotation = null
 	}
 
 	function OnBeginScript(){
-		if (GetClassName() == "DInventoryMaster"){					// Not DSubInventory
-			if (!("DInventoryMaster" in ::DHandler.Extern)){
-				::DHandler.RegisterExternHandler("DInventoryMaster", this)
-				//::getroottable()[GetClassName()] <- this					// this looks a bit dangerous but it's on a Squirrel level only.
-			}
-		}
+		// Init the members BEFORE anything that can throw - a dead registration must not leave the offsets null.
 		pos_offset 		= DGetParam(_script + "ItemPosition", v_zero)
 		rot_offset 		= DGetParam(_script + "ItemRotation", v_zero)
 		anchor_offset 	= DGetParam(_script + "AnchorPosition",::vector(0.3,0,0))
 		anchor_rotation = DGetParam(_script + "AnchorRotation",v_zero)
+		if (GetClassName() == "DInventoryMaster"){					// Not DSubInventory
+			if (::DHandler){										// script construction order is arbitrary - the handler may not exist yet.
+				::DHandler.RegisterExternHandler("DInventoryMaster", this)	// skips duplicates itself.
+				//::getroottable()[GetClassName()] <- this					// this looks a bit dangerous but it's on a Squirrel level only.
+			}
+			else
+				print("DScript FAILURE: no ::DHandler when " + GetClassName() + " on " + self + " started - DScriptHandler marker missing?")
+		}
 		base.OnBeginScript()
 	}
 
@@ -755,7 +823,18 @@ anchor_rotation = null
 			return
 		if (message().message == "FrobInvEnd" && IsDataSet("DInvAttacher"))	// Toggle
 			return DoOff()
+		if (IsDataSet("DInvAttacher"))										// already open (InvSelect/InvFocus re-fire): don't create a duplicate dummy set.
+			return
 			
+		if (typeof anchor_offset != "vector"){								// BeginScript died mid-init (construction order) - retry once.
+			OnBeginScript()
+			if (typeof anchor_offset != "vector"){
+				print("DScript FAILURE: " + _script + "AnchorPosition on " + self + " did not evaluate to a vector - using the default.")
+				anchor_offset = ::vector(0.3,0,0)
+			}
+			if (typeof anchor_rotation != "vector")
+				anchor_rotation = v_zero
+		}
 		local v = vector()
 		Object.CalcRelTransform(::PlayerID, ::PlayerID, v, v_zero, 4, 0)	// vector from camera to player, so negate it. v_zero will stay 0
 		// Rotation, Position to allow user offset.
@@ -782,10 +861,13 @@ class DSubInventory extends DInventoryMaster
 	beenremoved = false
 	
 	function OnBeginScript(){	// Making sure ::DHandler is constructed
+		base.OnBeginScript()						// init the offset members first - registration below can fail.
 		if (DGetParam(_script + "Name", false)){
-			::DHandler.RegisterExternHandler("SubInv" + DGetParam(_script + "Name"),this)
+			if (::DHandler)							// script construction order is arbitrary - the handler may not exist yet.
+				::DHandler.RegisterExternHandler("SubInv" + DGetParam(_script + "Name"),this)
+			else
+				print("DScript FAILURE: no ::DHandler when " + GetClassName() + " on " + self + " started - DScriptHandler marker missing?")
 		}
-		base.OnBeginScript()
 	}
 	 
 	// Idea to remove the Inventory if it is empty, but if the last item is temporarily given to the player
@@ -814,7 +896,8 @@ class DInventoryDummy extends SqRootScript
 {
 	OnFrobWorldEnd = function(){
 		local real = LinkDest(Link.GetOne("ScriptParams",self))
-		::DHandler.Extern.DInventoryMaster.DoOff()
+		if ("DInventoryMaster" in ::DHandler.Extern)		// a pure DSubInventory setup has no master registered (proper sub routing needs a back-link).
+			::DHandler.Extern.DInventoryMaster.DoOff()
 		SendMessage(real,"Selecting")											// For Subcontainers.
 		if (::Container.IsHeld(::PlayerID,real) == eContainType.ECONTAIN_NULL)
 			::Container.Add(real, ::PlayerID)
@@ -850,6 +933,8 @@ exception = null						// Fixes deselection. If an item is picked up that does be
 				}
 			}
 		}
+		if (typeof sub == "string")						// "auto" (or unresolved) with no match - fall back to the master.
+			sub = OBJ_NULL
 		if (sub <= OBJ_NULL){								// In case it's not found or an archetype.
 			return DHandler.Extern.DInventoryMaster.self
 		}
@@ -865,8 +950,7 @@ exception = null						// Fixes deselection. If an item is picked up that does be
 	function OnContained(){
 		if (message().event == eContainsEvent.kContainAdd && message().container == ::PlayerID){
 			local sub = GetInventory()
-			if (DPrint(""))
-				print("Hi I'm a " + DScript.GetObjectName(self,true) +" and would like to go to " + DScript.GetObjectName(sub,true) + sub)
+			DPrint("Would like to go to " + DScript.GetObjectName(sub,true) + sub)
 			if (::Container.IsHeld(OBJ_WILDCARD,sub) == eContainType.ECONTAIN_NULL){	// If the subinventory is not held, move it to the player.
 				//DoOn()
 				exception = true
@@ -995,7 +1079,7 @@ class DRenameItem extends DTrigger
 		local append 	= DGetParam(_script+"Append", "", DN).tostring()
 			
 		// Backup? If the property is not set. It will be removed only and the archetype name appears again, else store it.
-		if (Property.PossessedSimple(item, "GameName"))
+		if (Property.PossessedSimple(item, "GameName") && !IsDataSet(_script+"OrgName"))	// only the FIRST rename sees the real original.
 			SetData(_script+"OrgName", Property.Get(item,"GameName"))
 		
 		// Language support found and nothing special. EXIT
@@ -1018,6 +1102,7 @@ class DRenameItem extends DTrigger
 	}
 	
 	function DoOff(DN){
+		ClearData(_script + "Ticks")					// stop a running [Timer] countdown - it re-applied the hack one tick after the restore.
 		if (GetData(_script+"OrgName"))
 			::Property.SetSimple(DGetParam(_script, self, DN),"GameName",GetData(_script+"OrgName"))
 		else
@@ -1030,12 +1115,18 @@ class DRenameItem extends DTrigger
 		if (message().name == "DRenameItem"){
 			local data = DGetTimerData(message().data)
 			_script = data[0]
+			if (!IsDataSet(_script + "Ticks")){				// countdown was cancelled by DoOff
+				_script = GetClassName()
+				return base.OnTimer()
+			}
 			local append = GetData(_script + "Ticks") - 1
 			if (append == 0){
-				if (DGetParam(_script + "NoRestart", null) <= 1)			// #NOTE null < anything = true
-					ClearData(_script + "Ticks")
+				local blockRestart = DGetParam(_script + "NoRestart", null) > 1	// #NOTE null < anything = true
 				DoOff(userparams())
+				if (blockRestart)										// T-115: DoOff clears Ticks, and Ticks is the very
+					SetData(_script + "Ticks", 0)						// marker DoOn tests for - put the marker back.
 				TriggerMessages("Off", userparams())
+				_script = GetClassName()								// restore before the early return (T-91)
 				return
 			}
 			SetData(_script + "Ticks", append)
@@ -1051,7 +1142,8 @@ class DRenameItem extends DTrigger
 	function OnCreate(){
 		//#NOTE: FIX: Items with stacks get copied when dropped when a Timer is active they permanently have the time attached.
 		//				Only possible if this script operates on self, else there is no message to the script.
-		if (DGetParam(_script, self) == self && ::startswith(DGetParam(_script + "Append", "").tostring(), "[Timer]"))
+		local DN = userparams()					// T-17: OnCreate has no DN parameter - the raw reference below threw.
+		if (DGetParam(_script, self, DN) == self && ::startswith(DGetParam(_script + "Append", "", DN).tostring(), "[Timer]"))
 			Property.Remove(DGetParam(_script, self, DN), "GameName")
 		if (RepeatForCopies(::callee()))
 			base.OnMessage()					// If there is a On Trigger for Create it will set it again.
@@ -1075,7 +1167,7 @@ class DTweqDevice extends DBaseTrap
 		if ( DGetParam(_script+"NoFix",false,DN) )
 			return
 		local objset  =         DGetParam(_script+"Target", self, DN, kReturnArray)
-		local joints  = ::split(DGetParam(_script+"Joints","1,2,3,4,5,6",DN).tostring(),"[,]") // All, overkill but why not.
+		local joints  = ::DScript.SplitAny(DGetParam(_script+"Joints","1,2,3,4,5,6",DN).tostring(),"[,]") // All, overkill but why not.
 		local control = 	    DGetParam(_script+"Control", false, DN)
 		
 		// Skip if not used for Joint Tweq
@@ -1107,19 +1199,29 @@ class DTweqDevice extends DBaseTrap
 	function DoOn(DN)
 	{
 		local objset  = 		DGetParam(_script+"Target", self, DN, kReturnArray)
-		local joints  = ::split(DGetParam(_script+"Joints", "1,2,3,4,5,6", DN).tostring(), "[,]" )
+		local joints  = ::DScript.SplitAny(DGetParam(_script+"Joints", "1,2,3,4,5,6", DN).tostring(), "[,]")
 		local TweqType = 		DGetParam(_script+"Control", false, DN)	// see eTweqType in API-reference or DScript documentation. 2 for example is joints.
 		
 		foreach (obj in objset)
 		{
-			local primjoin = Property.Get(obj,"CfgTweqJoints","Primary Joint")
-			local current  = Property.Get(obj,"StTweqJoints","Joint"+primjoin+"AnimS")
+			// Joints are only touched for the Joints tweq; mirror the constructor's guards.
+			local dojoints = !TweqType || TweqType == eTweqType.kTweqTypeJoints
+			if (dojoints && !Property.Possessed(obj,"CfgTweqJoints")){
+				#DEBUG WARNING
+				DPrint("WARNING: Object " + obj +" has no Tweq->Joints property")
+				dojoints = false
+			}
+			if (dojoints)
 			foreach (j in joints)
 			{
+				local reverse = false
 				if (j[kGetFirstChar] == '-'){
-					current = current^TWEQ_AS_REVERSE // XOR reverses the reverse
+					reverse = true
 					j = j.slice(kRemoveFirstChar)
 				}
+				local current = Property.Get(obj,"StTweqJoints","Joint"+j+"AnimS")	// each joint's own state - one shared value leaked reversals between joints
+				if (reverse)
+					current = current ^ TWEQ_AS_REVERSE			// XOR reverses the reverse
 				Property.Set(obj, "StTweqJoints", "Joint"+j+"AnimS", current | TWEQ_AS_ONOFF)	//is always On.
 			}
 			
@@ -1170,17 +1272,17 @@ static eDrunkData =
 			KillTimer(GetData("DrunkTimer"))
 
 		//strenghth 0-2 advised
-		local l = DGetParam("DDrunkPlayerTrapInterval", 0.2, DN)
+		local l = DGetParam(_script + "Interval", 0.2, DN)
 		DrkInv.AddSpeedControl("DDrunk", 0.8, 1); //Makes the Player slower
 		//Saving all the Parameter Data in the Timer to make it SaveGame compatible.
 		SetData("DrunkTimer", DSetTimerData("DrunkTimer",
 											l,											// Delay for the timer
-											DGetParam("DDrunkPlayerTrapStrength",1,DN),	// [0] = Strength
+											DGetParam(_script + "Strength",1,DN),	// [0] = Strength
 											l,											// [1] = Interval
-											DGetParam("DDrunkPlayerTrapLength",	0,DN),	// [2] = Length
-											DGetParam("DDrunkPlayerTrapFadeIn",	0,DN),	// [3] = FadeInTime
-											DGetParam("DDrunkPlayerTrapFadeOut",0,DN),	// [4] = FadeOutTime
-											DGetParam("DDrunkPlayerTrapMode",	3,DN),	// [5] = Modes
+											DGetParam(_script + "Length",	0,DN),	// [2] = Length
+											DGetParam(_script + "FadeIn",	0,DN),	// [3] = FadeInTime
+											DGetParam(_script + "FadeOut",0,DN),	// [4] = FadeOutTime
+											DGetParam(_script + "Mode",	3,DN),	// [5] = Modes
 											0))											// [6] = CurrentFrame
 	}
 
@@ -1202,20 +1304,22 @@ static eDrunkData =
 			if (mnA[eDrunkData.Length] <= 0 || ( mnA[eDrunkData.CurrentFade] < mnA[eDrunkData.Length] / mnA[eDrunkData.Interval] ))
 			{
 				// Continue. Start a new Timer.
-				SetData("DrunkTimer", DSetTimerData("DrunkTimer", mnA[eDrunkData.Interval], mnA[eDrunkData.Strength], mnA[eDrunkData.Interval], mnA[eDrunkData.Length], mnA[eDrunkData.Length], mnA[eDrunkData.FadeInTime], mnA[eDrunkData.Mode], mnA[eDrunkData.CurrentFade]))
+				// T-46: re-serialize in enum order - slots 3/4 wrote Length/FadeInTime into FadeInTime/FadeOutTime.
+				SetData("DrunkTimer", DSetTimerData("DrunkTimer", mnA[eDrunkData.Interval], mnA[eDrunkData.Strength], mnA[eDrunkData.Interval], mnA[eDrunkData.Length], mnA[eDrunkData.FadeInTime], mnA[eDrunkData.FadeOutTime], mnA[eDrunkData.Mode], mnA[eDrunkData.CurrentFade]))
 			}
 			else 
 				DoOff()
 
 			// Do FadeIn? Reduce the Strength effect and increase it slowly.
-			if (mnA[eDrunkData.CurrentFade] < ( mnA[eDrunkData.Length] / mnA[eDrunkData.Interval] ))
-				strengthCurrent = mnA[eDrunkData.CurrentFade] / mnA[eDrunkData.Length] * mnA[eDrunkData.Interval]
+			// T-46: fade windows read Length/FadeInTime where FadeInTime/FadeOutTime were meant; ramps now scale Strength.
+			if (mnA[eDrunkData.CurrentFade] < ( mnA[eDrunkData.FadeInTime] / mnA[eDrunkData.Interval] ))
+				strengthCurrent = mnA[eDrunkData.Strength] * mnA[eDrunkData.CurrentFade] * mnA[eDrunkData.Interval] / mnA[eDrunkData.FadeInTime]
 
 			if (mnA[eDrunkData.Length] > 0){	//Do FadeOut
-				if (mnA[eDrunkData.CurrentFade] > (mnA[eDrunkData.Length] - mnA[eDrunkData.FadeInTime]) / mnA[eDrunkData.Interval]){
-					strengthCurrent= (mnA[eDrunkData.Length]/mnA[eDrunkData.Interval]-mnA[eDrunkData.CurrentFade])/(mnA[eDrunkData.FadeInTime]/mnA[eDrunkData.Interval])
+				if (mnA[eDrunkData.FadeOutTime] > 0 && mnA[eDrunkData.CurrentFade] > (mnA[eDrunkData.Length] - mnA[eDrunkData.FadeOutTime]) / mnA[eDrunkData.Interval]){
+					strengthCurrent = mnA[eDrunkData.Strength] * (mnA[eDrunkData.Length]/mnA[eDrunkData.Interval]-mnA[eDrunkData.CurrentFade])/(mnA[eDrunkData.FadeOutTime]/mnA[eDrunkData.Interval])
 				}
-			}			
+			}
 			local seed 		= Data.RandInt(-1,1) * 70				// Sway in one direction
 			local ofacing 	= (Camera.GetFacing().z + seed) * kDegToRad
 			local orthv 	= vector(cos(ofacing), sin(ofacing), 0)	//Calculates the orthogonal vector, so relative left/right(forward) on the screen.
@@ -1274,9 +1378,9 @@ class DTPBase extends DBaseTrap
 			return v
 
 //Is one of my first scripts and still uses old non Standard Parameter fetching.
-		local x = ("DTpX" in DN)? x = DN.DTpX : 0;
-		local y = ("DTpY" in DN)? x = DN.DTpY : 0;
-		local z = ("DTpZ" in DN)? x = DN.DTpZ : 0;
+		local x = ("DTpX" in DN)? DN.DTpX : 0;		// T-44: y and z assigned to x, so DTpY/DTpZ were dead.
+		local y = ("DTpY" in DN)? DN.DTpY : 0;
+		local z = ("DTpZ" in DN)? DN.DTpZ : 0;
 		
 		if (x != 0 || y != 0 || z != 0)
 			return ::vector(x,y,z)
@@ -1297,10 +1401,10 @@ If any of the DTp_ parameters is specified and not 0 these have priority.
 		local victim = ::PlayerID
 		local dest = GetTeleportVector()
 		
-		if (!dest)
-			dest =(Object.Position(victim) + dest);
+		if (dest)											// T-43: branches were inverted - null offset ended in Position + null.
+			dest = (Object.Position(victim) + dest);		// move relative by the DTp offset
 		else
-			dest = Object.Position(self);
+			dest = Object.Position(self);					// no offset: teleport to the trap object
 		
 		DTeleportation(victim,dest);
 	}
@@ -1357,6 +1461,7 @@ DPortalTarget="+player+#88+@M-MySpecialAIs"
 
 	function OnEndScript(){
 		Physics.UnsubscribeMsg(self, ePhysScriptMsgType.kEnterExitMsg)
+		base.OnEndScript()
 	}
 
 	function DoOn(DN){
@@ -1367,14 +1472,14 @@ DPortalTarget="+player+#88+@M-MySpecialAIs"
 		SetData("PortalTimer", 
 				SetOneShotTimer("GoPortal", 0.1, 
 					::DScript.ArrayToString(
-						DGetParam("DPortalTarget", message().transObj, DN, kReturnArray)
+						DGetParam(_script + "Target", message().transObj, DN, kReturnArray)	// T-99: hard-coded name broke under Copies.
 				)));
 	}
 
 	function OnTimer(){
 		if (message().name == "GoPortal"){
 			local dest = GetTeleportVector();
-			if (dest == false){	
+			if (dest == null){	// T-45: GetTeleportVector returns null, not false - the ScriptParams fallback never ran.
 				dest = (Object.Position( LinkDest(Link.GetOne("ScriptParams", self))) - Object.Position(self));
 			}
 			local targets = DGetTimerData(message().data)
@@ -1406,7 +1511,7 @@ class DModelByCount extends DStackToQVar
 //	|-- DoOn --|
 	function DoOn(DN)
 	{
-		local stack = ::StackToQVar() - 1	// -1 for Tweq Slot.
+		local stack = StackToQVar() - 1	// -1 for Tweq Slot. (T-18: inherited method, not a root-table function)
 		
 		//Limited to 5 models
 		if (stack > 5)
@@ -1431,7 +1536,7 @@ class DDirector extends DObjectPanTo
 	function GetPath(){
 		Path = [LinkDest(Link.GetOne("TPathInit",self))]
 		::DScript.ObjectsInPath("TPath", Path)
-		if (DPrint("Objects in camera path: "))
+		if (DPrint("Objects in camera path: ") && "DTestTrap" in ::getroottable())
 			::DTestTrap.DumpTable(Path)
 	}
 	
@@ -1439,8 +1544,8 @@ class DDirector extends DObjectPanTo
 		if (Link.AnyExist("ScriptParams", cur_point)){
 			local link = Link.GetOne("ScriptParams", cur_point)
 			target = LinkDest(link)
-			speed = LinkTools.LinkGetData(link, "").tofloat()
-			print("Speed is" + speed)
+			try speed = LinkTools.LinkGetData(link, "").tofloat()		// guard: empty/non-numeric link data must not kill the ride
+			catch(e) speed = 0
 			if (!speed)
 				speed = DGetParam(_script + "PanSpeed", 3)
 		}
@@ -1474,10 +1579,11 @@ class DDirector extends DObjectPanTo
 				local idx = message().data
 				foreach(link in Link.GetAll("ScriptParams", self)){
 					local data = LinkTools.LinkGetData(link, "")
-					::print("data is " + data)
-					if (data == null)
+					if (data == null || data == "")
 						continue
-					if (::abs(data.tointeger()) == idx && (data[0] >= '0' || (!leave && data[0] == '+') || (leave && data[0] == '-')))
+					local didx = null
+					try didx = ::abs(data.tointeger()) catch(e) continue		// unrelated/non-numeric ScriptParams data
+					if (didx == idx && (data[0] >= '0' || (!leave && data[0] == '+') || (leave && data[0] == '-')))
 						targets.append(LinkDest(link))
 				}
 			}
@@ -1513,12 +1619,10 @@ class DDirector extends DObjectPanTo
 		local speed 	= LinkTools.LinkGetData(next_link, "Speed")
 		if (speed <= 0){
 			Property.Set(self,"MovingTerrain","active",FALSE);
-			print("speec" + speed)
 			if (speed == 0)
 				SetData("Jump",Path[index + 1])
 			else
 				LinkTools.LinkSetData(next_link, "Speed", -speed)
-			print("Will not start")
 			base.OnMessage()
 			return false			// Stops
 		}
@@ -1537,11 +1641,10 @@ class DDirector extends DObjectPanTo
 			local nextobj = LinkDest(destlink)
 			Object.Teleport(self, vector(), vector(), nextobj)
 			Link.Destroy(destlink)
-			if (IsDataSet("Active"))								// case we jumped to last.
+			if (IsDataSet("Active") && GetData("Active")+2 < Path.len())								// case we jumped to last.
 				Link.Create("TPathNext", self, Path[GetData("Active")+2])
 			else
 				return
-			::print("next obj is " + Path[GetData("Active")+2])
 			if (!OnMovingTerrainWaypoint())
 				return												// Pause
 		}
@@ -1600,7 +1703,7 @@ class DDirector extends DObjectPanTo
 		else
 		{
 			Camera.StaticAttach(self)
-			if (true || DGetParam(_script + "FixedTime")){
+			if (DGetParam(_script + "FixedTime", true)){	// T-66: branch was forced with true|| - per-frame path now reachable via FixedTime=0; default keeps the shipped fixed-time behavior.
 				DN[_script + "Interval"] <- 1.0/30			// Slow it down to ~0,033 seconds.
 				base.DoOn(DN)
 				SetData("Active", -1)
@@ -1626,6 +1729,8 @@ class DDirector extends DObjectPanTo
 		::Property.Set(self,"MovingTerrain","active",FALSE)
 		// Some last delay?
 		ClearData("Jump")
+		if (!Path)										// TurnOff before any TurnOn: nothing to tear down (Path is only built in GetPath).
+			return
 		if (DGetParam(_script + "CycleMode") 
 			&& Link.AnyExist("TPath",Path.top(),Path[0])
 			&& (notcanceled || (DGetParam(_script + "Off", DefOff, DN, kReturnArray).find(message().message) == null)))
@@ -1648,7 +1753,6 @@ class DDirector extends DObjectPanTo
 				}
 			}
 			else ClearData("ReachedEnd")
-			::print("Cur idx = "+GetData("Active") +" len: " + Path.len())
 			if (notcanceled)
 				SendMessage(self, "ReachedEndpoint", ClearData("Active"), TRUE, Path.top())
 			else 
@@ -1656,7 +1760,6 @@ class DDirector extends DObjectPanTo
 				SendMessage(self, "Canceled", GetData("Active"), null, Path[ClearData("Active")])
 			}
 			Link.Destroy(Link.GetOne("TPathNext", self))
-			::print("Path[0]")
 			Object.Teleport(self, vector(), vector(), Path[0])
 			Link.Create("TPathNext",self,Path[1])
 			

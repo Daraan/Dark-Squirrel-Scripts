@@ -1,2 +1,10 @@
-backup\
-obj\
+backup/
+obj/
+
+# Claude Code — personal, not shared (.claude/settings.json stays tracked)
+.claude.local.md
+.claude/settings.local.json
+__pycache__/
+tools/sqtest/build/
+tools/sqtest/src/
+tools/sqtest/tmp_*.txt

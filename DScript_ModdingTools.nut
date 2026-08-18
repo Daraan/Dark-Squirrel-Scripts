@@ -261,28 +261,50 @@ delegator 	= {
 				
 			  }
 # 	|-- CSV Analysis --|
+	function DSplitSet(str, seps){
+	/* T-94: NewDark split() matches a multi-char separator as ONE literal substring, so these parsers never split.
+		This splits at EVERY single character found in seps and keeps empty tokens - the semantics the parsers below were written for. */
+		local tokens = [""]
+		foreach (c in str){
+			if (seps.find(c.tochar()) != null)
+				tokens.append("")
+			else
+				tokens[tokens.len() - 1] += c.tochar()
+		}
+		return tokens
+	}
+
 	function AnalyzeCell(cell){
 		local removethese = null
-		local sub = ::split(cell, ",\n")
+		local sub = DSplitSet(cell, ",\n")
 		if (!sub.len())								// no comma present, default, continue
 			return null
 		// local modname = sub[0]	
+		// T-95: drop the empty tokens BEFORE the scan below. Removing them inside that loop shifted the
+		// array under the absolute indices already recorded in `removethese`, which are only applied
+		// after it - so the deferred removal ran one past the end. (The old code's own comment asked
+		// why it never gave an out-of-range error: because the broken split() never produced an empty
+		// token at all. DSplitSet made them real.)
+		for (local i = sub.len() - 1; i >= 1; i--){
+			if (sub[i] == "")
+				sub.remove(i)
+		}
 		for (local i = 1; i < sub.len();i++){
-			if (sub[i] == ""){sub.remove(i)}		//;if (i == sub.len()) break}	// remove and straight continue with the next idx, why this never gives oor error?
-			//	continue
 			if (sub[i][kGetFirstChar] == '['){
 				removethese = []
 				local replace = [sub[i].slice(kRemoveFirstChar)]
 				local j = i + 1
-				while(!::endswith(sub[j],"]")){		// add next [ chars ]
+				while(j < sub.len() && !::endswith(sub[j],"]")){		// add next [ chars ]  (T-95: bounded - an unclosed '[' ran off the end)
 					//print("J is" + j + sub[j])
 					replace.append(sub[j])
 					removethese.append(j)
 					j++
 				}
 				//j--
-				replace.append(sub[j].slice(0,-1))
-				removethese.append(j)
+				if (j < sub.len()){					// T-95: only consume a real closing ']'
+					replace.append(sub[j].slice(0,-1))
+					removethese.append(j)
+				}
 				sub[i] = replace
 			} else {	// [] are literal the others could be numbers
 				local isnumber = ::DScript.IsNumber(sub[i])
@@ -327,15 +349,17 @@ delegator 	= {
 				if (cell[kGetFirstChar] == '{'){
 					// wanna replace the cell with a subtable, this is wanted for models with multiple fields.
 					local subtable = {}
-					local subcells = ::split(cell,"{=}\n")
+					local subcells = DSplitSet(cell, "{=}\n")	// T-94: keeps the leading empty token the i=1 loop start expects.
 					
 					for (local i = 1; i < subcells.len(); i++){
 						if (subcells[i] != ""){
-							if (subcells[i] != "KeepIndex"){
-								currentTable.write(subcells[i], AnalyzeCell(subcells[i+1]), overwrite)
-							}
-							else
-								currentTable.write(subcells[i], AnalyzeCell(subcells[i+1])[0], overwrite)
+							if (i + 1 >= subcells.len())					// T-96: a key without its value ran off the end.
+								break
+							local parsed = AnalyzeCell(subcells[i+1])
+							if (subcells[i] != "KeepIndex")
+								currentTable.write(subcells[i], parsed, overwrite)
+							else if (parsed)								// T-96: AnalyzeCell returns null for an empty value - [0] threw.
+								currentTable.write(subcells[i], parsed[0], overwrite)
 							i++
 						}
 					}
@@ -1127,10 +1151,3 @@ while (Object.Archetype(obj) != 0){
 	obj++
 }*/
 
-
-local s = "alxarm"
-foreach (signal in getconsttable().eAlarmSignals){
-			if (s == signal)
-				return	print("yes")
-		}
-	print("nope")

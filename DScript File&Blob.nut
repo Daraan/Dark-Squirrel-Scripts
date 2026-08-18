@@ -3,7 +3,7 @@
 #include DScript.nut // File & Blob Library is standalone.
 
 
-##		/--		�		�File_&_Blob_Library�		�		--\
+##		/--		§		§File_&_Blob_Library§		§		--\
 //
 //	This file contains tools to interact with files (read only) and blobs.
 //	Ultimately enabling the extraction of data/parameters from files. 
@@ -20,6 +20,10 @@ class dfile
 {
 /* More interestingly is the dblob class, but as most actions which work for blobs also work for files, this is the upper class but it the end they are codependant.*/
 myblob = null								// As we will work more with the derived dblob class
+_buf		 = null		// chunk buffer: one readblob per 4 KB instead of one readn per byte
+_bufStart	 = -1		// absolute position of _buf[0]
+_skipTable	 = null		// memoized Sunday shift table
+_skipPattern = null		// the pattern _skipTable was built for
 
 	constructor(filename, path = ""){
 		switch (typeof filename)
@@ -65,8 +69,8 @@ myblob = null								// As we will work more with the derived dblob class
 	}
 
 	function getParam2(param, def = "", start = 1, length = 0, offset = 0){
-		if (find(param, offset) >= 0){ 			// Check if present and move pointer behind pattern
-			myblob.seek(start, 'c')				// move start forward
+		if (find(param, offset) != null){ 			// Check if present and move pointer behind pattern
+			myblob.seek(param.len() - 1 + start, 'c')	// find() leaves the pointer one past the pattern's FIRST character - skip the tail, then 'start'				// move start forward
 			local rv = ""
 			for (local i = 0; (length? i < length : true); i++){		// if length == 0 it will read to the end of the line.
 				local c = readNext('\n')
@@ -79,6 +83,42 @@ myblob = null								// As we will work more with the derived dblob class
 		#DEBUG
 		// DPrint(param + " or separator " + separator + "not found.")
 		return def
+	}
+
+	function getParamsWithPrefix(prefix, start = 1, keyEnd = ':'){
+	/* One pass for a whole family of keys sharing a prefix, instead of one full scan per
+		key. Returns {suffix: value}, where suffix is the text between the prefix and the
+		next keyEnd character, and value is the rest of that line after skipping `start`
+		characters. Replaces N separate getParam2 calls over the same data. */
+		local found = {}
+		local at    = 0
+		while (true){
+			local hit = find(prefix, at)
+			if (hit == null || hit == false)
+				break
+			at = hit + prefix.len()
+			myblob.seek(at, 'b')
+			local key = ""
+			while (true){
+				local c = readNext(keyEnd)
+				if (!c)
+					break
+				if (c == ' ' || c == '\t')		// tolerate "Env Zone 63 :" - the old fixed-offset
+					continue					// read did not care about spacing either
+				key += c.tochar()
+			}
+			myblob.seek(start, 'c')
+			local val = ""
+			while (true){
+				local c = readNext('\n')
+				if (c)
+					val += c.tochar()
+				else break
+			}
+			if (key != "")
+				found[key] <- val
+		}
+		return found
 	}
 
 	/*
@@ -99,13 +139,23 @@ myblob = null								// As we will work more with the derived dblob class
 	function seek(offset, origin = 'b')
 		myblob.seek(offset, origin)
 	
+	function readRaw(){
+	/* One byte, UNSIGNED 0..255, no escape handling. This is the reader every search
+		path uses: blob[i] and readn('b') are unsigned, while readn('c') and string[i]
+		are signed, and mixing the two silently breaks any pattern byte >= 0x80. */
+		if (myblob.eos())
+			return null
+		return myblob.readn('b')
+	}
+
 	function readNext(separator = null){
 		if (myblob.eos())
 			return null
 		local c = myblob.readn('c')
 		if (c == '\\'){				// escape character
-			myblob.seek(1,'c')		// skip the next
-			c = myblob.readn('c')	// and get the next
+			if (myblob.eos())		// lone trailing backslash
+				return null
+			return myblob.readn('c')	// return the escaped character itself as a literal (it used to be skipped)
 		}
 		if (c == separator)
 			return false
@@ -128,41 +178,126 @@ myblob = null								// As we will work more with the derived dblob class
 	
 	function CheckIfSubstring(str){
 	/* Subfunction for find: Checks if the next characters in the blob match to the given substring.
-		Assumes that you already have prechecked the first character. readn == str[0]*/
+		Assumes that you already have prechecked the first character.
+		Both sides are compared UNSIGNED: blob bytes are 0..255, but string bytes are
+		signed, so str[i] needs the & 0xFF or nothing >= 0x80 ever matches. */
+		if (str.len() < 2)
+			return true
+		local pos = myblob.tell()
+		if (pos + str.len() - 1 > myblob.len())		// pattern tail would run past EOS - no match, no out-of-range read
+			return false
+		local rest = myblob.readblob(str.len() - 1)	// works for files AND blobs; '[]' byte indexing does not exist on file streams
+		myblob.seek(pos, 'b')						// restore the read position
 		for (local i = 1; i < str.len(); i++)
 		{	
-			if (myblob[tell() + i -1] != str[i]){
+			if (rest[i - 1] != (str[i] & 0xFF)){
 				return false	// One char does not match
 			}
 		}
 		return true				// All matched
 	}
 	
+	static kChunkSize = 4096
+
+	function _byteAt(pos){
+	/* Unsigned byte at an absolute position, or null past EOS. Reads in chunks: a file
+		stream costs one readblob per 4 KB here instead of one readn call per byte, and
+		that constant factor matters far more in the Squirrel VM than the comparison count. */
+		if (pos < 0 || pos >= myblob.len())
+			return null
+		if (_buf == null || pos < _bufStart || pos >= _bufStart + _buf.len()){
+			myblob.seek(pos, 'b')
+			local want = myblob.len() - pos
+			if (want > kChunkSize)
+				want = kChunkSize
+			_buf      = myblob.readblob(want)
+			_bufStart = pos
+		}
+		return _buf[pos - _bufStart]
+	}
+
+	function _dropBuffer(){
+	/* dfile streams a live file - anything that could have changed underneath drops the
+		buffer. Cheap insurance; the buffer is refilled on the next _byteAt. */
+		_buf      = null
+		_bufStart = -1
+		return this
+	}
+
+	function _skipFor(pattern){
+	/* Sunday bad-character table. array(256, fill) is a single native call, so building
+		this costs about m operations, not 256 - which is why it pays even at 1 KB. */
+		if (_skipPattern == pattern && _skipTable != null)
+			return _skipTable
+		local m = pattern.len()
+		local t = ::array(256, m + 1)
+		for (local i = 0; i < m; i++)
+			t[pattern[i] & 0xFF] = m - i
+		_skipTable   = t
+		_skipPattern = pattern
+		return t
+	}
+
+	function _findSunday(pattern, from){
+	/* Sunday / Quick Search. On a mismatch it looks at the byte one PAST the window and
+		shifts by that byte's entry, so shifts reach m+1. No stopString support - callers
+		with a stopString stay on the plain scan. Returns an index or null. */
+		local m = pattern.len()
+		local n = myblob.len()
+		if (m > n)
+			return null
+		local skip = _skipFor(pattern)
+		local i    = from
+		if (i < 0)
+			i = 0
+		while (i + m <= n){
+			local j = 0
+			while (j < m && _byteAt(i + j) == (pattern[j] & 0xFF))
+				j++
+			if (j == m){
+				myblob.seek(i + 1, 'b')		// match the byte scan: pointer one past the first char
+				return i
+			}
+			local next = _byteAt(i + m)		// the byte just past the window
+			if (next == null)
+				return null					// window cannot advance without running off the end
+			i += skip[next]
+		}
+		return null
+	}
+
 	function find(pattern, start = 0, stopString = null){	// stopCharacter could be used as a hard terminator beside EOS
+	/* Raw-byte search. Unlike readNext this does NOT honour '\\' escapes - a backslash is
+		an ordinary byte here. Escape handling stays in getParam/getParam2, which is where
+		it was ever meaningful; no skipping search can honour a byte it jumps over. */
 		if (pattern == "")
 			return 0							
 		myblob.seek( start, (start < 0)? 'e' : 'b')	// pointer to start or end.
 		if (typeof pattern == "integer"){
-			local stopChar = stopString? stopString[0] : -1;
+			local target   = pattern & 0xFF
+			local stopChar = stopString? (stopString[0] & 0xFF) : -1
 			while (true){
-				local c = readNext()
-				if (c == pattern)
+				local c = readRaw()
+				if (c == null)						// EOS. NOT `if (!c)` - a literal NUL byte is falsy too.
+					return null
+				if (c == target)
 					return myblob.tell() - 1		// Start Position is 1 before.
 				if (c == stopChar && CheckIfSubstring(stopString)){
 					// check if next characters match the stopString
 					return false
 				}
-				if (!c)								// null is EOS, false is stopCharacter
-					return c
 			}
 		} else {
-			local length = pattern.len()
-			if (length == 1)						// If the string has only length 1 we are done.
-				return (pattern[0], myblob.tell(), stopString)
+			if (pattern.len() == 1)					// If the string has only length 1 we are done.
+				return find(pattern[0], myblob.tell(), stopString)
+			if (stopString == null){
+				_dropBuffer()						// the stream may have changed since the last search
+				return _findSunday(pattern, myblob.tell())
+			}
 			while (true){
 				local first = find(pattern[0], myblob.tell(), stopString)
-				if (!first && first != 0)
-					return null						// EOS
+				if (first == null || first == false)
+					return first					// EOS (null) or stopString (false) - must stay distinct
 				
 				if (CheckIfSubstring(pattern))
 					return first
@@ -171,6 +306,10 @@ myblob = null								// As we will work more with the derived dblob class
 	}
 	
 	//	|-- Metamethods --|
+	/* #IMPORTANT: _typeof deliberately reports the type of the WRAPPED stream, not "instance".
+		So typeof mydfile gives "file" (or "blob" for a dblob) and can NEVER be used to test
+		whether something is a dfile/dblob/dCSV. Use instanceof for that - it is the only
+		reliable test:	if (x instanceof ::dfile)	*/
 	function _typeof()
 		return typeof myblob
 		
@@ -210,6 +349,10 @@ myblob = null								// As we will work more with the derived dblob class
 
 class dblob extends dfile
 {
+_strCache	= null		// string form of the blob, or null when not built
+_strHasNul	= null		// null = not checked yet; true/false = known. NUL means no native find.
+_searched	= 0			// searches so far; the string cache is only worth building from the 2nd
+
 /* This is a custom blob like class, which works as an interface between blobs, strings and files:
 	It combines basic blob&file functions like seek, writec with string operations like slice, find, +
 	And advanced functions like getParam to search and extract data from a blob. */
@@ -274,7 +417,7 @@ class dblob extends dfile
 				else {
 					myblob = str.readblob(str.len())
 				}
-				str.close()
+				(str instanceof ::dfile? str.myblob : str).close()
 				break
 			case "blob" :
 					if (str instanceof dblob)
@@ -306,17 +449,83 @@ class dblob extends dfile
 	function writec(str){
 		foreach (char in str)
 				myblob.writen(char,'c')
+		_invalidate()
 	}
 	
 //	|-- Metamethods -- |
 	function toblob()
 		return myblob
 	
+	function _invalidate(){
+	/* Every mutator must call this. A stale cache is a wrong search result.
+		NOTE: dblob(anotherDblob) shares the underlying blob, so mutating one does not
+		invalidate the other's cache. That aliasing predates this cache; avoid it. */
+		_strCache  = null
+		_strHasNul = null
+		return this
+	}
+
+	function _asString(){
+	/* Cached string form, for the native string.find fast path. Also records whether the
+		data contains a NUL - Squirrel's string.find is strstr-based and stops there, so
+		NUL-bearing blobs have to keep using the byte scan.
+		Deliberately RAW: no escape handling, because find() is raw-byte. _tostring is
+		the escape-aware one and does not use this cache. */
+		if (_strCache != null)
+			return _strCache
+		local n = myblob.len()
+		if (_strHasNul == null){				// decide once, remember until the next mutation
+			_strHasNul = false
+			for (local i = 0; i < n; i++){
+				if (myblob[i] == 0){
+					_strHasNul = true
+					break
+				}
+			}
+		}
+		if (_strHasNul)							// no point building a string native find cannot use
+			return null
+		_strCache = _joinBytes(0, n)
+		return _strCache
+	}
+
+	function _joinBytes(lo, hi){
+	/* Balanced binary concatenation over a half-open byte range. Squirrel strings are
+		immutable, so the obvious `str += c.tochar()` loop is O(n^2); merging halves is
+		O(n log n). Squirrel has no join(), or this would be one call. */
+		local n = hi - lo
+		if (n <= 0)
+			return ""
+		if (n <= 8){
+			local s = ""
+			for (local i = lo; i < hi; i++)
+				s += myblob[i].tochar()
+			return s
+		}
+		local mid = lo + n / 2
+		return _joinBytes(lo, mid) + _joinBytes(mid, hi)
+	}
+
 	function _tostring(){
+	/* Escape handling means the output is not a straight byte range, so scan for a
+		backslash first: when there is none - the overwhelmingly common case - hand the
+		whole blob to the balanced join. Only fall back to the per-byte loop otherwise. */
+		local n = myblob.len()
+		local hasEscape = false
+		for (local i = 0; i < n; i++){
+			if (myblob[i] == '\\'){
+				hasEscape = true
+				break
+			}
+		}
+		if (!hasEscape)
+			return _joinBytes(0, n)
 		local str = ""
-		for (local i = 0; i < myblob.len(); i++){	// TODO test, readn method or internal tostring again.
+		for (local i = 0; i < n; i++){
 			local c = myblob[i]
 			if (c == '\\'){							// escape Char, skip it and add next.
+				if (i + 1 >= n)						// lone trailing backslash - used to read past the end
+					break
 				c = myblob[i+1]
 				i += 1
 			}
@@ -327,13 +536,17 @@ class dblob extends dfile
 		
 	function _add(other){
 		myblob.seek(0,'e')
-		myblob.writeblob(other instanceof ::blob? other : other.myblob)	// distinguish between blob and dblob.
+		if (typeof other == "string")				// documented: dblob("A") + "string"
+			writec(other)
+		else
+			myblob.writeblob(other instanceof ::blob? other : other.myblob)	// distinguish between blob and dblob.
+		_invalidate()
 		return this
 	}	
 	
 	function _mul(other){
 		myblob.seek(0,'e')
-		writec(other)
+		writec(other)			// writec already invalidates
 		return this
 	}
 	
@@ -345,9 +558,54 @@ class dblob extends dfile
 				myblob.seek(key, key < 0? 'e' : 'b')
 				writec(value)
 			}
+			_invalidate()
 		}
 	}
 	
+	function find(pattern, start = 0, stopString = null){
+	/* Native string.find is C and beats any interpreted scan at these sizes. It is only
+		usable when: the pattern is a string, the data holds no NUL (strstr stops there),
+		and no stopString is in play (native find cannot honour a terminator). Everything
+		else falls through to the byte scan inherited from dfile. */
+		if (typeof pattern != "string" || pattern == "" || stopString != null)
+			return base.find(pattern, start, stopString)
+
+		// A NUL in the pattern, checked BEFORE building anything. Do NOT use
+		// pattern.find((0).tochar()) here: string.find is strstr-based, a one-NUL string
+		// is the empty string to strstr, and it therefore matches at 0 every time - which
+		// silently sent every single search down the fallback path.
+		for (local i = 0; i < pattern.len(); i++){
+			if ((pattern[i] & 0xFF) == 0)
+				return base.find(pattern, start, stopString)
+		}
+
+		// Building the cache costs a full pass over the blob, which is more than a single
+		// byte scan usually needs. So the first search on a blob stays on the byte scan and
+		// only a repeat search pays for the cache - after which it is ~400x cheaper.
+		if (_searched < 1 && _strCache == null){
+			_searched++
+			return base.find(pattern, start, stopString)
+		}
+
+		local s = _asString()
+		if (s == null)								// data holds a NUL - native find would truncate
+			return base.find(pattern, start, stopString)
+
+		local from = start
+		if (from < 0)								// native find ignores a negative start
+			from = s.len() + from
+		if (from < 0)
+			from = 0
+		if (from > s.len())
+			return null
+
+		local at = s.find(pattern, from)
+		if (at == null)
+			return null
+		myblob.seek(at + 1, 'b')					// match the byte scan: pointer one past the first char
+		return at
+	}
+
 	function _get(key){
 		if (typeof key == "integer") {
 			return myblob[key]
@@ -384,7 +642,7 @@ class dCSV extends dblob
 		useRowKey	  = useFirstColumnAsKey
 		useFile 	  = streamFile
 		lines 		  = []	
-		createCSVMatrix(separator)
+		createCSVMatrix(separator, commentstring, delimiter)
 	}
 	
 	// open uses optional inputs via a list!
@@ -407,7 +665,7 @@ class dCSV extends dblob
 		if (useRowKey && key in useRowKey)
 			return useRowKey[key]
 		// Alternative CSV like notation: dCSV[A1], #NOTE here that A is column, and 1 is row
-		if (key[0] < 91 && key[1] < 58)
+		if (key.len() > 1 && key[0] < 91 && key[1] < 58)
 			return lines[key.slice(1).tointeger() - 1][key[0] - 65]	// 65 is the ASCII difference between A and 0
 		throw null
 	}
@@ -456,7 +714,6 @@ class dCSV extends dblob
 
 // |-- Input Interpretation --|
 	function createCSVMatrix(separator = '\t', commentstring = "//", delimiter = '\''){
-		print("separator is " + separator.tochar())
 		myblob.seek(0,'b')		// Make sure pointer is at start
 		do {									// This loop is a line
 			local c = myblob[tell()]
@@ -468,6 +725,11 @@ class dCSV extends dblob
 			local delimiteractive 	= null
 			local lineraw 			= ""
 			while(true){				// This loops a cell
+				if (myblob.eos()){					// e.g. the file ends with a separator - nothing more to read
+					if (lineraw != "")
+						curline.append(lineraw)
+					break
+				}
 				local c = myblob.readn('c')
 				if (c == delimiter){
 					// check if next character is delimiter again, if it is it will be added if not sets delimiter = false and continue with next char.
@@ -509,7 +771,7 @@ class dCSV extends dblob
 					}
 				}
 				switch (c){
-				// this fixes the string like �� to be a "
+				// this fixes the string like „“ to be a "
 					case 108 - 255:
 					case 109 - 255:
 					case 124 - 255:
@@ -539,7 +801,8 @@ class dCSV extends dblob
 	function refresh(separator = '\t',delimiter = '\'', commentstring = "//"){
 		if (typeof myblob != "file")
 			throw "dCSV not initialized as stream. Can't refresh."
-		createCSVMatrix(separator, commentstring)
+		lines = []		// createCSVMatrix appends - without this every refresh duplicated all rows
+		createCSVMatrix(separator, commentstring, delimiter)
 	}
 
 }
@@ -571,7 +834,7 @@ DefOff = null
 	function OnBeginScript(){
 		// At Mission start create timestamp.
 		if (DGetParam(_script + "ClearAtNewGame", true) && !Quest.Exists("DTimestamp")){
-			Quest.Set("Timestamp", (date().yday<<11)+(date().hour<<6)+(date().min))
+			Quest.Set("DTimestamp", (date().yday<<11)+(date().hour<<6)+(date().min))
 		}
 		
 		// At SaveGame load, sent message?
@@ -583,10 +846,9 @@ DefOff = null
 		}
 		
 		IsOn = Engine.FindFileInPath("install_path", IsOn, string())
-		
-		print(IsOn)
+
 		if (IsOn)
-			base.RelayMessages("On")
+			base.DRelayMessages("On")
 		
 		if (RepeatForCopies(callee()))
 			base.OnBeginScript()
@@ -594,7 +856,7 @@ DefOff = null
 	
 	function DoOn(DN){
 		local event_name = DGetParam(_script + "EventName")
-		if (DGetParam(_script + "AllowNewGame")){
+		if (DGetParam(_script + "ClearAtNewGame", true)){
 			event_name = ::format("%s_%X", event_name, Quest.Get("DTimestamp"))
 		}
 		// make a save
@@ -681,8 +943,6 @@ class cDSaveHandler extends cDCustomHandler
 	
 		name = name.tostring()
 		map  = map.tostring()
-		print("map :" + map)
-		print("name :" + name)
 
 		local stamp = ""
 		// first 4 name characters
@@ -696,7 +956,8 @@ class cDSaveHandler extends cDCustomHandler
 				print("DScript Warning: DPersistentSave: FM Name not set - hopefully still playtest.", kDoPrint, ePrintTo.kLog | ePrintTo.kUI)
 		}
 		// Last 3 character of miss file
-		stamp += map.slice(-6,-4)	// last 4 are '.mis'
+		if (map.len() >= 6)
+			stamp += map.slice(-6,-4)	// last 4 are '.mis'
 		// And some check characters via both names
 		local key = 0
 		for (local i = 1; i < name.len(); i++)	// probably 0 in editor.
@@ -717,12 +978,20 @@ class cDSaveHandler extends cDCustomHandler
 		}
 		
 		File 	= ::dfile(eDLoad.kFile)
-		rawdata = File.slice(File.find(eDLoad.kStart), File.find(eDLoad.kEnd))	// blobs are way faster than doing this in the stream. More memory though.
+		local _start = File.find(eDLoad.kStart)
+		local _end   = File.find(eDLoad.kEnd)
+		if (_start == null || _end == null){
+			print("DScript ERROR: DPersistentSave: data markers not found in " + eDLoad.kFile)
+			rawdata = ::dblob("")
+		} else
+			rawdata = File.slice(_start, _end)	// blobs are way faster than doing this in the stream. More memory though.
 		local slot = null
+		local envzones = rawdata.getParamsWithPrefix("Env Zone ", 2)	// one pass instead of eight scans
 		for (local i = 63; i > 55; i--){							// While possible to check all slots. Limiting it to 8 slots.
-			local param = rawdata.getParam2("Env Zone "+i, null, 2)
+			local zkey  = i.tostring()
+			local param = (zkey in envzones)? envzones[zkey] : null
 			// print("P" + i + "=" + param + "'")
-			if (param == ""){										// Store first found empty slot.
+			if (param == null || param == ""){										// Store first found empty slot.
 				if (!slot){
 					slot = i
 				}
@@ -738,16 +1007,18 @@ class cDSaveHandler extends cDCustomHandler
 			if (!slot){
 			// All slots were used by EnvMaps or other missions.
 				// Check if a slot is not used by a save.
-				print("Found no slot, but saves avaliable")
+				if (::DHandler.DGetParamRaw("DMissionDebug"))
+					print("DScript: DPersistentSave: Found no slot, but saves avaliable")
 				for (local i = 63; i > 55; i--){
-					if (!(i.tostring() in Saves)){
+					if (!(i in Saves)){
 						slot = i
 					}
 				}
 			}
 			// For the current mission the slot shall always be 63
 			if (slot != 63){
-				print("mission save not in 63, moving others down by 1.")
+				if (::DHandler.DGetParamRaw("DMissionDebug"))
+					print("DScript: DPersistentSave: mission save not in 63, moving others down by 1.")
 				local temp = {} 									// Deleting and shifting during a foreach, bad idea use a new table.
 				foreach (idx, save in Saves){
 					// lower number by 1
@@ -766,7 +1037,9 @@ class cDSaveHandler extends cDCustomHandler
 			Saves = temp
 		}
 		if (!MissData)
-			MissData = ::blob() 
+			MissData = GetMissionPrint()
+			for (local i = MissData.len(); i < 63; i++)	// pad to the fixed record length: 10 print + 53 data characters
+				MissData += "-"
 		Saves[63] <- MissData
 		return MissData
 	}
@@ -776,9 +1049,10 @@ class cDSaveHandler extends cDCustomHandler
 		local backup ={}
 		Debug.Command("dump_tagblocks_vals", "DumpForBackups")
 		rawdata = File.slice(File.find(eDLoad.kStart), File.find(eDLoad.kEnd))
+		local envzones = rawdata.getParamsWithPrefix("Env Zone ", 2)	// one pass instead of one scan per slot
 		foreach (slot, save in Saves){
-			local data = rawdata.getParam2("Env Zone "+slot,"", 2, 0);	// original mission data
-			print(slot+data)
+			local zkey = slot.tostring()
+			local data = (zkey in envzones)? envzones[zkey] : ""			// original mission data
 			if (data != "")
 				backup[slot] <- data
 			Engine.SetEnvMapZone(slot, Saves[slot]);
@@ -791,9 +1065,7 @@ class cDSaveHandler extends cDCustomHandler
 	
 	function SetEvent(event_id, value, instantly = true){
 		assert(value >= 0 && value < 16)
-		print(MissData)
-		MissData = MissData.slice(0, -event_id) + value + MissData.slice(-event_id + 1)
-		print(MissData)
+		MissData = MissData.slice(0, -event_id) + ::format("%X", value) + (event_id > 1? MissData.slice(-event_id + 1) : "")
 		// TODO also do a backup blob
 		if (instantly)
 			SaveFile()
@@ -810,8 +1082,8 @@ class cDSaveHandler extends cDCustomHandler
 	}
 	
 	function GetEvent(event_id){
-		if (MissData[- event_id] != '-')
-			return ::DScript.CompileExpressions("0x",MissData[- event_id].tochar()) // HEX to int. # TODO is there really no easy way for hexstring to int???
+		if (MissData[MissData.len() - event_id] != '-')
+			return ::DScript.CompileExpressions("0x",MissData[MissData.len() - event_id].tochar()) // HEX to int. # TODO is there really no easy way for hexstring to int???
 		return null
 	}
 
@@ -850,18 +1122,16 @@ EventID	= null
 		}
 		// Get EventValue
 		local event_data = DSaveHandler.GetEvent(EventID)
-		DPrint("Event Data is "+ event_data, true)
-		print(typeof event_data)
+		DPrint("Event Data is "+ event_data)
 		// Is data not null 0 -> 15
 		if (event_data >= 0){
 			// DataMatch does allow some advanced comparison.
 			local test = DGetParam(_script + "DataMatch", null)				// gives a test string like "%d == 4"
 			if (test){
 				if (::DScript.CompileExpressions(::format(test, event_data)))	// Does the test return true?
-					base.RelayMessages("On", userparams(), _script, event_data)
+					base.DRelayMessages("On", userparams(), _script, event_data)
 			} else {
 			// Just differentiate between TRUE > 0 and FALSE == 0
-			if (event_data)
 				base.DRelayMessages(event_data? "On" : "Off", userparams(), _script, event_data)
 			}
 		}
@@ -874,7 +1144,7 @@ EventID	= null
 	function DoOn(DN){
 		local EventID = DGetParam(_script + "EventID")
 		if (DGetParam(_script + "AllowNewGame")){
-			event_name = ::format("%s_%s", event_name, Quest.Get("DTimestamp"))
+			// (leftover from DPersistentSaveSimple removed: event_name does not exist here and SetEvent takes no name)
 		}
 		::DSaveHandler.SetEvent(EventID, DGetParam(_script + "Data", 1))
 	}

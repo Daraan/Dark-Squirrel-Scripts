@@ -3,7 +3,7 @@ Script services provide functions to access systems in the engine.
 A script service is accessed simply by using the service name and calling a member function in it.
 For example:
 
-    Object.AddMetaProperty(self, FrobInert);
+    Object.AddMetaProperty(self, "FrobInert");
 
 	
 In a few cases function availability or arguments differ between Thief 1/G, Thief 2 and SS2. Those cases
@@ -290,7 +290,7 @@ ActReact
 {
 	HRESULT React(reaction_kind what, float stim_intensity, object target = 0, object agent = 0, cMultiParm parm1 = 0, cMultiParm parm2 = 0, cMultiParm parm3 = 0,
 					cMultiParm parm4 = 0, cMultiParm parm5 = 0, cMultiParm parm6 = 0, cMultiParm parm7 = 0, cMultiParm parm8 = 0);
-#ifNOT THIEF1
+#ifndef THIEF1
 	HRESULT Stimulate(object who, stimulus_kind what, float how_much, object source = 0);
 #else
 	HRESULT Stimulate(object who, stimulus_kind what, float how_much);
@@ -310,7 +310,7 @@ Data
 	// The string table comes from the .str file in finals\strings
 	// The third argument is the default string value to use if it isn't found 
 	// The fourth arg is a path relative to art\finals.  
-	string GetString( string table, string name, string def = , string relpath = strings);
+	string GetString( string table, string name, string def = "", string relpath = "strings");
 	
 	// Fetch an object string, using the property that corresponds to the table
 	# This uses the ObjID as a key to find a value in a preloaded table, standard tables are obj objdescs and objnames from RES\Strings
@@ -403,8 +403,8 @@ Sound
 	BOOL PlayEnvSchemaNet(object CallbackObject, string Tags, object SourceObject = 0, object AgentObject = 0, eEnvSoundLoc loc = kEnvSoundOnObj, eSoundNetwork Network = kSoundNetDefault);
 #endif
 	BOOL PlayVoiceOver(object cb_obj, object Schema);
-	int Halt(object TargetObject, string SoundName = , object CallbackObject = 0);
-	BOOL HaltSchema(object TargetObject, string SoundName = , object CallbackObject = 0);
+	int Halt(object TargetObject, string SoundName = "", object CallbackObject = 0);
+	BOOL HaltSchema(object TargetObject, string SoundName = "", object CallbackObject = 0);
 	HRESULT HaltSpeech(object speakerObj);
 	BOOL PreLoad(string SpeechName);
 }
@@ -753,7 +753,7 @@ DarkOverlay
 	
 	// get/load a bitmap that can be used for HUD drawing (max 128 bitmaps can be loaded, cleared when db resets)
 	// returns a handle that can be used in subsequent bitmap functions or -1 if failed to load
-	int GetBitmap(string name, string path = intrface\\);
+	int GetBitmap(string name, string path = "intrface\\");
 	
 	// discard a no longer used bitmap handle, only needs to be called when using a lot of bitmaps to stay below 128
 	FlushBitmap(int handle);
@@ -1007,14 +1007,14 @@ ShockOverlay
 	AddHandler(IShockOverlayHandler handler);
 	RemoveHandler(IShockOverlayHandler handler);
 	SetKeyboardInputCapture(BOOL bCapture);
-	int GetBitmap(string name, string path = iface\\);
+	int GetBitmap(string name, string path = "iface\\");
 	FlushBitmap(int handle);
 	GetBitmapSize(int handle, int_ref width, int_ref height);
-	BOOL SetCustomFont(int index, string name, string path = fonts\\);
+	BOOL SetCustomFont(int index, string name, string path = "fonts\\");
 	GetOverlayRect(int which, int_ref left, int_ref top, int_ref right, int_ref bottom);
 	int GetCursorMode();
 	ClearCursorMode();
-	BOOL SetCursorBitmap(string name, string path = iface\\);
+	BOOL SetCursorBitmap(string name, string path = "iface\\");
 	SetInterfaceMouseOverObject(object obj);
 	GetInterfaceFocusObject(object & obj);
 	OpenLookPopup(object obj);

@@ -221,7 +221,7 @@ class sAIModeChangeMsg extends sScrMsg
 }
 
 // Messages: "ObjActResult"	
-class sAIObjActResultMsg extends sScrMsg	AI.MakeGotoObjLoc...
+class sAIObjActResultMsg extends sScrMsg
 {
 	const eAIAction action;
 	const eAIActionResult result;
