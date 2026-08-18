@@ -42,6 +42,76 @@ DTest("DTrapTeleporter moves linked objects to the trap", function () {
 	AssertEq(p.x, 10.0); AssertEq(p.y, 20.0); AssertEq(p.z, 30.0)
 })
 
+::gBtn <- []
+class TestBtnCatcher extends SqRootScript {
+	function OnMessage() {
+		local m = message()
+		if (m.message == "BeginScript" || m.message == "EndScript") return
+		::gBtn.append(m.message)
+	}
+}
+
+local function Frob(button) {
+	World.SendSpecial("FrobWorldEnd", ::PlayerID, button, {
+		SrcObjId = 0, DstObjId = button, Frobber = ::PlayerID,
+		SrcLoc = eFrobLoc.kFrobLocNone, DstLoc = eFrobLoc.kFrobLocWorld,
+		Sec = 0.1, Abort = false })
+	World.Pump()
+}
+
+DTest("DStdButton: frob relays TurnOn, locked button only plays LockSound", function () {
+	::gBtn = []
+	local button = World.NewObj("Button")
+	local target = World.NewObj("Marker")
+	World.AddScript(button, "DStdButton")
+	World.AddScript(target, "TestBtnCatcher")
+	Link.Create("ControlDevice", button, target)
+
+	Frob(button)
+	AssertEq(::gBtn.len(), 1)
+	AssertEq(::gBtn[0], "TurnOn")
+
+	Property.SetSimple(button, "Locked", 1)
+	Frob(button)
+	AssertEq(::gBtn.len(), 1, "locked button must not relay")
+	local snd = World.TraceCalls("Sound", "PlaySchemaAtObject")
+	AssertTrue(snd.len() > 0, "lock sound played")
+	AssertEq(snd[snd.len() - 1][1], "noluck")
+})
+
+DTest("DStdButton: TrapFlags ONCE locks after the first push", function () {
+	::gBtn = []
+	local button = World.NewObj("Button")
+	local target = World.NewObj("Marker")
+	Property.SetSimple(button, "TrapFlags", 1)     // TRAPF_ONCE
+	World.AddScript(button, "DStdButton")
+	World.AddScript(target, "TestBtnCatcher")
+	Link.Create("ControlDevice", button, target)
+
+	Frob(button)
+	AssertEq(::gBtn.len(), 1)
+	AssertEq(Property.Get(button, "Locked"), true, "ONCE must lock the button")
+	Frob(button)
+	AssertEq(::gBtn.len(), 1, "second push blocked by the lock")
+})
+
+DTest("DAddScript writes script slot 4 and the Design Note, TurnOff clears", function () {
+	local trap = World.NewObj("Marker")
+	local target = World.NewObj("Marker")
+	World.SetDN(trap, "DAddScriptScript=\"TestBtnCatcher\";DAddScriptDN=\"Foo=1\"")
+	World.AddScript(trap, "DAddScript")
+	Link.Create("ControlDevice", trap, target)
+
+	World.Send(0, trap, "TurnOn")
+	World.Pump()
+	AssertEq(Property.Get(target, "Scripts", "Script 3"), "TestBtnCatcher")
+	AssertEq(Property.Get(target, "DesignNote"), "Foo=1")
+
+	World.Send(0, trap, "TurnOff")
+	World.Pump()
+	AssertEq(Property.Get(target, "Scripts", "Script 3"), "")
+})
+
 DTest("DTrapSetQVar applies its Operation expression to VAL", function () {
 	local trap = World.NewObj("Marker")
 	World.SetDN(trap, "DTrapSetQVarName=dstest_var;DTrapSetQVarOperation=\"VAL+5\"")

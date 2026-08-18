@@ -67,6 +67,13 @@ const TRUE = 1
 const FALSE = 0
 const S_OK = 0
 
+// ObjProp "TrapFlags" bits
+const TRAPF_NONE = 0
+const TRAPF_ONCE = 1
+const TRAPF_INVERT = 2
+const TRAPF_NOON = 4
+const TRAPF_NOOFF = 8
+
 enum eScrMsgFlags { kSMF_MsgSent = 1, kSMF_MsgBlock = 2, kSMF_MsgSendToProxy = 4, kSMF_MsgPostToOwner = 8 }
 enum eScrTimedMsgKind { kSTM_OneShot = 0, kSTM_Periodic = 1 }
 enum eKeyUse { kKeyUseDefault = 0, kKeyUseOpen = 1, kKeyUseClose = 2, kKeyUseCheck = 3 }
@@ -243,7 +250,9 @@ class linkset {
 // already contains accessors for the base fields plus its own.
 
 function _MkAccessor(key) {
-	return function () { return _fields[key] }   // free var -> this._fields
+	// missing specialized fields read as null instead of throwing, so a plain
+	// World.Send of e.g. "Combine" doesn't explode on sCombineScrMsg._dFROM
+	return function () { return (key in _fields) ? _fields[key] : null }
 }
 
 _MSG_BASEKEYS <- ["from", "to", "message", "time", "flags", "data", "data2", "data3"]
@@ -573,7 +582,8 @@ _MSG_CLASS <- {
 	// ---- messages
 
 	function _MkMsg(name, from, to, extra, data = null, data2 = null, data3 = null) {
-		local cls = (name in ::_MSG_CLASS) ? ::_MSG_CLASS[name] : sScrMsg
+		local cls = (name in ::_MSG_CLASS) ? ::_MSG_CLASS[name]
+			: (::endswith(name, "Stimulus") ? ::sStimMsg : ::sScrMsg)
 		local f = { from = from, to = to, message = name, time = time,
 			flags = 0, data = data, data2 = data2, data3 = data3 }
 		foreach (k, v in extra) f[k] <- v
@@ -998,9 +1008,17 @@ class _MockService {
 		return true
 	}
 	function UnsubscribeMsg(obj, name) {
+		local id = ::_ObjID(obj)
+		if (name == "*") {                       // engine wildcard: drop every subscription
+			foreach (k, arr in ::World.questSubs) {
+				local i = arr.find(id)
+				if (i != null) arr.remove(i)
+			}
+			return true
+		}
 		local k = name.tolower()
 		if (!(k in ::World.questSubs)) return true
-		local i = ::World.questSubs[k].find(::_ObjID(obj))
+		local i = ::World.questSubs[k].find(id)
 		if (i != null) ::World.questSubs[k].remove(i)
 		return true
 	}
@@ -1130,7 +1148,7 @@ class _MockService {
 	static _svc = "ActReact"
 	// mock: stimulating delivers "<StimName>Stimulus" straight to the object's scripts
 	function Stimulate(obj, stim, intensity, source = 0) {
-		local stimname = ::Object.GetName(stim)
+		local stimname = (typeof stim == "string") ? stim : ::Object.GetName(stim)
 		::World.SendSpecial(stimname + "Stimulus", ::_ObjID(source), ::_ObjID(obj),
 			{ stimulus = ::_ObjID(stim), intensity = intensity, sensor = 0, source = 0 })
 		return true
@@ -1258,6 +1276,10 @@ class SqRootScript {
 	_up = null              // userparams cache (engine caches the first parse too)
 
 	function GetClassName() { return _scriptName }
+	// the engine's typeof on a script instance yields the class name --
+	// DTrigger.GetClassName builds its "T" namespace from `typeof this`.
+	// (global type() stays "instance", which _GetInstance relies on)
+	function _typeof() { return _scriptName }
 
 	function message() {
 		local st = ::World.msgStack

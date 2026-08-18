@@ -41,6 +41,7 @@ yet, or the review found smaller problems than the ones below.
 | `DHub` | Non-functional, as the file header itself says. The undefined variables in its message loop were fixed, but the class also leaves `_script` mutated after its copy loop, has no `RepeatForCopies` support, and its `DGetParamRaw` name-mangling assumes `_script` always prefixes the parameter. It needs a rewrite (T-40), not point fixes. Don't use it. |
 | `&%anchor%LinkKind` re-anchor syntax | Throws a type error — the branch passes a char literal where `DivideAtNext` needs a string, so the whole `&%…%` form is dead (T-28). |
 | `+` combine operator | Loses its **first** element: the code removes index 0 expecting a leading empty split token that NewDark's `split()` never produces, so `"+A+B"` applies only `B`. Affects every `+` list, e.g. `DCopyPropertyTrapProperty` (T-29). |
+| `DTrapDeleteQVar` / `DScript.DeleteQVar` | Every call throws: the QVar trigger registry (`DScript.Quest`) shadows the engine's `Quest` service inside the library, and `DeleteQVar` calls it unqualified (T-120). |
 | `set dhelp` | Empty stub. So is the hello banner — it is gated behind a version higher than this one. |
 | `DRayAttach`, `DArmAttachmentUseObject` modes 2 and 3 | Documented but not implemented / labelled experimental by the author. |
 | `DSubInventory` auto-remove-when-empty | Implemented, then deliberately discontinued. |
