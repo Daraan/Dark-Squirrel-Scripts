@@ -99,6 +99,15 @@ myblob = null								// As we will work more with the derived dblob class
 	function seek(offset, origin = 'b')
 		myblob.seek(offset, origin)
 	
+	function readRaw(){
+	/* One byte, UNSIGNED 0..255, no escape handling. This is the reader every search
+		path uses: blob[i] and readn('b') are unsigned, while readn('c') and string[i]
+		are signed, and mixing the two silently breaks any pattern byte >= 0x80. */
+		if (myblob.eos())
+			return null
+		return myblob.readn('b')
+	}
+
 	function readNext(separator = null){
 		if (myblob.eos())
 			return null
@@ -129,7 +138,9 @@ myblob = null								// As we will work more with the derived dblob class
 	
 	function CheckIfSubstring(str){
 	/* Subfunction for find: Checks if the next characters in the blob match to the given substring.
-		Assumes that you already have prechecked the first character. readn == str[0]*/
+		Assumes that you already have prechecked the first character.
+		Both sides are compared UNSIGNED: blob bytes are 0..255, but string bytes are
+		signed, so str[i] needs the & 0xFF or nothing >= 0x80 ever matches. */
 		if (str.len() < 2)
 			return true
 		local pos = myblob.tell()
@@ -139,7 +150,7 @@ myblob = null								// As we will work more with the derived dblob class
 		myblob.seek(pos, 'b')						// restore the read position
 		for (local i = 1; i < str.len(); i++)
 		{	
-			if (rest[i - 1] != str[i]){
+			if (rest[i - 1] != (str[i] & 0xFF)){
 				return false	// One char does not match
 			}
 		}
@@ -147,30 +158,33 @@ myblob = null								// As we will work more with the derived dblob class
 	}
 	
 	function find(pattern, start = 0, stopString = null){	// stopCharacter could be used as a hard terminator beside EOS
+	/* Raw-byte search. Unlike readNext this does NOT honour '\\' escapes - a backslash is
+		an ordinary byte here. Escape handling stays in getParam/getParam2, which is where
+		it was ever meaningful; no skipping search can honour a byte it jumps over. */
 		if (pattern == "")
 			return 0							
 		myblob.seek( start, (start < 0)? 'e' : 'b')	// pointer to start or end.
 		if (typeof pattern == "integer"){
-			local stopChar = stopString? stopString[0] : -1;
+			local target   = pattern & 0xFF
+			local stopChar = stopString? (stopString[0] & 0xFF) : -1
 			while (true){
-				local c = readNext()
-				if (c == pattern)
+				local c = readRaw()
+				if (c == null)						// EOS. NOT `if (!c)` - a literal NUL byte is falsy too.
+					return null
+				if (c == target)
 					return myblob.tell() - 1		// Start Position is 1 before.
 				if (c == stopChar && CheckIfSubstring(stopString)){
 					// check if next characters match the stopString
 					return false
 				}
-				if (!c)								// null is EOS, false is stopCharacter
-					return c
 			}
 		} else {
-			local length = pattern.len()
-			if (length == 1)						// If the string has only length 1 we are done.
+			if (pattern.len() == 1)					// If the string has only length 1 we are done.
 				return find(pattern[0], myblob.tell(), stopString)
 			while (true){
 				local first = find(pattern[0], myblob.tell(), stopString)
-				if (!first && first != 0)
-					return null						// EOS
+				if (first == null || first == false)
+					return first					// EOS (null) or stopString (false) - must stay distinct
 				
 				if (CheckIfSubstring(pattern))
 					return first

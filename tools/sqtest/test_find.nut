@@ -35,4 +35,19 @@ AssertEq(p.getParam("absent", "dflt"), "dflt", "getParam: default on miss")
 local q = dblob("Env Zone 63: $abc\nEnv Zone 62: $def\n")
 AssertEq(q.getParam2("Env Zone 63", "", 2), "$abc", "getParam2: reads to end of line")
 
+// --- guarantees introduced by the raw-byte rewrite ---------------------------
+// NUL bytes no longer terminate the scan
+local z = dblob("ab" + (0).tochar() + "cdef")
+AssertEq(z.find("cd"), 3, "find: search continues past a NUL byte")
+
+// backslash is an ordinary byte now
+local esc = dblob("a\\bc")
+AssertEq(esc.find("\\b"), 1, "find: backslash is literal, not an escape")
+AssertEq(esc.len(), 4, "find: backslash occupies one byte")
+
+// stopString propagates false, distinct from null
+local st = dblob("aaa STOP bbb zzz")
+AssertEq(st.find("zzz", 0, "STOP"), false, "find: stopString hit returns false")
+AssertEq(st.find("qqq"), null, "find: plain miss still returns null")
+
 TestSummary()
