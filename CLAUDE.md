@@ -263,8 +263,19 @@ python3 -c "from pypdf import PdfReader; print('\n'.join(p.extract_text() for p 
 
 ## Verification
 
-**Almost nothing in this repo can be run, built, linted, or tested locally** — the one exception is
-`tools/sqtest/` below. Do not claim an engine-level change is tested. Verification happens in DromEd:
+**Logic-level testing without DromEd:** `tools/dstest/run_tests.sh` runs the real `.nut` files
+under a vanilla Squirrel 3.2 interpreter against a mock of the `squirrel.osm` API (objects,
+Design Notes, links, message pump, virtual-clock timers, save/load simulation). Use it after
+any behavioral change — `--load-only` proves all files still compile+load; add a test in
+`tools/dstest/tests/` for the behavior you touched. See `tools/dstest/README.md`.
+
+There is a second, narrower harness: `tools/sqtest/` exercises the pure-Squirrel `dfile` / `dblob` /
+`dCSV` half of `DScript File&Blob.nut` against a stock interpreter with no engine mock at all. Both
+are described below.
+
+Neither harness is the engine: rendering/AI/physics/sound are stubs, and only DromEd checks
+against the real NewDark build. Do not claim an engine-level change is tested. Final verification
+still happens in DromEd:
 
 | Command | Purpose |
 |---|---|
