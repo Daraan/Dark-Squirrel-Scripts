@@ -281,21 +281,26 @@ delegator 	= {
 			return null
 		// local modname = sub[0]	
 		for (local i = 1; i < sub.len();i++){
-			if (sub[i] == ""){sub.remove(i)}		//;if (i == sub.len()) break}	// remove and straight continue with the next idx, why this never gives oor error?
-			//	continue
+			if (sub[i] == ""){						// T-95: drop the empty token and re-test the same index - the old fall-through
+				sub.remove(i)						// indexed the element that moved into i (or ran past the end) right afterwards.
+				i--
+				continue
+			}
 			if (sub[i][kGetFirstChar] == '['){
 				removethese = []
 				local replace = [sub[i].slice(kRemoveFirstChar)]
 				local j = i + 1
-				while(!::endswith(sub[j],"]")){		// add next [ chars ]
+				while(j < sub.len() && !::endswith(sub[j],"]")){		// add next [ chars ]  (T-95: bounded - an unclosed '[' ran off the end)
 					//print("J is" + j + sub[j])
 					replace.append(sub[j])
 					removethese.append(j)
 					j++
 				}
 				//j--
-				replace.append(sub[j].slice(0,-1))
-				removethese.append(j)
+				if (j < sub.len()){					// T-95: only consume a real closing ']'
+					replace.append(sub[j].slice(0,-1))
+					removethese.append(j)
+				}
 				sub[i] = replace
 			} else {	// [] are literal the others could be numbers
 				local isnumber = ::DScript.IsNumber(sub[i])
@@ -344,11 +349,13 @@ delegator 	= {
 					
 					for (local i = 1; i < subcells.len(); i++){
 						if (subcells[i] != ""){
-							if (subcells[i] != "KeepIndex"){
-								currentTable.write(subcells[i], AnalyzeCell(subcells[i+1]), overwrite)
-							}
-							else
-								currentTable.write(subcells[i], AnalyzeCell(subcells[i+1])[0], overwrite)
+							if (i + 1 >= subcells.len())					// T-96: a key without its value ran off the end.
+								break
+							local parsed = AnalyzeCell(subcells[i+1])
+							if (subcells[i] != "KeepIndex")
+								currentTable.write(subcells[i], parsed, overwrite)
+							else if (parsed)								// T-96: AnalyzeCell returns null for an empty value - [0] threw.
+								currentTable.write(subcells[i], parsed[0], overwrite)
 							i++
 						}
 					}

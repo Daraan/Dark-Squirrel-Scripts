@@ -1434,7 +1434,7 @@ SubVersion 	= 0.72
 						}
 					}
 				}
-				if (head[1] == '<' || head[1] == '>'){		// radius sits directly after the { and ends at the box's <|> or the anchor's %
+				if (head.len() > 1 && (head[1] == '<' || head[1] == '>')){		// radius sits directly after the { and ends at the box's <|> or the anchor's %
 					local rend = dovec ? ((head[dovec - 1] == '<' || head[dovec - 1] == '>') ? dovec - 1 : dovec) : (pct ? pct : head.len())
 					if (rend > 2){							// not {<(x,y,z): there the <|> at [1] belongs to the box, no radius given.
 						values[1] = ::strip(head.slice(2, rend)).tofloat()
@@ -1474,7 +1474,11 @@ SubVersion 	= 0.72
 			case '<':	//vector
 				// NewDark split() matches the separator as ONE literal substring, not a char set - only single-char separators actually split.
 				local ar = ::split(str.slice(1), ",")				// drop the leading '<', split on ',' alone.
+				if (ar.len() < 3)								// T-97: fewer than three components - the indexes below threw.
+					return ::DScript._FormatForReturn(::vector(), returnInArray)
 				local z  = ::strip(ar[2])
+				if (z == "")									// T-97: an empty third component made z[z.len()-1] throw.
+					z = "0"
 				if (z[z.len()-1] == '>')							// documented syntax <x,y,z> - drop the closing bracket.
 					z = z.slice(0, -1)
 				return ::DScript._FormatForReturn( ::vector(::strip(ar[0]).tofloat(), ::strip(ar[1]).tofloat(), z.tofloat()), returnInArray) 

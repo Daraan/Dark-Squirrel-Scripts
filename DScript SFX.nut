@@ -74,7 +74,7 @@ Each parameter can target multiple objects also more than one special effect can
 						//Only change if distance changed.
 						if (time_max != d / vel_max){
 							::Property.Set(sfxobj,"PGLaunchInfo", "Min time", d / vel_max)
-							::Property.Set(sfxobj,"PGLaunchInfo"," Max time", d / vel_max)
+							::Property.Set(sfxobj,"PGLaunchInfo","Max time", d / vel_max)	// T-50: leading space did not match the field name the Get above uses.
 						}
 						//Gets the new facing vector. Trignometry is cool! 
 						if (h.y < 0)
@@ -1141,7 +1141,8 @@ class DRenameItem extends DTrigger
 	function OnCreate(){
 		//#NOTE: FIX: Items with stacks get copied when dropped when a Timer is active they permanently have the time attached.
 		//				Only possible if this script operates on self, else there is no message to the script.
-		if (DGetParam(_script, self) == self && ::startswith(DGetParam(_script + "Append", "").tostring(), "[Timer]"))
+		local DN = userparams()					// T-17: OnCreate has no DN parameter - the raw reference below threw.
+		if (DGetParam(_script, self, DN) == self && ::startswith(DGetParam(_script + "Append", "", DN).tostring(), "[Timer]"))
 			Property.Remove(DGetParam(_script, self, DN), "GameName")
 		if (RepeatForCopies(::callee()))
 			base.OnMessage()					// If there is a On Trigger for Create it will set it again.
