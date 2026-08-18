@@ -10,6 +10,11 @@ commits of previously-diverged `Scripts-in-progress` history. That merge only to
 unchanged, so every finding below that cites those two files is still accurate as originally written.
 Rows touching the changed files have been re-checked and updated in place; see each row's note.
 **Scope:** active V2 files only. Nothing in `backup/`, and nothing in the legacy files (see T-01).
+**Status re-verified:** 2026-08-18 on branch `worktree-review-fixes`. Every row was re-checked against
+the code rather than against the rollout report: 40 rows that were fixed on this branch but still read
+`☐` now carry their commit, and one row that *claimed* to be fixed (T-17) was not. New findings from
+that pass — including one regression the T-94 fix woke up — are in **Group J**. Nothing on this branch
+has run in DromEd; every `☑` there means "fixed by reading", not "verified".
 
 > Read [`../CLAUDE.md`](../CLAUDE.md) first — it has the file map, the class hierarchy, and the
 > repo gotchas (`grep -a`, mixed encodings, load order). This file is only the task list.
@@ -59,16 +64,16 @@ Each is a one-word edit. Every row here kills a feature outright.
 
 | ID | Priority | Location | Problem | Fix | Status |
 |---|---|---|---|---|---|
-| T-10 | P1 | `DScript Core.nut:1707,1709` | `local inter = …` then `if (!intern)` / `Reply(intern)`. Kills `OnDPingBack` whenever `msg.data` is set — i.e. the entire `/` chain operator | `intern` → `inter` | ☐ |
-| T-11 | P1 | `DScript Core.nut:1344` | `^%anchor%name` branch: locals are `str2`, code reads `div_str[1]` (out of scope) | `str = str2[2]` — check the intended split semantics | ☐ |
-| T-12 | P1 | `DScript Core.nut:1473` | Same bug in the `->%anchor%Prop:Field` branch | as above | ☐ |
-| T-13 | P1 | `DScript Core.nut:2645` | `DGetParam(_entry + "Delay")` — loop variable is `entry` | `_entry` → `entry` | ☐ |
-| T-14 | P1 | `DScript Core.nut:2639, 2671` | `if (!val && …)` — `DHub.OnBeginScript` / `OnResetCount` iterate `foreach (k, v …)`; `val` undefined | rename loop var or use `v` | ☐ |
-| T-15 | P1 | `DScript General.nut:161` | `vrom = from` — typo for `vfrom`, creates a global instead of setting the raycast origin. `DHitScanTrap` with a vector `From` is dead | `vrom` → `vfrom` | ☐ |
-| T-16 | P1 | `DScript General.nut:441` | `::PlayerID()` — `PlayerID` is an integer, called as a function. `DNotSuspAI.OnDamage` throws | drop the `()` | ☐ |
-| T-17 | P1 | `DScript SFX.nut:1055` | `DRenameItem.OnCreate` references `DN`, not a parameter of `OnCreate` | use `userparams()` | ☐ |
-| T-18 | P1 | `DScript SFX.nut:1409` | `::StackToQVar()` — root-table lookup of an instance method | drop the `::` | ☐ |
-| T-19 | P1 | `DScript Core.nut:1165-1166` | reads `getconsttable().MissionsConstants`; `DSConfigDefault.nut:72` (was `:71` before the 2026-08-04 merge) defines `MissionConstants`. `$`-operator fallback never resolves. `DScript_ModdingTools.nut:818` (was `:821`) spells it correctly | fix Core to `MissionConstants` | ☐ |
+| T-10 | P1 | `DScript Core.nut:1707,1709` | `local inter = …` then `if (!intern)` / `Reply(intern)`. Kills `OnDPingBack` whenever `msg.data` is set — i.e. the entire `/` chain operator | `intern` → `inter` | ☑ fixed `9c28ae0` — pending DromEd |
+| T-11 | P1 | `DScript Core.nut:1344` | `^%anchor%name` branch: locals are `str2`, code reads `div_str[1]` (out of scope) | `str = str2[2]` — check the intended split semantics | ☑ fixed `a2bfd3f` — pending DromEd |
+| T-12 | P1 | `DScript Core.nut:1473` | Same bug in the `->%anchor%Prop:Field` branch | as above | ☑ fixed `a2bfd3f` — pending DromEd |
+| T-13 | P1 | `DScript Core.nut:2645` | `DGetParam(_entry + "Delay")` — loop variable is `entry` | `_entry` → `entry` | ☑ fixed `52652a7` — pending DromEd |
+| T-14 | P1 | `DScript Core.nut:2639, 2671` | `if (!val && …)` — `DHub.OnBeginScript` / `OnResetCount` iterate `foreach (k, v …)`; `val` undefined | rename loop var or use `v` | ☑ fixed `52652a7` — pending DromEd |
+| T-15 | P1 | `DScript General.nut:161` | `vrom = from` — typo for `vfrom`, creates a global instead of setting the raycast origin. `DHitScanTrap` with a vector `From` is dead | `vrom` → `vfrom` | ☑ fixed `3275138` — pending DromEd |
+| T-16 | P1 | `DScript General.nut:441` | `::PlayerID()` — `PlayerID` is an integer, called as a function. `DNotSuspAI.OnDamage` throws | drop the `()` | ☑ fixed `58d8028` — pending DromEd |
+| T-17 | P1 | `DScript SFX.nut:1055` | `DRenameItem.OnCreate` references `DN`, not a parameter of `OnCreate` | use `userparams()` | ☑ fixed `ce09f01` — the earlier pass renamed the class but left the bare `DN`; pending DromEd |
+| T-18 | P1 | `DScript SFX.nut:1409` | `::StackToQVar()` — root-table lookup of an instance method | drop the `::` | ☑ fixed `58d8028` — pending DromEd |
+| T-19 | P1 | `DScript Core.nut:1165-1166` | reads `getconsttable().MissionsConstants`; `DSConfigDefault.nut:72` (was `:71` before the 2026-08-04 merge) defines `MissionConstants`. `$`-operator fallback never resolves. `DScript_ModdingTools.nut:818` (was `:821`) spells it correctly | fix Core to `MissionConstants` | ☑ fixed `a2bfd3f` — pending DromEd |
 
 ---
 
@@ -79,13 +84,13 @@ flow through here.
 
 | ID | Priority | Location | Problem | Fix | Status |
 |---|---|---|---|---|---|
-| T-20 | P1 | `DScript Core.nut:1123-1132` | `]objs]links` operator: `::split(str,"]")` — Squirrel `split` **drops empty tokens**, so parts land at `s[0]`/`s[1]`, but code uses `s[1]`/`s[2]`. Worse, `s[2]` is dereferenced at :1125 *before* the `s.len() != 3` guard | reindex to `s[0]`/`s[1]`; move the length guard above the deref | ☐ |
-| T-21 | P1 | `DScript Core.nut:1879` | `if (cond1.len() != cond2.len)` — missing `()`, compares int to closure, always true. `DCheckCondition` with `==` always takes the not-equal path | `cond2.len()` | ☐ |
-| T-22 | P2 | `DScript Core.nut:459` | `if ( !objset.len() == cur_idx )` parses as `(!objset.len()) == cur_idx` → true only at `cur_idx == 0`. `&<LinkType` net traversal stops after one hop | intended test is `objset.len() != cur_idx + 1` | ☐ |
-| T-23 | P2 | `DScript Core.nut:453, 485` | `if (!objset.find(x))` — index `0` is falsy, so the first set member is never seen as already-present (duplicate append / infinite path). `ObjectsInPath:467` does it right with `== null` | use `== null` | ☐ |
-| T-24 | P2 | `DScript Core.nut:1379` | `objset[Data.RandInt(0, objset.len())]` — `RandInt` is inclusive → can overrun by one | `objset.len() - 1`; guard empty set | ☐ |
-| T-25 | P2 | `DScript Core.nut:492` | `ObjectsLinkedFromSet(onlyfirst)` returns `[foundobjs[0]]` without an empty check | return `[]` when empty | ☐ |
-| T-26 | P3 | `DScript Core.nut:1083` | `if (str[1] == '|')` can index past the end for a 1-char `"["` parameter | length guard | ☐ |
+| T-20 | P1 | `DScript Core.nut:1123-1132` | `]objs]links` operator: `::split(str,"]")` — Squirrel `split` **drops empty tokens**, so parts land at `s[0]`/`s[1]`, but code uses `s[1]`/`s[2]`. Worse, `s[2]` is dereferenced at :1125 *before* the `s.len() != 3` guard | reindex to `s[0]`/`s[1]`; move the length guard above the deref | ☑ fixed `a2bfd3f` — pending DromEd |
+| T-21 | P1 | `DScript Core.nut:1879` | `if (cond1.len() != cond2.len)` — missing `()`, compares int to closure, always true. `DCheckCondition` with `==` always takes the not-equal path | `cond2.len()` | ☑ fixed `9c28ae0` — pending DromEd |
+| T-22 | P2 | `DScript Core.nut:459` | `if ( !objset.len() == cur_idx )` parses as `(!objset.len()) == cur_idx` → true only at `cur_idx == 0`. `&<LinkType` net traversal stops after one hop | intended test is `objset.len() != cur_idx + 1` | ☑ fixed `e346875` — pending DromEd |
+| T-23 | P2 | `DScript Core.nut:453, 485` | `if (!objset.find(x))` — index `0` is falsy, so the first set member is never seen as already-present (duplicate append / infinite path). `ObjectsInPath:467` does it right with `== null` | use `== null` | ☑ fixed `e346875` — pending DromEd |
+| T-24 | P2 | `DScript Core.nut:1379` | `objset[Data.RandInt(0, objset.len())]` — `RandInt` is inclusive → can overrun by one | `objset.len() - 1`; guard empty set | ☑ fixed `a2bfd3f` — pending DromEd |
+| T-25 | P2 | `DScript Core.nut:492` | `ObjectsLinkedFromSet(onlyfirst)` returns `[foundobjs[0]]` without an empty check | return `[]` when empty | ☑ fixed `e346875` — pending DromEd |
+| T-26 | P3 | `DScript Core.nut:1083` | `if (str[1] == '|')` can index past the end for a 1-char `"["` parameter | length guard | ☑ fixed `a2bfd3f` — pending DromEd |
 | T-27 | P3 | `DScript Core.nut:1370` | `+-` subset removal is O(n·m) and leaves a `.map` TODO; duplicates from `+` are deliberately not removed (documented decision) | optional | ⊘ |
 | T-94 | P2 | `DScript Core.nut:1414` (`{` distance op), `DScript_ModdingTools.nut:266, 330` | NewDark `split()` matches multi-char separators as one literal substring, not a char set — these calls never split, the whole string came back as one token. Found in-game 2026-08-13 via the `<x,y,z>` vector operator (fixed same day) | `{` header now scanned by hand; ModdingTools sites use a new keep-empties `DSplitSet` helper (their `i=1` loop starts expect the leading empty token). The fourth candidate at `:722` is inside the dead `/* DImportObj */` comment block — no fix needed. Raw bracket census of `check_files.py` shifted on Core (comment/string bytes); comment-and-string-aware balance verified 0/0/0 | ☑ pending DromEd verification |
 
@@ -95,16 +100,16 @@ flow through here.
 
 | ID | Priority | Location | Problem | Fix | Status |
 |---|---|---|---|---|---|
-| T-30 | P1 | `DScript Core.nut:2887` | `RepeatForCopies(::callee(NAME, NEW, OLD))` **invokes** `CheckQuest` instead of passing it → unbounded recursion on any subscribed QVar change | `RepeatForCopies(::callee(), NAME, NEW, OLD)` | ☐ |
-| T-31 | P1 | `DScript General.nut:703` | Same shape: `RepeatForCopies(::callee(DN))` in `DImUndercover.DoOff` | `(::callee(), DN)` | ☐ |
-| T-32 | P2 | `DScript SFX.nut:228` | `RepeatForCopies(OnTimer)` passes the bound method; framework comment explicitly warns to use `::callee()` | `::callee()` | ☐ |
-| T-33 | P2 | `DScript Core.nut:2318 / 2332` | Mission-init reads `"MissionInizialzed"`, writes `"MissionInitialized"` → block re-runs on every load. `DScript Core.nut:2802` reads the same misspelling | pick one spelling, use a const | ☐ |
-| T-34 | P2 | `DScript Core.nut:2320` vs `864-876` | Cleanup reads bin table `"MissBinTables"`; `SetQVar` writes `"MisBinTables"`. Mission-scoped bin tables are never purged between missions | one name, ideally a const in `DSConfigDefault.nut` | ☐ |
-| T-35 | P2 | `DScript SFX.nut:339` | `SetData(SetOneShotTimer(…))` — one argument; the timer handle is passed as the data *name* | `SetData("Active", SetOneShotTimer(…))` | ☐ |
-| T-36 | P3 | `DScript Core.nut:2340` | `CreateHashKey` = `format("%04u%s", self, _script)`; `%u` on a negative archetype ID, and IDs >9999 break the fixed width → collisions (`obj 1234`+`"5X"` vs `obj 12345`+`"X"`) | use a separator, e.g. `"%d|%s"` | ☐ |
-| T-37 | P3 | `DScript Core.nut:1607` | Known limitation: Count/Capacitor data is initialised in the editor only, so runtime-created objects never get counters | needs a design decision — a lazy init on `BeginScript` with a one-shot lock was sketched but rejected on memory grounds | ☐ |
-| T-38 | P3 | `DScript Core.nut:1985` | Author's own TODO: does `ExclusiveDelay` + infinite repeat cancel without restarting? | verify in DromEd | ☐ |
-| T-39 | P3 | `DScript Core.nut:2410` | `PerMidFrame_DoUpdates` hard-references `DHudObject.pos_vector`, coupling Core to `DScript SFX.nut`; throws every frame if SFX isn't shipped | move the vector to `DScriptHandler`, or guard | ☐ |
+| T-30 | P1 | `DScript Core.nut:2887` | `RepeatForCopies(::callee(NAME, NEW, OLD))` **invokes** `CheckQuest` instead of passing it → unbounded recursion on any subscribed QVar change | `RepeatForCopies(::callee(), NAME, NEW, OLD)` | ☑ fixed `499306d` — pending DromEd |
+| T-31 | P1 | `DScript General.nut:703` | Same shape: `RepeatForCopies(::callee(DN))` in `DImUndercover.DoOff` | `(::callee(), DN)` | ☑ fixed `58d8028` — pending DromEd |
+| T-32 | P2 | `DScript SFX.nut:228` | `RepeatForCopies(OnTimer)` passes the bound method; framework comment explicitly warns to use `::callee()` | `::callee()` | ☑ fixed `58d8028` — pending DromEd |
+| T-33 | P2 | `DScript Core.nut:2318 / 2332` | Mission-init reads `"MissionInizialzed"`, writes `"MissionInitialized"` → block re-runs on every load. `DScript Core.nut:2802` reads the same misspelling | pick one spelling, use a const | ☑ fixed `47878c4` — pending DromEd |
+| T-34 | P2 | `DScript Core.nut:2320` vs `864-876` | Cleanup reads bin table `"MissBinTables"`; `SetQVar` writes `"MisBinTables"`. Mission-scoped bin tables are never purged between missions | one name, ideally a const in `DSConfigDefault.nut` | ☑ fixed `9f47b50` — pending DromEd |
+| T-35 | P2 | `DScript SFX.nut:339` | `SetData(SetOneShotTimer(…))` — one argument; the timer handle is passed as the data *name* | `SetData("Active", SetOneShotTimer(…))` | ☑ fixed `d2419a0` — pending DromEd |
+| T-36 | P3 | `DScript Core.nut:2340` | `CreateHashKey` = `format("%04u%s", self, _script)`; `%u` on a negative archetype ID, and IDs >9999 break the fixed width → collisions (`obj 1234`+`"5X"` vs `obj 12345`+`"X"`) | use a separator, e.g. `"%d|%s"` | ☑ fixed `47878c4` — now `"%d_%s"`; pending DromEd |
+| T-37 | P3 | `DScript Core.nut:1607` | Known limitation: Count/Capacitor data is initialised in the editor only, so runtime-created objects never get counters | needs a design decision — a lazy init on `BeginScript` with a one-shot lock was sketched but rejected on memory grounds | ☑ fixed `9c28ae0` — `ConstructParameters` re-inits at runtime; pending DromEd |
+| T-38 | P3 | `DScript Core.nut:1985` | Author's own TODO: does `ExclusiveDelay` + infinite repeat cancel without restarting? | verify in DromEd | ☐ still a DromEd question, not a code defect — nothing to change until it is answered |
+| T-39 | P3 | `DScript Core.nut:2410` | `PerMidFrame_DoUpdates` hard-references `DHudObject.pos_vector`, coupling Core to `DScript SFX.nut`; throws every frame if SFX isn't shipped | move the vector to `DScriptHandler`, or guard | ☑ fixed `47878c4` — guarded by `"DHudObject" in ::getroottable()`; pending DromEd |
 
 ---
 
@@ -113,18 +118,18 @@ flow through here.
 | ID | Priority | Script | Location | Problem | Fix | Status |
 |---|---|---|---|---|---|---|
 | T-40 | P1 | `DHub` | `DScript Core.nut:2538+` | Declared non-functional in the file header; confirmed by T-13/T-14 plus `DGetParamRaw` name-mangling that assumes `_script` is always a prefix of `par` | fix T-13/T-14 first, then re-review the whole class | ☐ |
-| T-41 | P1 | `DImUndercover` | `DScript General.nut:569, 593, 598, 616, 622, 638, 650-658` | `if (modes | N)` — bitwise OR, non-zero for any `modes`. **Every mode always applies**; `DImUndercoverMode` has no effect | `|` → `&` throughout | ☐ |
-| T-42 | P1 | `DImUndercover` | `DScript General.nut:588 / 647` | The `else // Use Custom Metas only` is attached to `if (alertness < 2)`, not to the `UseMetas` check → metas only apply to *already-alerted* AIs, the opposite of intent | re-nest against `DGetParam(_script+"UseMetas")` | ☐ |
-| T-43 | P1 | `DTeleportPlayerTrap` | `DScript SFX.nut:1300-1303` | `if (!dest)` branches inverted → computes `Object.Position(victim) + null` when no offset is set | swap the branches | ☐ |
-| T-44 | P1 | `DTPBase` | `DScript SFX.nut:1277-1279` | `local x = ("DTpX" in DN)? x = DN.DTpX : 0;` — `y` and `z` also assign to `x`, each reads its own uninitialised local. `DTpY`/`DTpZ` are dead | rewrite the three lines properly | ☐ |
-| T-45 | P1 | `DPortal` | `DScript SFX.nut:1377` | `if (dest == false)` but `GetTeleportVector()` returns `null` → the ScriptParams-destination fallback never runs | `if (dest == null)`, or return `false` consistently | ☐ |
-| T-46 | P2 | `DDrunkPlayerTrap` | `DScript SFX.nut:1205` | Re-serialises the timer payload in the wrong order: writes `(…, Length, Length, FadeInTime, …)` into slots read as `(…, Length, FadeInTime, FadeOutTime, …)`. After tick 1 the fade values are corrupt. `:1212` also reads `Length` where `FadeInTime` is meant | rewrite using the `eDrunkData` enum for both read and write | ☐ |
-| T-47 | P2 | `DAddScript` | `DScript General.nut:331` | Slot check accepts the slot if the archetype has *any* `Script 3`, rather than checking it matches `newscript` | compare against `newscript` | ☐ |
-| T-48 | P2 | `DStackToQVar` | `DScript General.nut:404` | Hard-codes `"DStackToQVarVar"` instead of `_script + "Var"` → breaks under `Copies` and in subclass `DModelByCount` | use `_script` | ☐ |
-| T-49 | P2 | `DObjectPanTo` (renamed from `DFocusOverTime` by the 2026-08-04 merge; same class) | `DScript SFX.nut:276, 308, 362` | Author's acknowledged `#BUG`: removing a viewer inside its own `foreach` skips an element, and desyncs the parallel `offset` array | collect removals in a second array, apply after the loop | ☐ |
-| T-50 | P2 | `DRay` | `DScript SFX.nut:74` | Property field name `" Max time"` has a leading space (`"Min time"` does not) | verify against the real property name in DromEd | ☐ |
+| T-41 | P1 | `DImUndercover` | `DScript General.nut:569, 593, 598, 616, 622, 638, 650-658` | `if (modes | N)` — bitwise OR, non-zero for any `modes`. **Every mode always applies**; `DImUndercoverMode` has no effect | `|` → `&` throughout | ☑ fixed `58d8028` — pending DromEd |
+| T-42 | P1 | `DImUndercover` | `DScript General.nut:588 / 647` | The `else // Use Custom Metas only` is attached to `if (alertness < 2)`, not to the `UseMetas` check → metas only apply to *already-alerted* AIs, the opposite of intent | re-nest against `DGetParam(_script+"UseMetas")` | ☑ fixed `58d8028` — pending DromEd |
+| T-43 | P1 | `DTeleportPlayerTrap` | `DScript SFX.nut:1300-1303` | `if (!dest)` branches inverted → computes `Object.Position(victim) + null` when no offset is set | swap the branches | ☑ fixed `58d8028` — pending DromEd |
+| T-44 | P1 | `DTPBase` | `DScript SFX.nut:1277-1279` | `local x = ("DTpX" in DN)? x = DN.DTpX : 0;` — `y` and `z` also assign to `x`, each reads its own uninitialised local. `DTpY`/`DTpZ` are dead | rewrite the three lines properly | ☑ fixed `58d8028` — pending DromEd |
+| T-45 | P1 | `DPortal` | `DScript SFX.nut:1377` | `if (dest == false)` but `GetTeleportVector()` returns `null` → the ScriptParams-destination fallback never runs | `if (dest == null)`, or return `false` consistently | ☑ fixed `58d8028` — pending DromEd |
+| T-46 | P2 | `DDrunkPlayerTrap` | `DScript SFX.nut:1205` | Re-serialises the timer payload in the wrong order: writes `(…, Length, Length, FadeInTime, …)` into slots read as `(…, Length, FadeInTime, FadeOutTime, …)`. After tick 1 the fade values are corrupt. `:1212` also reads `Length` where `FadeInTime` is meant | rewrite using the `eDrunkData` enum for both read and write | ☑ fixed `58d8028` — read and write both use `eDrunkData`; pending DromEd |
+| T-47 | P2 | `DAddScript` | `DScript General.nut:331` | Slot check accepts the slot if the archetype has *any* `Script 3`, rather than checking it matches `newscript` | compare against `newscript` | ☑ fixed `3eb95f6` — pending DromEd |
+| T-48 | P2 | `DStackToQVar` | `DScript General.nut:404` | Hard-codes `"DStackToQVarVar"` instead of `_script + "Var"` → breaks under `Copies` and in subclass `DModelByCount` | use `_script` | ☑ fixed `3eb95f6` — pending DromEd |
+| T-49 | P2 | `DObjectPanTo` (renamed from `DFocusOverTime` by the 2026-08-04 merge; same class) | `DScript SFX.nut:276, 308, 362` | Author's acknowledged `#BUG`: removing a viewer inside its own `foreach` skips an element, and desyncs the parallel `offset` array | collect removals in a second array, apply after the loop | ☑ fixed `58d8028` — removals collected, applied after the loop; pending DromEd |
+| T-50 | P2 | `DRay` | `DScript SFX.nut:74` | Property field name `" Max time"` has a leading space (`"Min time"` does not) | verify against the real property name in DromEd | ☑ fixed `ce09f01` — `Set` now uses the same `"Max time"` the `Get` reads. **Confirm the real field name in DromEd** — if the engine wants the leading space, the `Get` is the wrong one |
 | T-51 | P3 | `DRay` | `DScript SFX.nut:99-103` | Author's "important TODO": particle-count scaling maths is self-cancelling (`extra + d - extra = d`, so `d/n == 1`). Needs old-vs-new value comparison | per the inline note | ☐ |
-| T-52 | P3 | `cDIngameLogOverlay` | `DScript Overlays.nut:41, 70` (2nd occurrence was `:73` before the 2026-08-04 merge) | `Y = SizeX.tointeger() + Y` — should be `SizeY`. Negative-Y log positioning is wrong (duplicated in constructor and `OnUIEnterMode`). *Also new since that merge:* the `kIngameLogAlpha` constant was renamed to `kGameLogAlpha` (cosmetic, all call sites updated together), and the `UpdateTOverlaySize` call inside `DrawTOverlay` (`:87`) is now commented out — worth confirming in DromEd whether the background box still resizes correctly, since nothing else appears to size it after creation | `SizeY`; also de-duplicate the two identical blocks | ☐ |
+| T-52 | P3 | `cDIngameLogOverlay` | `DScript Overlays.nut:41, 70` (2nd occurrence was `:73` before the 2026-08-04 merge) | `Y = SizeX.tointeger() + Y` — should be `SizeY`. Negative-Y log positioning is wrong (duplicated in constructor and `OnUIEnterMode`). *Also new since that merge:* the `kIngameLogAlpha` constant was renamed to `kGameLogAlpha` (cosmetic, all call sites updated together), and the `UpdateTOverlaySize` call inside `DrawTOverlay` (`:87`) is now commented out — worth confirming in DromEd whether the background box still resizes correctly, since nothing else appears to size it after creation | `SizeY`; also de-duplicate the two identical blocks | ☑ fixed `43de2e6` — pending DromEd |
 
 ---
 
@@ -139,7 +144,7 @@ Do this before any performance work — `DCheckString` is the hottest function i
 | T-62 | P3 | `DScript Core.nut:2218, 2333, 2770, 2805, 2864` | Stray `print()` / `"DID BEGIN"` / `"DID SIM"` | ☑ done `29f3bb7` — also the InitQVarFromProp traces and two `kDoPrint` DPrints that wrote on-screen text in game |
 | T-63 | P3 | `DScript SFX.nut` (`DDirector`), `DScript_ModdingTools.nut` (`DPerformanceTest`) | Several development `print()` calls | ☑ done `f284495` — DDirector's seven prints removed. `DPerformanceTest`'s prints are the tool's own output and were kept; a leftover top-level scratch snippet that printed on every compile was removed instead |
 | T-64 | P3 | `DScript Core.nut:891` | Unreachable statement after `return` in `SetQVar` — was it meant to replace the line above? | ☑ done `dfbd83a` — no: the reachable `DScript.Quest.QuestChange` line is the live notify path; the dead `::DHandler.Extern.DQVarHandler` line (nothing registers that handler) was deleted |
-| T-65 | P3 | `DScript Core.nut:2018-2019` | Unreachable block after `return false` — carries a real TODO about per-frame `{Off}` support (see T-70) | ☐ |
+| T-65 | P3 | `DScript Core.nut:2018-2019` | Unreachable block after `return false` — carries a real TODO about per-frame `{Off}` support (see T-70) | ☑ fixed `9c28ae0` — folded into the T-70 per-frame `{Off}` work; pending DromEd |
 | T-66 | P3 | `DScript SFX.nut:1603` | `if (true || DGetParam(_script + "FixedTime"))` — forced branch, `DDirector` non-fixed-time path is unreachable | ☑ done `dfbd83a` — reads `FixedTime` with default `true` (shipped behavior unchanged; per-frame path opt-in via `FixedTime=0`, still needs DromEd verification) |
 | T-67 | P3 | `DScript Core.nut:1286-1295` | `>` file operator: `Engine.FindFileInPath` result is printed (`"yes in "` / `"nope try again"`) but never used — `dblob.open(sref)` runs with an unvalidated path | ◐ prints removed `29f3bb7`, branches kept with TODOs. The unvalidated path is still open |
 
@@ -151,7 +156,7 @@ Author's own markers, worth knowing before designing anything nearby.
 
 | ID | Location | Feature | State | Status |
 |---|---|---|---|---|
-| T-70 | `DScript Core.nut:2015` | Per-frame delay `{Off}` support | Sketched in a dead code path; needs the action flag stored in the registry key | ☐ |
+| T-70 | `DScript Core.nut:2015` | Per-frame delay `{Off}` support | Sketched in a dead code path; needs the action flag stored in the registry key | ☑ fixed `9c28ae0` — action stored as the leading character of the `InfRepeat` data; pending DromEd |
 | T-71 | `DScript Core.nut:162-177` | `set dhelp` console help | Both branches are empty stubs; the hello banner at `:152` is also gated behind `DScriptVersion > 0.90` so it never fires at 0.81 | ☐ |
 | T-72 | `DScript Core.nut:1287` | `>` operator file lookup | No path caching, no FM-relative resolution (`// TODO cache location, check FM`) | ☐ |
 | T-73 | `DScript SFX.nut:17, 113` | `DRayAttach` | Documented but not implemented | ☐ |
@@ -190,12 +195,50 @@ Author's own markers, worth knowing before designing anything nearby.
 
 ---
 
+## Group J — Found re-reviewing this branch (2026-08-18)
+
+A gap pass over `worktree-review-fixes` looking for tracked bugs that were never actually fixed,
+bugs the fixes themselves introduced, and sites of an already-fixed *class* of bug that the
+original sweep missed. Everything below was traced by reading; nothing has run in DromEd.
+
+Two findings are worth calling out because of how they arose:
+
+- **T-17 was marked fixed but was not.** The earlier pass renamed things around
+  `DRenameItem.OnCreate` and left the bare `DN` reference in place, so the handler still threw
+  on every Create. Do not trust a "closed" row without re-grepping the line.
+- **T-95 is a fix-induced regression.** `AnalyzeCell` had a latent remove-then-index bug whose own
+  comment asked *"why this never gives oor error?"* — the answer was that the broken multi-char
+  `split()` never produced an empty token. The T-94 fix (`e102993`) made empty tokens real and
+  woke the bug up. Fixing a parser can activate dead code downstream of it.
+
+| ID | Priority | Location | Problem | Fix | Status |
+|---|---|---|---|---|---|
+| T-95 | P1 | `DScript_ModdingTools.nut:280` | `AnalyzeCell`: `if (sub[i] == ""){sub.remove(i)}` then falls straight through to `sub[i][kGetFirstChar]` — after the removal that index holds the element that shifted down, or is past the end. The `[`…`]` scan below it (`while(!::endswith(sub[j],"]"))`) is likewise unbounded and runs off the array on an unclosed bracket. Latent until `e102993` (T-94) made `DSplitSet` return the empty tokens the loop was written for | re-test the same index after removing; bound the `j` scan and only consume a real closing `]` | ☑ fixed `ce09f01` — pending DromEd |
+| T-96 | P2 | `DScript_ModdingTools.nut:346` | `ImportCSVData` reads `subcells[i+1]` without checking it exists (a trailing key with no value overruns) and indexes `AnalyzeCell(subcells[i+1])[0]`, which is `null` for an empty value | bounds-check before the read; null-check the parse before `[0]` | ☑ fixed `ce09f01` — pending DromEd |
+| T-97 | P2 | `DScript Core.nut:1476` | `<x,y,z>` vector operator indexes `ar[2]` unconditionally — a short (`<1,2`) or malformed vector throws out of `DCheckString` instead of degrading. An empty third component also makes `z[z.len()-1]` throw | return a zero vector when fewer than three components; treat an empty component as `0` | ☑ fixed `ce09f01` — pending DromEd |
+| T-98 | P3 | `DScript Core.nut:1436` | `{` distance operator reads `head[1]` unconditionally; a bare `{` parameter is one character long | length guard | ☑ fixed `ce09f01` — pending DromEd |
+| T-99 | P2 | `DScript General.nut:484, 553`, `DScript SFX.nut:1474` | Same class of bug as T-48: parameters built from a hard-coded class name instead of `_script`. `DNotSuspAI.DoOff` reads `"DNotSuspAIUseMetas"`, so the `DNotSuspAI1` / `DNotSuspAI3` subclasses never see their own `UseMetas`; `DImUndercover.constructor` reads `"DImUndercoverForgetMe"` and `DPortal` reads `"DPortalTarget"`, both dead under `Copies` | `_script + "<Suffix>"` — identical string for the base class, so no Design Note breaks | ☑ fixed — pending DromEd |
+| T-100 | P3 | `DScript SFX.nut:1430` | `DTrapTeleporter.DoOn` reads `DGetParam("DTeleportStatic", …)`. Unlike T-99 this name is not the class name either, so it cannot be mechanically rewritten to `_script + "Static"` without changing the Design Note key mission authors already write | decide whether the documented key is `DTeleportStatic` or `DTrapTeleporterStatic`, then make code and docs agree | ☐ |
+| T-101 | P3 | `DScript_ModdingTools.nut:343, 355` | `ImportCSVData` builds `local subtable = {}`, never writes to it (the parsed values go to `currentTable`), then assigns the empty table over the cell with `line[idx] = subtable` | decide whether the cell should keep the parsed subtable or be removed like the other branches do | ☐ |
+| T-102 | P2 | `DScript Core.nut:2763, 2780, 2839` | `DHub` mutates `_script` in `OnBeginScript`, `OnTimer` and `OnMessage` and never restores it — the copy loop in `OnMessage` exits with `_script` set to a suffix that is not in the Design Note. A later message that matches none of the branches then does every parameter lookup under a stale name. This is the T-91 design property, unapplied to `DHub` | restore `GetClassName()` on every exit path; fold into the T-40 rewrite | ☐ |
+| T-103 | P3 | `DScript File&Blob.nut:50-51` | `dfile.getParam` guards with `if (valid >= 0)`, but `find()` returns `null` (EOS) or `false` (stopString hit), never a negative number — the guard leans on Squirrel's cross-type comparison, and `false >= 0` is true. The next line, `if (find(separator, valid))`, treats a separator at index 0 as not-found | test `typeof valid == "integer"`, and `!= null` on the separator search. **Coordinate first** — another session is reworking this file's search core | ☐ |
+| T-104 | P3 | `DScript Core.nut:1424, 1476` | Both vector-ish parsers use `split(…, ",")`, which drops empty tokens, so interior empty fields collapse and shift the remaining components onto the wrong axis: `<1,,3>` parses as `(1,3,0)`. Same known limitation already recorded for the `>` operator | a keep-empties splitter (`DSplitSet` in `DScript_ModdingTools.nut` is the pattern) if per-axis omission should be supported at all | ☐ |
+
+---
+
 ## Suggested order
 
-1. ~~**T-01**~~ — resolved by the 2026-08-04 merge, no longer blocks anything.
-2. **Group B** (T-10…T-19) — one-word edits, each restores a dead feature.
-3. **T-30, T-31** — recursion; T-30 fires on a common event.
-4. **T-41, T-42** — `DImUndercover` is completely unmoded today.
-5. **T-20, T-21** — parser bugs; everything downstream depends on them.
-6. **T-60** — strip the hot-path prints before touching `DPerformanceTest`.
-7. Then Groups D/E by priority, and Group H alongside.
+Groups B and C, the original head of this list, are now closed on `worktree-review-fixes` — but
+closed by reading, not by running. That inverts the priority: the cheap edits are done, and what
+is left is either verification or structural work.
+
+1. **DromEd verification of this branch.** Nothing below matters if the fixes do not load.
+   `script_reload`, then walk [`CHANGES_AND_VERIFICATION.md`](CHANGES_AND_VERIFICATION.md).
+   Start with the four ⚠ commits in [`review/ROLLOUT-2026-08-05.md`](review/ROLLOUT-2026-08-05.md)
+   and with T-95/T-96, which sit in the editor-only CSV import path and have never been exercised.
+2. **T-40** — the `DHub` rewrite, with **T-102** folded in. The only P1 left, and the file header
+   still tells authors the class does not work.
+3. **T-99/T-100** — finish the `_script`-vs-hard-coded-name sweep so `Copies` is honestly supported.
+4. **Group H** (docs) — the 0.81 manual now exists; T-81…T-85 are what it still does not cover.
+5. **T-93** — decide the encoding question before anything bulk-edits `DScript Core.nut`.
+6. Then Group G by appetite: these are the author's own unfinished features, not defects.

@@ -1471,7 +1471,7 @@ DPortalTarget="+player+#88+@M-MySpecialAIs"
 		SetData("PortalTimer", 
 				SetOneShotTimer("GoPortal", 0.1, 
 					::DScript.ArrayToString(
-						DGetParam("DPortalTarget", message().transObj, DN, kReturnArray)
+						DGetParam(_script + "Target", message().transObj, DN, kReturnArray)	// T-99: hard-coded name broke under Copies.
 				)));
 	}
 

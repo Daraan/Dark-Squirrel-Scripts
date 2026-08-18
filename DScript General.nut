@@ -481,7 +481,7 @@ maxAlert = 2				//Max Suspecious level 2
 	function DoOff(DN = null){
 		//ClearData("OldTeam")
 		Property.SetSimple(self,"AI_Team",GetData("OldTeam"))
-		if (!DGetParam("DNotSuspAIUseMetas", false)){
+		if (!DGetParam(_script + "UseMetas", false)){		// T-99: hard-coded name missed the DNotSuspAI1/3 subclasses and Copies.
 			Property.Remove(self,"AI_Hearing")
 			Property.Remove(self,"AI_Vision")					
 			Property.Remove(self,"AI_InvKnd")
@@ -550,7 +550,7 @@ DefOn="FrobInvEnd"			//Default using the object with the script in your inventor
 		if (!IsEditor()){return} //AI Watch values are set in the editor.
 		
 		//TODO: Explain next step. AIs will always create Links to the player. Triggering the script off, even when not in direct sight will aggro them when he was seen before.
-		if(DGetParam("DImUndercoverForgetMe",false,userparams()))
+		if(DGetParam(_script + "ForgetMe",false,userparams()))	// T-99: hard-coded name broke under Copies.
 		{
 			Property.Add(self,"AI_WtchPnt")
 			Property.Set(self,"AI_WtchPnt","Watch kind","Player intrusion")

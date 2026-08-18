@@ -3,66 +3,77 @@
 **Read this before you build a mission on V2.**
 
 V2 is a pre-alpha rewrite. Two static review passes over the framework (2026-08-02…05) confirmed
-**141 defects** — 55 in the base classes, 86 in the individual scripts. Nothing in this branch has
-been verified at runtime; the reviews were done by reading the code, not by playing missions.
+**141 defects** — 55 in the base classes, 86 in the individual scripts. Most of them now have a fix
+on the `worktree-review-fixes` branch, and a status re-verification on 2026-08-18 checked those
+fixes against the code rather than against the rollout notes.
 
-This file lists the parts that are known **not to work**, so you don't spend a day debugging your
-Design Note for a bug that is ours. It is a summary — the full findings live in
-`docs/review/wave1/` and `docs/review/wave2/`, and the fix list with file:line is
-[`OPEN_TASKS.md`](OPEN_TASKS.md).
+**Nothing on that branch has run.** Every fix below is a static edit traced against the failure it
+was meant to remove; none has been loaded in DromEd, none has been played. So this file has two
+halves, and the difference between them matters:
+
+- **Still broken** — do not build on these.
+- **Fixed, unverified** — the bug is gone from the source. Whether the script now *works* is
+  unknown. Treat these as "worth trying, report what happens", not as "safe".
+
+The fix list with file:line is [`OPEN_TASKS.md`](OPEN_TASKS.md); the full findings live in
+`docs/review/wave1/` and `docs/review/wave2/`; per-change test recipes are in
+[`CHANGES_AND_VERIFICATION.md`](CHANGES_AND_VERIFICATION.md).
 
 If your feature is not listed here, that does not mean it works. It means nobody has looked at it
 yet, or the review found smaller problems than the ones below.
 
 ## Rule of thumb for the alpha
 
-- Treat **TurnOff / cleanup paths** as unverified everywhere. They are systematically worse than the
-  TurnOn paths: effects leak, countdowns survive, timers restart, `OnEndScript` overrides drop
-  framework registrations.
-- Avoid the **`Copies` parameter** on the scripts listed under *Copies is broken* below.
-- Avoid **QVar writes** as the backbone of a mission for now (see below).
+- Treat **TurnOff / cleanup paths** as unverified everywhere. They were systematically worse than
+  the TurnOn paths — effects leaked, countdowns survived, timers restarted, `OnEndScript` overrides
+  dropped framework registrations — and they are the paths least likely to be exercised by a quick
+  test.
 - Keep an eye on `monolog.txt` / `Thief2.log`. Set `[ScriptName]Debug=1` in a Design Note to see the
   framework's own stage-by-stage trace for that object.
+- Report anything that throws. On this branch a stack trace is data, not a surprise.
 
-## Completely non-functional
+---
+
+## Still broken
 
 | Script / feature | What happens |
 |---|---|
-| `DHub` | Non-functional, as the file header itself says. Undefined variables in its message loop. Don't use it. |
-| `DHitScanTrap` | Dead in both directions: `DoOff()` has the wrong signature so every TurnOff throws, and TurnOn throws unless *both* `TOnResult` and `TOffResult` are set. A vector `From` never reaches the raycast. |
-| Persistent save (`DPersistentSave`, `DPersistentSaveSimple`, `DPersistentSaveTrap`) | Cannot run. Four independent fatal faults in the read/parse/relay chain, each sufficient on its own. Do not build campaign-persistent state on it. |
-| `DTrigQVar` | Never subscribes to any QVar, so it never triggers. When it is made to subscribe, a second bug recurses unboundedly on every QVar change. |
-| `DImUndercover` modes | `DImUndercoverMode` has no effect — a bitwise `\|` where `&` was meant means every mode always applies. Custom metaproperties are applied only to already-alerted AIs, the opposite of the intent. |
-| `/` ping-back chain operator | Dies on a typo whenever the message carries data. |
-| `DTeleportPlayerTrap`, `DTPBase` offsets, `DPortal` ScriptParams destination | Inverted conditions / mis-assigned locals. `DTpY` and `DTpZ` are dead; the ScriptParams fallback never runs. |
-| `DRenameItem.OnCreate`, `DStackToQVar`'s QVar write, `DNotSuspAI.OnDamage` | Each throws on an undefined name or a call on a non-function. |
-| `set dhelp` | Empty stub. So is the hello banner (it is gated behind a version higher than this one). |
+| `DHub` | Non-functional, as the file header itself says. The undefined variables in its message loop were fixed, but the class also leaves `_script` mutated after its copy loop, has no `RepeatForCopies` support, and its `DGetParamRaw` name-mangling assumes `_script` always prefixes the parameter. It needs a rewrite (T-40), not point fixes. Don't use it. |
+| `set dhelp` | Empty stub. So is the hello banner — it is gated behind a version higher than this one. |
 | `DRayAttach`, `DArmAttachmentUseObject` modes 2 and 3 | Documented but not implemented / labelled experimental by the author. |
 | `DSubInventory` auto-remove-when-empty | Implemented, then deliberately discontinued. |
+| `DRay` particle-count scaling | The scaling maths is self-cancelling, so the particle count never changes. The lifetime-scaling path (`Scaling=1`) was repaired separately and is in the unverified list below. |
+| `DAutoTxtRepl` subtables | Always overwritten; the `#` → 0 range is not handled. |
+| Vector components | `split()` drops empty fields, so an omitted middle component shifts the rest onto the wrong axis — `<1,,3>` parses as `(1,3,0)`. Write all three. |
+| `>` operator | Interior empty fields (`>>`) are collapsed the same way, and the file path is used without checking the lookup succeeded. No path caching, no FM-relative resolution. |
+| `Copies` above 9 | Now parses, but nothing has confirmed the higher suffixes behave. `DTeleportStatic` is still read under a hard-coded name (T-100). |
 
-## Works, but wrong
+## Fixed on this branch — unverified, please test
 
-| Script / feature | What to expect |
+Each of these was confirmed broken by review and has a fix in the source. **None has been run.**
+
+| Script / feature | What was wrong |
 |---|---|
-| `DRay` | Crashes on the **second** TurnOn in the default configuration, and never destroys the particle object it created on TurnOff. Its particle-count scaling is a no-op. |
-| Design Note parsing | Several operators are misparsed: `]objs]links` indexes the wrong parts, `==` in a `Condition` never matches, `&<LinkType` net traversal stops after one hop, and an empty value (`Foo=;`) throws instead of defaulting. |
-| QVar writes | Most `SetQVar` calls for non-default storage types throw instead of writing. The `"` append operator discards its result. `DTrapDeleteQVar` without an explicit `Type` fails. |
-| Mission init / cleanup | A misspelled data key makes the mission-init block re-run on every load, and mission-scoped bin tables are never purged between missions. |
-| HUD / per-frame updates | After the last consumer deregisters, the per-mid-frame subsystem refuses to re-attach until a save/reload. Affects `DHudObject`, `DHudCompass`, `DObjectPanTo`'s per-frame mode. |
-| `DObjectPanTo` | Removing a viewer inside its own loop skips an element (the author's own `#BUG` note). |
-| `DDrunkPlayerTrap` | Fade values are corrupt after the first tick. |
-| `DAddScript` | Slot check accepts a slot that holds a *different* script. |
-| `DDirector` | Crashes on TurnOff-before-TurnOn; the non-fixed-time path is unreachable; link data conversions throw on non-numeric data. |
-| `cDIngameLogOverlay` | Negative-Y positioning uses the wrong axis. Whether the background box still resizes is unconfirmed. |
-| Counters / capacitors | Only initialised in the editor, so objects created at runtime never get them. `Capacitor` combined with `OnCapacitor` can fire early. |
-| `DAutoTxtRepl` | Subtables are always overwritten; the `#` → 0 range is not handled. |
-
-## Copies is broken on
-
-`DRay` (DoOff), `DDrunkPlayerTrap` (whole class), `DHudObject` (Rotation/Spin), `DDirector`
-(Freelook), `DStackToQVar` / `DModelByCount`. These read hard-coded script names instead of the
-effective one, so the 2nd–9th copy reads the 1st copy's parameters. Note also that `Copies` only
-supports 2–9.
+| `DHitScanTrap` | Dead in both directions: `DoOff()` had the wrong signature so every TurnOff threw, TurnOn threw unless *both* `TOnResult` and `TOffResult` were set, and a vector `From` never reached the raycast. |
+| Persistent save (`DPersistentSave`, `DPersistentSaveSimple`, `DPersistentSaveTrap`) | Four independent fatal faults in the read/parse/relay chain, each sufficient on its own. Still the least-trustworthy area here — do not build campaign-persistent state on it without testing first. |
+| `DTrigQVar` | Never subscribed to any QVar, so it never triggered; and the subscription path recursed unboundedly on every QVar change. |
+| `DImUndercover` modes | A bitwise `\|` where `&` was meant made every mode always apply, so `DImUndercoverMode` had no effect. Custom metaproperties were applied only to already-alerted AIs, the opposite of the intent. |
+| `/` ping-back chain operator | Died on a typo whenever the message carried data. |
+| `DTeleportPlayerTrap`, `DTPBase` offsets, `DPortal` | Inverted conditions and mis-assigned locals: `DTpY`/`DTpZ` were dead and the ScriptParams-destination fallback never ran. |
+| `DRenameItem.OnCreate`, `DStackToQVar`, `DNotSuspAI.OnDamage` | Each threw on an undefined name or a call on a non-function. `DRenameItem.OnCreate` was reported fixed once and was not — it is fixed now. |
+| Design Note parsing | `]objs]links` indexed the wrong parts, `==` in a `Condition` never matched, `&<LinkType` net traversal stopped after one hop, an empty value (`Foo=;`) threw instead of defaulting, and `<x,y,z>` threw on the documented closing `>`. |
+| QVar writes | Most `SetQVar` calls for non-default storage types threw instead of writing; the `"` append operator discarded its result; `DTrapDeleteQVar` without an explicit `Type` failed. |
+| Mission init / cleanup | A misspelled data key made the mission-init block re-run on every load, and mission-scoped bin tables were never purged between missions. |
+| HUD / per-frame updates | After the last consumer deregistered, the per-mid-frame subsystem refused to re-attach until a save/reload. Affected `DHudObject`, `DHudCompass`, and `DObjectPanTo`'s per-frame mode. Core also hard-referenced `DHudObject` even when `DScript SFX.nut` was not shipped. |
+| `DObjectPanTo` | Removing a viewer inside its own loop skipped an element (the author's own `#BUG` note). |
+| `DDrunkPlayerTrap` | Fade values were corrupt after the first tick. |
+| `DAddScript` | Slot check accepted a slot holding a *different* script. |
+| `DDirector` | Crashed on TurnOff-before-TurnOn; link data conversions threw on non-numeric data. |
+| `cDIngameLogOverlay` | Negative-Y positioning used the wrong axis. Whether the background box still resizes is unconfirmed. |
+| Counters / capacitors | Were initialised in the editor only, so objects created at runtime never got them. |
+| `DRay` | Crashed on the **second** TurnOn in the default configuration and never destroyed the particle object it created on TurnOff. Its `Scaling=1` lifetime path wrote a property field name that did not match the one it read. |
+| `Copies` | `DRay` (DoOff), `DDrunkPlayerTrap`, `DHudObject` (Rotation/Spin), `DDirector` (Freelook), `DStackToQVar` / `DModelByCount`, `DNotSuspAI` subclasses, `DPortal` and `DImUndercover` all read hard-coded script names, so the 2nd–9th copy read the 1st copy's parameters. |
+| `DAutoTxtRepl` CSV import | Its cell parser never split at all (the separator was matched as one literal substring), and repairing that woke a latent out-of-range bug in the same loop. Editor-only path, entirely unexercised. |
 
 ## System Shock 2
 
@@ -80,7 +91,9 @@ can catch them before shipping.
 
 ## What has not been reviewed at all
 
-The undercover suite beyond the bugs listed above, and `DScript_ModdingTools.nut`.
+The undercover suite still has no line-by-line review — only its tracked bugs were fixed.
+`DScript_ModdingTools.nut` had none until the 2026-08-18 pass, which covered its CSV-import path
+only; the rest of the file is still unreviewed.
 
 ## Reporting
 
