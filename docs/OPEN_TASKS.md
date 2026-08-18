@@ -92,7 +92,7 @@ flow through here.
 | T-25 | P2 | `DScript Core.nut:492` | `ObjectsLinkedFromSet(onlyfirst)` returns `[foundobjs[0]]` without an empty check | return `[]` when empty | ☑ fixed `e346875` — pending DromEd |
 | T-26 | P3 | `DScript Core.nut:1083` | `if (str[1] == '|')` can index past the end for a 1-char `"["` parameter | length guard | ☑ fixed `a2bfd3f` — pending DromEd |
 | T-27 | P3 | `DScript Core.nut:1370` | `+-` subset removal is O(n·m) and leaves a `.map` TODO; duplicates from `+` are deliberately not removed (documented decision) | optional | ⊘ |
-| T-94 | P2 | `DScript Core.nut:1414` (`{` distance op), `DScript_ModdingTools.nut:266, 330` | NewDark `split()` matches multi-char separators as one literal substring, not a char set — these calls never split, the whole string came back as one token. Found in-game 2026-08-13 via the `<x,y,z>` vector operator (fixed same day) | `{` header now scanned by hand; ModdingTools sites use a new keep-empties `DSplitSet` helper (their `i=1` loop starts expect the leading empty token). The fourth candidate at `:722` is inside the dead `/* DImportObj */` comment block — no fix needed. Raw bracket census of `check_files.py` shifted on Core (comment/string bytes); comment-and-string-aware balance verified 0/0/0 | ☑ pending DromEd verification |
+| T-94 | P2 | `DScript Core.nut:1414` (`{` distance op), `DScript_ModdingTools.nut:266, 330` | NewDark `split()` matches multi-char separators as one literal substring, not a char set — these calls never split, the whole string came back as one token. Found in-game 2026-08-13 via the `<x,y,z>` vector operator (fixed same day) | `{` header now scanned by hand; ModdingTools sites use a new keep-empties `DSplitSet` helper (their `i=1` loop starts expect the leading empty token). The fourth candidate at `:722` is inside the dead `/* DImportObj */` comment block — no fix needed. Raw bracket census of `check_files.py` shifted on Core (comment/string bytes); comment-and-string-aware balance verified 0/0/0. **Reopened and re-closed 2026-08-18** — the sweep missed four more sites: `Core:2712` (`"=;"`, DHub sub-DesignNotes), `Core:2894` (`":;"`, `InitQVarFromProp`) and `SFX:1169, 1201` (`"[,]"`, `DTweqDevice` joints, see T-107). All four now use the new `::DScript.SplitAny` helper | ☑ pending DromEd verification |
 
 ---
 
@@ -223,6 +223,55 @@ Two findings are worth calling out because of how they arose:
 | T-102 | P2 | `DScript Core.nut:2763, 2780, 2839` | `DHub` mutates `_script` in `OnBeginScript`, `OnTimer` and `OnMessage` and never restores it — the copy loop in `OnMessage` exits with `_script` set to a suffix that is not in the Design Note. A later message that matches none of the branches then does every parameter lookup under a stale name. This is the T-91 design property, unapplied to `DHub` | restore `GetClassName()` on every exit path; fold into the T-40 rewrite | ☐ |
 | T-103 | P3 | `DScript File&Blob.nut:50-51` | `dfile.getParam` guards with `if (valid >= 0)`, but `find()` returns `null` (EOS) or `false` (stopString hit), never a negative number — the guard leans on Squirrel's cross-type comparison, and `false >= 0` is true. The next line, `if (find(separator, valid))`, treats a separator at index 0 as not-found | test `typeof valid == "integer"`, and `!= null` on the separator search. **Coordinate first** — another session is reworking this file's search core | ☐ |
 | T-104 | P3 | `DScript Core.nut:1424, 1476` | Both vector-ish parsers use `split(…, ",")`, which drops empty tokens, so interior empty fields collapse and shift the remaining components onto the wrong axis: `<1,,3>` parses as `(1,3,0)`. Same known limitation already recorded for the `>` operator | a keep-empties splitter (`DSplitSet` in `DScript_ModdingTools.nut` is the pattern) if per-axis omission should be supported at all | ☐ |
+| T-105 | P1 | `DScript Core.nut:1356` | `>` file operator: the begin/end branch is guarded by `divide.len() > 5`, but after the leading-empty-token restore at `:1255` the documented 6-field separator form (`>path>file>key>offset>"`) is already length 6. It takes the branch and reads `divide[6]`/`divide[7]` — out of range, killing the whole parameter parse. Only the `begin,end` form appends those two fields (length 8) | `divide.len() > 6` | ☑ fixed — pending DromEd |
+| T-106 | P2 | `DScript Core.nut:2097` (fixed), `:2290` (open) | `DStopInfRepeat` detected a per-frame registration with `data.find("F") != null` — an `F` *anywhere* in the payload. `CreateHashKey` now embeds the script name (T-36), so a per-mid-frame payload naming a script with an `F` in it took the per-frame branch, and per-mid-frame registrations were never deregistered at all. `DBaseTrap.OnBeginScript:1685` already pins the test to index 0 or 1 | mirror the `== 0 \|\| == 1` test and add the `PerMidFrame_DeRegister` branch. **Still open:** `DTrigger.OnBeginScript` has the same loose test and no per-mid-frame re-register — left alone because adding one changes T-mode restore behaviour and wants DromEd first | ◐ `DStopInfRepeat` fixed; `DTrigger` open |
+| T-107 | P2 | `DScript SFX.nut:1169, 1201` | Two more T-94 survivors: `DTweqDevice` splits its `Joints` list on `"[,]"`, so the default `"1,2,3,4,5,6"` stays one token and the loops build property names like `"Joint1,2,3,4,5,6AnimS"`. The class is non-functional in both the constructor and `DoOn` | `::DScript.SplitAny` (new in Core) | ☑ fixed — pending DromEd |
+| T-108 | P1 | `DScript SFX.nut:386` | `DObjectPanTo.DoOn` calls `UpdateAll()` and then `Viewers.len()`. When every viewer already faces the target within `Speed`, `UpdateAll()` finishes the queue and calls `DoOff()`, which sets `Viewers = null` — so the next line throws. Reachable with a high `Speed` or a pre-aimed camera | `if (!Viewers \|\| !Viewers.len()) return` | ☑ fixed — pending DromEd |
+| T-109 | P2 | `DScript SFX.nut:1105` | `DRenameItem.DoOff` clears `Ticks` unconditionally, but `Ticks` is exactly the marker `DoOn` tests to honour `NoRestart`, and `OnTimer` deliberately keeps it when `NoRestart > 1`. `OnTimer` calls `DoOff` right after that decision, so `NoRestart` never blocks a second countdown | decide the keep in `OnTimer`, restore the marker after `DoOff` | ☑ fixed — pending DromEd |
+| T-110 | P2 | `DScript General.nut:191` | `DHitScanTrap`'s ignore-set backup uses `Property.Possessed`, which reports **inherited** properties too. For the normal case — an object inheriting `RenderType` from its archetype — the restore path then calls `SetSimple` with the inherited value and bakes a permanent local override onto every ignored object, which is the exact leak the fix's own comment claims to avoid | `PossessedSimple` (`API-reference_services.txt:131`) | ☑ fixed — pending DromEd |
+| T-111 | P3 | `DScript Core.nut:1255` | `>` operator: `divide.insert(0,"")` restores only the *leading* empty token. `split()` drops interior ones too, so the documented skip-a-field form (`>strings/testfile.txt>MyVal>>1,0`, the comment at `:1251`) still collapses — the empty offset field vanishes and `1,0` lands in the parameter-name slot. Field numbering is only correct for inputs with no empty interior fields | a keep-empties split for this operator, or drop the skip-a-field syntax from the docs | ☐ |
+| T-112 | P3 | `DScript File&Blob.nut:916` | `GetSaveRaw`: `if (!MissData)` has no braces, so only the assignment is conditional and the 63-char padding loop below it runs on every call — including when `MissData` came from an existing save slot, silently rewriting short or legacy records | add braces. **Coordinate first** — another session is reworking this file | ☐ |
+| T-113 | P3 | `DScript_ModdingTools.nut:294` | `AnalyzeCell` resets `removethese = []` inside each `[`…`]` group, so with two groups in one cell only the last group's tokens are removed. The scan also re-visits the tokens *inside* a group as ordinary cells before they are removed | accumulate across groups; skip past `j` after a group | ☐ |
+
+---
+
+## Group K — `dfile`/`dblob` search core (2026-08-18)
+
+Optimisation pass over the text search in `DScript File&Blob.nut`, plus the correctness bugs it
+turned up. Unlike every other group here, **these were verified by running them** — the pure-Squirrel
+half of that file depends only on the Squirrel stdlib, so `tools/sqtest/` builds a stock Squirrel 3.2
+interpreter and exercises it (76 assertions). That still is not `squirrel.osm`: it proves the
+algorithms, not the engine. DromEd `script_reload` is still required.
+
+**ID collision.** These six were committed while another session was concurrently adding its own
+T-100…T-104 rows to this file, so the commit messages carry provisional IDs that clash. The commit
+SHA is the unambiguous reference; the table below is canonical for the numbering.
+
+Measured on stock sq 3.2, original code vs this branch, same run:
+
+| workload | before | after | |
+|---|---|---|---|
+| `dblob.find` m=9, fresh blob, x200 | 0.337 s | 0.265 s | 1.3x |
+| `dblob.find` m=9, same blob, x2000 | 2.531 s | 0.009 s | ~280x |
+| `dfile.find` m=9 in 4000 bytes, x200 | 1.754 s | 0.657 s | 2.7x |
+| 8x `getParam2` over the `Env Zone` shape, x500 | 0.144 s | 0.033 s | 4.4x |
+
+| ID | Priority | Location | Problem | Fix | Status |
+|---|---|---|---|---|---|
+| T-105 | P1 | `DScript File&Blob.nut` `CheckIfSubstring`, `find` | `blob[i]` and `readn('b')` return **unsigned** 0..255; `readn('c')` and `string[i]` return **signed** -128..127. `CheckIfSubstring` compared a blob byte against a string byte, so no pattern byte `>= 0x80` ever matched past index 0 — i.e. any pattern containing `§`, `°` or the smart quotes `createCSVMatrix` already special-cases. Reproduced: `dblob("caf\xE9 latte").find("caf\xE9")` returned `null` | normalise every comparison to unsigned (`str[i] & 0xFF`); add `readRaw()` and make `find` raw-byte | ☑ fixed `3000f29` — pending DromEd |
+| T-106 | P3 | `DScript File&Blob.nut` `cDSaveHandler.GetSaveRaw`, `SaveFile` | Eight full scans of the same ~1.5 KB blob for eight keys sharing the prefix `"Env Zone "` | `getParamsWithPrefix` collects them in one pass. **Assumes `:` terminates the key** — verify against a real `taglist_vals.txt` | ☑ fixed `f43cdb2` — pending DromEd |
+| T-107 | P2 | `DScript Overlays.nut` `cDIngameLogOverlay.DrawHUD` | Rescanned 770 bytes and rebuilt the string **every frame** for a log that changes only on print. Also passed `find`'s `null` straight into `slice` when the tail held no newline | cache on `Logfile.len()`; guard the no-newline case | ☑ fixed `8c9ff47` — pending DromEd |
+| T-108 | P2 | `DScript File&Blob.nut` `dblob._tostring` | `dblob("ab\\").tostring()` threw *index out of range* — the escape branch read `myblob[i+1]` past the end. Separately the `str += c.tochar()` build was superlinear above ~4 KB | bounds-guard the escape branch; balanced binary concat (`_joinBytes`) | ☑ fixed `bede33e` — pending DromEd |
+| T-109 | P3 | `DScript File&Blob.nut` `dblob.find` | No use made of the native C `string.find` | cache a raw string form and delegate; fall back on NUL data/pattern, `stopString`, or an integer pattern. First search stays on the byte scan so a one-shot search does not pay for the cache | ☑ fixed `44612a1` — pending DromEd |
+| T-110 | P3 | `DScript File&Blob.nut` `dfile.find` | Naive shift-by-1 scan with one `readn` call per byte | Sunday (Quick Search) skip scan over a 4 KB chunk buffer, for the paths the native fast path cannot serve | ☑ fixed `5d164b1` — pending DromEd |
+
+**Behaviour changes shipped with these** — see `KNOWN_ISSUES.md`: `find()` is raw-byte and no
+longer honours `\` escapes; a NUL no longer truncates a scan; `stopString` returns `false` rather
+than collapsing to `null`.
+
+**Not fixed here:** T-103 (`getParam`'s `if (valid >= 0)` guard) is untouched — it is the other
+session's row and the miss path happens to behave, since `find` returns `null` on a miss and the
+default is returned. It should still be tightened to `typeof valid == "integer"`.
 
 ---
 

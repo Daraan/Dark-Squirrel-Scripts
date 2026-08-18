@@ -263,8 +263,8 @@ python3 -c "from pypdf import PdfReader; print('\n'.join(p.extract_text() for p 
 
 ## Verification
 
-**Nothing in this repo can be run, built, linted, or tested locally.** Do not claim a change is
-tested. Verification happens in DromEd:
+**Almost nothing in this repo can be run, built, linted, or tested locally** — the one exception is
+`tools/sqtest/` below. Do not claim an engine-level change is tested. Verification happens in DromEd:
 
 | Command | Purpose |
 |---|---|
@@ -276,6 +276,36 @@ tested. Verification happens in DromEd:
 
 Errors surface in `monolog.txt` (editor) or `Thief2.log` / `Shock2.log` (game). With
 `kUseIngameLog = true` the tail of that log is drawn on screen in-game.
+
+### Offline harness for `dfile`/`dblob` — `tools/sqtest/`
+
+The pure-Squirrel half of `DScript File&Blob.nut` (`dfile`, `dblob`, `dCSV`) depends only on the
+Squirrel stdlib, so it can be exercised outside the engine:
+
+```bash
+bash tools/sqtest/build_sq.sh     # once: clones and builds a stock Squirrel 3.2 interpreter
+bash tools/sqtest/run.sh          # runs every tools/sqtest/test_*.nut
+cd tools/sqtest && ./build/sq bench.nut
+```
+
+`tools/sqtest/stubs.nut` defines the handful of engine globals (`SqRootScript`, `DRelayTrap`,
+`Quest`, `Engine`, `Debug`, …) that the file's game-related classes need at load time — Squirrel
+resolves `extends` when the class statement executes, so every base class must exist even though no
+test instantiates them.
+
+Two things to know:
+
+- **This is not `squirrel.osm`.** It validates algorithm logic — byte handling, search results,
+  string building — and nothing about engine behaviour, message dispatch, or the services. Anything
+  touching `SqRootScript` semantics still needs `script_reload`.
+- **`sq` exits 0 even on an uncaught Squirrel error**, so `run.sh` greps each test's `RESULT:` line
+  rather than trusting the exit code. A test that crashes early prints no `RESULT:` and is counted
+  as a failure.
+
+Byte-level facts that harness established, worth not re-deriving: `blob[i]` and `readn('b')` are
+**unsigned** 0..255, while `readn('c')` and `string[i]` are **signed** -128..127 — mixing them was
+a real bug (T-105). Native `string.find` is NUL-truncating and ignores a negative start.
+`array(256, fill)` is a single native call, so a 256-entry skip table is cheap to build.
 
 Per-change test recipes — which object, script and Design Note reproduce each fixed bug — are in
 [`docs/CHANGES_AND_VERIFICATION.md`](docs/CHANGES_AND_VERIFICATION.md).
