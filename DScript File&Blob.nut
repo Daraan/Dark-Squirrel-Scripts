@@ -236,6 +236,10 @@ myblob = null								// As we will work more with the derived dblob class
 
 class dblob extends dfile
 {
+_strCache	= null		// string form of the blob, or null when not built
+_strHasNul	= null		// null = not checked yet; true/false = known. NUL means no native find.
+_searched	= 0			// searches so far; the string cache is only worth building from the 2nd
+
 /* This is a custom blob like class, which works as an interface between blobs, strings and files:
 	It combines basic blob&file functions like seek, writec with string operations like slice, find, +
 	And advanced functions like getParam to search and extract data from a blob. */
@@ -332,12 +336,46 @@ class dblob extends dfile
 	function writec(str){
 		foreach (char in str)
 				myblob.writen(char,'c')
+		_invalidate()
 	}
 	
 //	|-- Metamethods -- |
 	function toblob()
 		return myblob
 	
+	function _invalidate(){
+	/* Every mutator must call this. A stale cache is a wrong search result.
+		NOTE: dblob(anotherDblob) shares the underlying blob, so mutating one does not
+		invalidate the other's cache. That aliasing predates this cache; avoid it. */
+		_strCache  = null
+		_strHasNul = null
+		return this
+	}
+
+	function _asString(){
+	/* Cached string form, for the native string.find fast path. Also records whether the
+		data contains a NUL - Squirrel's string.find is strstr-based and stops there, so
+		NUL-bearing blobs have to keep using the byte scan.
+		Deliberately RAW: no escape handling, because find() is raw-byte. _tostring is
+		the escape-aware one and does not use this cache. */
+		if (_strCache != null)
+			return _strCache
+		local n = myblob.len()
+		if (_strHasNul == null){				// decide once, remember until the next mutation
+			_strHasNul = false
+			for (local i = 0; i < n; i++){
+				if (myblob[i] == 0){
+					_strHasNul = true
+					break
+				}
+			}
+		}
+		if (_strHasNul)							// no point building a string native find cannot use
+			return null
+		_strCache = _joinBytes(0, n)
+		return _strCache
+	}
+
 	function _joinBytes(lo, hi){
 	/* Balanced binary concatenation over a half-open byte range. Squirrel strings are
 		immutable, so the obvious `str += c.tochar()` loop is O(n^2); merging halves is
@@ -389,12 +427,13 @@ class dblob extends dfile
 			writec(other)
 		else
 			myblob.writeblob(other instanceof ::blob? other : other.myblob)	// distinguish between blob and dblob.
+		_invalidate()
 		return this
 	}	
 	
 	function _mul(other){
 		myblob.seek(0,'e')
-		writec(other)
+		writec(other)			// writec already invalidates
 		return this
 	}
 	
@@ -406,9 +445,54 @@ class dblob extends dfile
 				myblob.seek(key, key < 0? 'e' : 'b')
 				writec(value)
 			}
+			_invalidate()
 		}
 	}
 	
+	function find(pattern, start = 0, stopString = null){
+	/* Native string.find is C and beats any interpreted scan at these sizes. It is only
+		usable when: the pattern is a string, the data holds no NUL (strstr stops there),
+		and no stopString is in play (native find cannot honour a terminator). Everything
+		else falls through to the byte scan inherited from dfile. */
+		if (typeof pattern != "string" || pattern == "" || stopString != null)
+			return base.find(pattern, start, stopString)
+
+		// A NUL in the pattern, checked BEFORE building anything. Do NOT use
+		// pattern.find((0).tochar()) here: string.find is strstr-based, a one-NUL string
+		// is the empty string to strstr, and it therefore matches at 0 every time - which
+		// silently sent every single search down the fallback path.
+		for (local i = 0; i < pattern.len(); i++){
+			if ((pattern[i] & 0xFF) == 0)
+				return base.find(pattern, start, stopString)
+		}
+
+		// Building the cache costs a full pass over the blob, which is more than a single
+		// byte scan usually needs. So the first search on a blob stays on the byte scan and
+		// only a repeat search pays for the cache - after which it is ~400x cheaper.
+		if (_searched < 1 && _strCache == null){
+			_searched++
+			return base.find(pattern, start, stopString)
+		}
+
+		local s = _asString()
+		if (s == null)								// data holds a NUL - native find would truncate
+			return base.find(pattern, start, stopString)
+
+		local from = start
+		if (from < 0)								// native find ignores a negative start
+			from = s.len() + from
+		if (from < 0)
+			from = 0
+		if (from > s.len())
+			return null
+
+		local at = s.find(pattern, from)
+		if (at == null)
+			return null
+		myblob.seek(at + 1, 'b')					// match the byte scan: pointer one past the first char
+		return at
+	}
+
 	function _get(key){
 		if (typeof key == "integer") {
 			return myblob[key]

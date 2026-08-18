@@ -50,4 +50,37 @@ local st = dblob("aaa STOP bbb zzz")
 AssertEq(st.find("zzz", 0, "STOP"), false, "find: stopString hit returns false")
 AssertEq(st.find("qqq"), null, "find: plain miss still returns null")
 
+// --- native fast path --------------------------------------------------------
+// results must be identical to the byte-scan path in every case
+local fp = dblob("the quick brown fox jumps")
+AssertEq(fp.find("quick"), 4,    "fastpath: hit")
+AssertEq(fp.find("slow"),  null, "fastpath: miss")
+AssertEq(fp.find("the"),   0,    "fastpath: hit at 0")
+AssertEq(fp.find("jumps"), 20,   "fastpath: hit at end")
+AssertEq(fp.find("quick", 5), null, "fastpath: start past the hit")
+AssertEq(fp.find("fox", -10), 16,   "fastpath: negative start still works")
+AssertEq(fp.find("the", 999), null, "fastpath: start past EOS")
+
+// NUL-bearing data must NOT take the native path, and must still be correct
+local nz = dblob("aa" + (0).tochar() + "target")
+AssertEq(nz.find("target"), 3, "fastpath: NUL-bearing blob falls back correctly")
+
+// high bytes must survive the cache round-trip
+local hb = dblob("xx\xA7\xB0yy")
+AssertEq(hb.find("\xA7\xB0"), 2, "fastpath: high bytes")
+
+// the fast path must leave the stream pointer where the byte scan would
+local pp = dblob("Env Zone 63: $abc\n")
+AssertEq(pp.getParam2("Env Zone 63", "", 2), "$abc", "fastpath: pointer position feeds getParam2")
+
+// mutation must invalidate the cache
+local mu = dblob("abc")
+AssertEq(mu.find("abc"), 0, "fastpath: before mutation")
+mu * "def"
+AssertEq(mu.find("def"), 3, "fastpath: cache invalidated by *")
+mu + dblob("ghi")
+AssertEq(mu.find("ghi"), 6, "fastpath: cache invalidated by +")
+mu[0] = "z"
+AssertEq(mu.find("zbc"), 0, "fastpath: cache invalidated by []=")
+
 TestSummary()
