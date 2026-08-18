@@ -126,4 +126,28 @@ AssertEq(dfile("tmp_chunk.txt").find("NEEDLE"), 4090, "sunday: match straddling 
 WriteTemp("tmp_param.txt", "Env Zone 63: $abc\nEnv Zone 62: $def\n")
 AssertEq(dfile("tmp_param.txt").getParam2("Env Zone 62", "", 2), "$def", "sunday: getParam2 pointer position")
 
+// --- single-pass prefix scan -------------------------------------------------
+local ez = dblob("Env Zone 63: $aaa\nEnv Zone 62: $bbb\nEnv Zone 61: \nother junk\n")
+local got = ez.getParamsWithPrefix("Env Zone ")
+AssertEq(got.len(), 3, "prefix: three keys found")
+AssertEq(got["63"], "$aaa", "prefix: slot 63")
+AssertEq(got["62"], "$bbb", "prefix: slot 62")
+AssertEq(got["61"], "",     "prefix: empty slot 61")
+AssertTrue(!("60" in got),  "prefix: absent slot not present")
+
+// must agree with the individual getParam2 calls it replaces
+AssertEq(got["63"], ez.getParam2("Env Zone 63", "", 2), "prefix: agrees with getParam2 (63)")
+AssertEq(got["62"], ez.getParam2("Env Zone 62", "", 2), "prefix: agrees with getParam2 (62)")
+
+// no matches at all
+local none = dblob("nothing here at all\n")
+AssertEq(none.getParamsWithPrefix("Env Zone ").len(), 0, "prefix: no matches gives an empty table")
+
+// works over a dfile too
+WriteTemp("tmp_prefix.txt", "Env Zone 63: $xyz\nEnv Zone 62: $uvw\n")
+local pf = dfile("tmp_prefix.txt").getParamsWithPrefix("Env Zone ")
+AssertEq(pf.len(), 2,      "prefix: dfile two keys")
+AssertEq(pf["63"], "$xyz", "prefix: dfile slot 63")
+AssertEq(pf["62"], "$uvw", "prefix: dfile slot 62")
+
 TestSummary()

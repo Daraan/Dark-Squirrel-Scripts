@@ -85,6 +85,42 @@ _skipPattern = null		// the pattern _skipTable was built for
 		return def
 	}
 
+	function getParamsWithPrefix(prefix, start = 1, keyEnd = ':'){
+	/* One pass for a whole family of keys sharing a prefix, instead of one full scan per
+		key. Returns {suffix: value}, where suffix is the text between the prefix and the
+		next keyEnd character, and value is the rest of that line after skipping `start`
+		characters. Replaces N separate getParam2 calls over the same data. */
+		local found = {}
+		local at    = 0
+		while (true){
+			local hit = find(prefix, at)
+			if (hit == null || hit == false)
+				break
+			at = hit + prefix.len()
+			myblob.seek(at, 'b')
+			local key = ""
+			while (true){
+				local c = readNext(keyEnd)
+				if (!c)
+					break
+				if (c == ' ' || c == '\t')		// tolerate "Env Zone 63 :" - the old fixed-offset
+					continue					// read did not care about spacing either
+				key += c.tochar()
+			}
+			myblob.seek(start, 'c')
+			local val = ""
+			while (true){
+				local c = readNext('\n')
+				if (c)
+					val += c.tochar()
+				else break
+			}
+			if (key != "")
+				found[key] <- val
+		}
+		return found
+	}
+
 	/*
 	function getParamOld(param, separator = '"', offset = 0){
 	// Old slim version. Throws if not found. New ones should be faster as well, as it writes 
@@ -950,8 +986,10 @@ class cDSaveHandler extends cDCustomHandler
 		} else
 			rawdata = File.slice(_start, _end)	// blobs are way faster than doing this in the stream. More memory though.
 		local slot = null
+		local envzones = rawdata.getParamsWithPrefix("Env Zone ", 2)	// one pass instead of eight scans
 		for (local i = 63; i > 55; i--){							// While possible to check all slots. Limiting it to 8 slots.
-			local param = rawdata.getParam2("Env Zone "+i, null, 2)
+			local zkey  = i.tostring()
+			local param = (zkey in envzones)? envzones[zkey] : null
 			// print("P" + i + "=" + param + "'")
 			if (param == null || param == ""){										// Store first found empty slot.
 				if (!slot){
@@ -1011,8 +1049,10 @@ class cDSaveHandler extends cDCustomHandler
 		local backup ={}
 		Debug.Command("dump_tagblocks_vals", "DumpForBackups")
 		rawdata = File.slice(File.find(eDLoad.kStart), File.find(eDLoad.kEnd))
+		local envzones = rawdata.getParamsWithPrefix("Env Zone ", 2)	// one pass instead of one scan per slot
 		foreach (slot, save in Saves){
-			local data = rawdata.getParam2("Env Zone "+slot,"", 2, 0);	// original mission data
+			local zkey = slot.tostring()
+			local data = (zkey in envzones)? envzones[zkey] : ""			// original mission data
 			if (data != "")
 				backup[slot] <- data
 			Engine.SetEnvMapZone(slot, Saves[slot]);
