@@ -14,6 +14,6 @@ function AssertTrue(cond, label) {
 }
 
 function TestSummary() {
-	print(::gChecks + " checks, " + ::gFailures + " failures\n")
+	print("RESULT: " + ::gFailures + " failures (" + ::gChecks + " checks)\n")
 	return ::gFailures
 }
