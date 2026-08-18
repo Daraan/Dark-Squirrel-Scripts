@@ -8,6 +8,31 @@
 
 // ---------------------------------------------------------------- utilities
 
+// NewDark's split() matches the separator as ONE literal substring (confirmed
+// in-game 2026-08-13, see CLAUDE.md), while vanilla Squirrel's stdlib split()
+// treats it as a character set. Override with engine semantics: literal
+// substring, empty tokens dropped.
+::split <- function (str, sep) {
+	local out = []
+	if (typeof str != "string" || typeof sep != "string" || sep == "") {
+		if (typeof str == "string" && str != "") return [str]
+		return out
+	}
+	local i = 0
+	while (true) {
+		local j = str.find(sep, i)
+		if (j == null) {
+			local t = str.slice(i)
+			if (t != "") out.append(t)
+			break
+		}
+		local t = str.slice(i, j)
+		if (t != "") out.append(t)
+		i = j + sep.len()
+	}
+	return out
+}
+
 ::startswith <- function (str, cmp) {
 	return str.len() >= cmp.len() && str.slice(0, cmp.len()) == cmp
 }

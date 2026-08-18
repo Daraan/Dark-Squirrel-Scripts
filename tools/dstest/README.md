@@ -84,9 +84,13 @@ Add the method there (behavioral if DScript logic depends on the result, a
 
 ## Known fidelity gaps
 
-- Vanilla Squirrel 3.2, not NewDark's build — `#` comments, empty-token-dropping
-  `split()`, and the class/metamethod semantics DScript relies on all match, but
-  divergence is possible; add shims here if found.
+- Vanilla Squirrel 3.2, not NewDark's build — `#` comments and the
+  class/metamethod semantics DScript relies on match, but divergence is
+  possible; add shims here if found. One already was: vanilla `split()` treats
+  the separator as a character set and keeps a leading empty token, NewDark's
+  matches it as one literal substring and drops empty tokens — `mock.nut`
+  overrides `::split` with the engine semantics (that shim is what exposed
+  T-29).
 - `Property.Get` returns 0 for unset properties and does archetype/metaproperty
   inheritance, but knows nothing about real gamesys property defaults.
 - Stim delivery (`ActReact.Stimulate`) sends `<StimName>Stimulus` directly;
