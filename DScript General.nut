@@ -188,7 +188,7 @@ hloc = vector()
 		local ignore_org = null	// Getting this raw to not create empty arrays if not needed.
 		if (ignore_set){
 			ignore_set = DCheckString(ignore_set, kReturnArray)
-			ignore_org = ignore_set.map(@(obj) [::Property.Possessed(obj,"RenderType"), ::Property.Get(obj,"RenderType")])
+			ignore_org = ignore_set.map(@(obj) [::Property.PossessedSimple(obj,"RenderType"), ::Property.Get(obj,"RenderType")])	// T-116: Possessed() is true for inherited properties too.
 			foreach (obj in ignore_set)
 				Property.SetSimple(obj,"RenderType",1)					// This does not actually affect the rendering. ObjRaycast will check if the property is set and before the next frame it is reset.
 		}

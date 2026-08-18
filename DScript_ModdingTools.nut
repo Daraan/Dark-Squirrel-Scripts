@@ -280,12 +280,16 @@ delegator 	= {
 		if (!sub.len())								// no comma present, default, continue
 			return null
 		// local modname = sub[0]	
+		// T-95: drop the empty tokens BEFORE the scan below. Removing them inside that loop shifted the
+		// array under the absolute indices already recorded in `removethese`, which are only applied
+		// after it - so the deferred removal ran one past the end. (The old code's own comment asked
+		// why it never gave an out-of-range error: because the broken split() never produced an empty
+		// token at all. DSplitSet made them real.)
+		for (local i = sub.len() - 1; i >= 1; i--){
+			if (sub[i] == "")
+				sub.remove(i)
+		}
 		for (local i = 1; i < sub.len();i++){
-			if (sub[i] == ""){						// T-95: drop the empty token and re-test the same index - the old fall-through
-				sub.remove(i)						// indexed the element that moved into i (or ran past the end) right afterwards.
-				i--
-				continue
-			}
 			if (sub[i][kGetFirstChar] == '['){
 				removethese = []
 				local replace = [sub[i].slice(kRemoveFirstChar)]

@@ -383,8 +383,8 @@ class DObjectPanTo extends DTrigger
 
 		::DObjectFaceTarget.ResizeArrayToArray(offset, Viewers, 0)
 		UpdateAll()
-		if (!Viewers.len())									// everyone already faces the target - nothing to schedule.
-			return
+		if (!Viewers || !Viewers.len())						// T-114: everyone already faced the target, so UpdateAll() called
+			return											// DoOff(), which nulls Viewers - .len() on null threw here.
 		if (!IsDataSet("Active")){
 			local interval = DGetParam(_script + "Interval",  2, DN)
 			if (!interval)	// Can be 0.
@@ -1121,9 +1121,10 @@ class DRenameItem extends DTrigger
 			}
 			local append = GetData(_script + "Ticks") - 1
 			if (append == 0){
-				if (DGetParam(_script + "NoRestart", null) <= 1)			// #NOTE null < anything = true
-					ClearData(_script + "Ticks")
+				local blockRestart = DGetParam(_script + "NoRestart", null) > 1	// #NOTE null < anything = true
 				DoOff(userparams())
+				if (blockRestart)										// T-115: DoOff clears Ticks, and Ticks is the very
+					SetData(_script + "Ticks", 0)						// marker DoOn tests for - put the marker back.
 				TriggerMessages("Off", userparams())
 				_script = GetClassName()								// restore before the early return (T-91)
 				return
@@ -1166,7 +1167,7 @@ class DTweqDevice extends DBaseTrap
 		if ( DGetParam(_script+"NoFix",false,DN) )
 			return
 		local objset  =         DGetParam(_script+"Target", self, DN, kReturnArray)
-		local joints  = ::split(DGetParam(_script+"Joints","1,2,3,4,5,6",DN).tostring(),"[,]") // All, overkill but why not.
+		local joints  = ::DScript.SplitAny(DGetParam(_script+"Joints","1,2,3,4,5,6",DN).tostring(),"[,]") // All, overkill but why not.
 		local control = 	    DGetParam(_script+"Control", false, DN)
 		
 		// Skip if not used for Joint Tweq
@@ -1198,7 +1199,7 @@ class DTweqDevice extends DBaseTrap
 	function DoOn(DN)
 	{
 		local objset  = 		DGetParam(_script+"Target", self, DN, kReturnArray)
-		local joints  = ::split(DGetParam(_script+"Joints", "1,2,3,4,5,6", DN).tostring(), "[,]" )
+		local joints  = ::DScript.SplitAny(DGetParam(_script+"Joints", "1,2,3,4,5,6", DN).tostring(), "[,]")
 		local TweqType = 		DGetParam(_script+"Control", false, DN)	// see eTweqType in API-reference or DScript documentation. 2 for example is joints.
 		
 		foreach (obj in objset)

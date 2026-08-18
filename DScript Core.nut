@@ -506,6 +506,27 @@ DScript <- {
 			return [str, ""]
 		return [str.slice(0,i)	, str.slice( include ? i : i+1 )]
 	}
+
+	function SplitAny(str, separators){
+	/* T-94: NewDark's split() matches its separator argument as ONE literal substring, so a call like
+		split(s, "=;") never splits at all and hands back the whole string as a single token. This is the
+		"separator set" the call sites were written against: it breaks at EVERY character listed in
+		`separators` and, like split(), drops empty tokens - so index-pair loops over the result stay valid.
+		If you need the empty tokens kept, see DSplitSet in DScript_ModdingTools.nut. */
+		local tokens  = []
+		local current = ""
+		foreach (c in str){
+			if (separators.find(c.tochar()) != null){
+				if (current != "")
+					tokens.append(current)
+				current = ""
+			} else
+				current += c.tochar()
+		}
+		if (current != "")
+			tokens.append(current)
+		return tokens
+	}
 	
 	function DGetStringParamRaw(param, defaultValue, str, separators = eSeparator.kStringData){
 	/* Like the class DGetParam function but works with strings instead of a table/class. */
@@ -1332,7 +1353,7 @@ SubVersion 	= 0.72
 						}
 					}
 				}
-				if (divide.len() > 5)	// Keyname, return value if not found, begin, end, offset from start
+				if (divide.len() > 6)	// Keyname, return value if not found, begin, end, offset from start
 					return ::DScript._FormatForReturn(DCheckString(ofile.getParam2(divide[3], null, divide[6], divide[7], offset ), returnInArray),returnInArray)
 				// else Search for separator: Keyname, return value if not found, separator, offset from start	
 				return ::DScript._FormatForReturn(DCheckString(ofile.getParam(divide[3], null, separator, offset), returnInArray), returnInArray)
@@ -2073,8 +2094,10 @@ SourceObj 	  = null	//	The actual source of a message.
 			return false
 		local data = GetData(_script + "InfRepeat")
 		ClearData(_script + "InfRepeat")
-		if (typeof data == "string" && data.find("F") != null)	// per-frame registration ("F<key>" / "<action>F<key>")
+		if (typeof data == "string" && (data.find("F") == 0 || data.find("F") == 1))	// per-frame registration ("F<key>" / "<action>F<key>")
 			::DHandler.PerFrame_DeRegister(this)
+		else if (typeof data == "string")
+			::DHandler.PerMidFrame_DeRegister(this)			// T-112: every-frame registration - was never deregistered.
 		else if (IsDataSet(_script + "DelayTimer"))
 			KillTimer(ClearData(_script + "DelayTimer"))
 		return true
@@ -2709,7 +2732,7 @@ static DHubParameters = ["DHubTOn","DHubTarget","DHubTDest","DHubCount","DHubCap
 				// For every subDN create a real DN entry
 				if (typeof StringDN != "string" || StringDN.find("=") == null)	// no string or no = present, skip
 					continue
-				local ar = ::split(StringDN, "=;")
+				local ar = ::DScript.SplitAny(StringDN, "=;")		// T-94: split() takes one literal separator, not a set.
 				if (ar.len() % 2)					// odd token count: a key without =value, or an empty field (split() drops empty tokens).
 					DPrint("WARNING: DHub entry '" + entry + "' has a malformed sub-DesignNote: " + StringDN, kDoPrint, ePrintTo.kMonolog)
 				for (local i = 0; i + 1 < ar.len(); i+=2){
@@ -2891,7 +2914,7 @@ class DTrapSetQVar extends DBaseTrap
     }
 	
 	function InitQVarFromProp(){
-		local event = ::split(GetProperty("TrapQVar"),":;")
+		local event = ::DScript.SplitAny(GetProperty("TrapQVar"), ":;")	// T-94: split() takes one literal separator, not a set.
 		if (event.len() == 1 && event[0].len()){
 			if (event[0] == "\"\"")
 				event[0] = ""
