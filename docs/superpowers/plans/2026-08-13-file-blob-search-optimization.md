@@ -1324,6 +1324,46 @@ git commit -m "docs: record T-100..T-105 and the offline sqtest harness"
 
 **One known rough edge.** `dblob` inherits `dfile`'s `_buf` chunk machinery but never needs it, since `dblob` indexes `myblob` directly and `_byteAt` is only reached via the inherited scan. That is wasted slots, not a bug. Overriding `_byteAt` in `dblob` to `return (pos < 0 || pos >= myblob.len()) ? null : myblob[pos]` is a worthwhile follow-up but is deliberately not in scope here — it is a fourth optimisation tier, and the plan is already at the agreed three.
 
+## Outcome — implemented 2026-08-18
+
+All eight tasks done and committed. 76 assertions green under `tools/sqtest/`. Four places where
+reality differed from the plan, recorded because the plan's reasoning was wrong in each:
+
+1. **Task 4 (`_tostring`) barely mattered.** The plan justified it with "≈300,000 character copies
+   for the 770-byte overlay window". True arithmetically, irrelevant in practice: measured old vs
+   new at 770 B was 0.036 s vs 0.032 s. The interpreted per-byte loop dominates at these sizes, not
+   the copying. The rewrite is flat instead of superlinear (5.2x at 80 KB) and it fixed a real crash
+   (`dblob("ab\\").tostring()` threw *index out of range*), but nobody will notice the speed.
+
+2. **The fast path silently never ran.** `pattern.find((0).tochar())` as a NUL-in-pattern guard is
+   wrong: `string.find` is `strstr`-based and a one-NUL string is the empty string to `strstr`, so
+   it matched at 0 for every pattern. Every search took the fallback *after* paying for a cache
+   build. Tests stayed green throughout — the fallback is correct — and only the benchmark exposed
+   it. Fixed by scanning the pattern bytes.
+
+3. **Building the cache eagerly was a net loss for one-shot searches** (0.372 s → 0.464 s). Added
+   lazy promotion: the first search on a blob stays on the byte scan, only a repeat builds the cache.
+   The plan did not anticipate this.
+
+4. **Task 6 (Sunday) helped more than predicted, and helped `dblob` too** — because with lazy
+   promotion the first search of every blob now goes through it as well.
+
+End-to-end, original vs final, same run on stock sq 3.2:
+
+| workload | before | after | |
+|---|---|---|---|
+| `dblob.find` m=9, fresh blob, x200 | 0.337 s | 0.265 s | 1.3x |
+| `dblob.find` m=9, same blob, x2000 | 2.531 s | 0.009 s | ~280x |
+| `dfile.find` m=9 in 4000 bytes, x200 | 1.754 s | 0.657 s | 2.7x |
+| 8x `getParam2` over the `Env Zone` shape, x500 | 0.144 s | 0.033 s | 4.4x |
+
+The `T-1nn` IDs used in the commit messages collided with another session's concurrent numbering;
+`docs/OPEN_TASKS.md` Group K (T-105…T-110) is canonical.
+
+Still open: everything needs DromEd `script_reload`. Two items specifically —
+`file.len()` seeing a growing stream was verified on glibc, not MSVCRT (T-107); and
+`getParamsWithPrefix` assumes `:` terminates the key in `taglist_vals.txt` (T-106).
+
 ## Open decisions for the user
 
 1. **Scope.** All eight tasks, or stop after Task 5 (correctness + memoization + native find) and leave Sunday unbuilt? Tasks 6 covers only `dfile` streams, NUL data and `stopString` — the rarest of the call sites.
