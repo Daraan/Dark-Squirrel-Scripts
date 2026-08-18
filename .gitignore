@@ -5,3 +5,5 @@ obj/
 .claude.local.md
 .claude/settings.local.json
 __pycache__/
+tools/sqtest/build/
+tools/sqtest/src/
