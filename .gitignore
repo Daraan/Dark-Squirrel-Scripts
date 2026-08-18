@@ -7,3 +7,4 @@ obj/
 __pycache__/
 tools/sqtest/build/
 tools/sqtest/src/
+tools/sqtest/tmp_*.txt

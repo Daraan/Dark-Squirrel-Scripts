@@ -20,6 +20,10 @@ class dfile
 {
 /* More interestingly is the dblob class, but as most actions which work for blobs also work for files, this is the upper class but it the end they are codependant.*/
 myblob = null								// As we will work more with the derived dblob class
+_buf		 = null		// chunk buffer: one readblob per 4 KB instead of one readn per byte
+_bufStart	 = -1		// absolute position of _buf[0]
+_skipTable	 = null		// memoized Sunday shift table
+_skipPattern = null		// the pattern _skipTable was built for
 
 	constructor(filename, path = ""){
 		switch (typeof filename)
@@ -157,6 +161,75 @@ myblob = null								// As we will work more with the derived dblob class
 		return true				// All matched
 	}
 	
+	static kChunkSize = 4096
+
+	function _byteAt(pos){
+	/* Unsigned byte at an absolute position, or null past EOS. Reads in chunks: a file
+		stream costs one readblob per 4 KB here instead of one readn call per byte, and
+		that constant factor matters far more in the Squirrel VM than the comparison count. */
+		if (pos < 0 || pos >= myblob.len())
+			return null
+		if (_buf == null || pos < _bufStart || pos >= _bufStart + _buf.len()){
+			myblob.seek(pos, 'b')
+			local want = myblob.len() - pos
+			if (want > kChunkSize)
+				want = kChunkSize
+			_buf      = myblob.readblob(want)
+			_bufStart = pos
+		}
+		return _buf[pos - _bufStart]
+	}
+
+	function _dropBuffer(){
+	/* dfile streams a live file - anything that could have changed underneath drops the
+		buffer. Cheap insurance; the buffer is refilled on the next _byteAt. */
+		_buf      = null
+		_bufStart = -1
+		return this
+	}
+
+	function _skipFor(pattern){
+	/* Sunday bad-character table. array(256, fill) is a single native call, so building
+		this costs about m operations, not 256 - which is why it pays even at 1 KB. */
+		if (_skipPattern == pattern && _skipTable != null)
+			return _skipTable
+		local m = pattern.len()
+		local t = ::array(256, m + 1)
+		for (local i = 0; i < m; i++)
+			t[pattern[i] & 0xFF] = m - i
+		_skipTable   = t
+		_skipPattern = pattern
+		return t
+	}
+
+	function _findSunday(pattern, from){
+	/* Sunday / Quick Search. On a mismatch it looks at the byte one PAST the window and
+		shifts by that byte's entry, so shifts reach m+1. No stopString support - callers
+		with a stopString stay on the plain scan. Returns an index or null. */
+		local m = pattern.len()
+		local n = myblob.len()
+		if (m > n)
+			return null
+		local skip = _skipFor(pattern)
+		local i    = from
+		if (i < 0)
+			i = 0
+		while (i + m <= n){
+			local j = 0
+			while (j < m && _byteAt(i + j) == (pattern[j] & 0xFF))
+				j++
+			if (j == m){
+				myblob.seek(i + 1, 'b')		// match the byte scan: pointer one past the first char
+				return i
+			}
+			local next = _byteAt(i + m)		// the byte just past the window
+			if (next == null)
+				return null					// window cannot advance without running off the end
+			i += skip[next]
+		}
+		return null
+	}
+
 	function find(pattern, start = 0, stopString = null){	// stopCharacter could be used as a hard terminator beside EOS
 	/* Raw-byte search. Unlike readNext this does NOT honour '\\' escapes - a backslash is
 		an ordinary byte here. Escape handling stays in getParam/getParam2, which is where
@@ -181,6 +254,10 @@ myblob = null								// As we will work more with the derived dblob class
 		} else {
 			if (pattern.len() == 1)					// If the string has only length 1 we are done.
 				return find(pattern[0], myblob.tell(), stopString)
+			if (stopString == null){
+				_dropBuffer()						// the stream may have changed since the last search
+				return _findSunday(pattern, myblob.tell())
+			}
 			while (true){
 				local first = find(pattern[0], myblob.tell(), stopString)
 				if (first == null || first == false)

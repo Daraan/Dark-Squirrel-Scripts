@@ -83,4 +83,47 @@ AssertEq(mu.find("ghi"), 6, "fastpath: cache invalidated by +")
 mu[0] = "z"
 AssertEq(mu.find("zbc"), 0, "fastpath: cache invalidated by []=")
 
+// --- Sunday scan -------------------------------------------------------------
+// exercised through dfile, which has no native fast path
+function WriteTemp(name, contents){
+	local f = ::file(name, "wb+")
+	foreach (ch in contents) f.writen(ch, 'c')
+	f.close()
+	return name
+}
+
+// "0123456789 ENVMAPVAR tail \xA7\xB0 end"
+//  0..9 digits, 10 sp, 11..19 ENVMAPVAR, 20 sp, 21..24 tail, 25 sp,
+//  26 \xA7, 27 \xB0, 28 sp, 29..31 end
+WriteTemp("tmp_sunday.txt", "0123456789 ENVMAPVAR tail \xA7\xB0 end")
+local df = dfile("tmp_sunday.txt")
+AssertEq(df.find("ENVMAPVAR"), 11,   "sunday: mid hit")
+AssertEq(df.find("0123"),      0,    "sunday: hit at 0")
+AssertEq(df.find("missing"),   null, "sunday: miss")
+AssertEq(df.find("\xA7\xB0"),  26,   "sunday: high bytes")
+AssertEq(df.find("end"),       29,   "sunday: hit at end")
+AssertEq(df.find("ENVMAPVAR", 12), null, "sunday: start past the hit")
+AssertEq(df.find("tail", 21),  21,   "sunday: start exactly at the hit")
+
+// a pattern longer than the haystack
+WriteTemp("tmp_short.txt", "ab")
+AssertEq(dfile("tmp_short.txt").find("abcdef"), null, "sunday: pattern longer than data")
+
+// repeated search must reuse the memoized table and stay correct
+local df2 = dfile("tmp_sunday.txt")
+AssertEq(df2.find("ENVMAPVAR"), 11, "sunday: first search")
+AssertEq(df2.find("ENVMAPVAR"), 11, "sunday: repeated search, memoized table")
+AssertEq(df2.find("tail"),      21, "sunday: different pattern rebuilds table")
+AssertEq(df2.find("ENVMAPVAR"), 11, "sunday: back to the first pattern")
+
+// a hit that straddles the chunk boundary
+local big = ""
+for (local i = 0; i < 4090; i++) big += ((i % 26) + 97).tochar()
+WriteTemp("tmp_chunk.txt", big + "NEEDLE" + big)
+AssertEq(dfile("tmp_chunk.txt").find("NEEDLE"), 4090, "sunday: match straddling the 4096 chunk boundary")
+
+// getParam2 still works through the Sunday path
+WriteTemp("tmp_param.txt", "Env Zone 63: $abc\nEnv Zone 62: $def\n")
+AssertEq(dfile("tmp_param.txt").getParam2("Env Zone 62", "", 2), "$def", "sunday: getParam2 pointer position")
+
 TestSummary()
