@@ -17,6 +17,8 @@ if (kUseIngameLog) {
 		SizeX 	= ::int_ref()
 		SizeY 	= ::int_ref()
 		blackbg = null
+		LastLen		= null		// file length at the last rescan; the log only changes when it grows
+		LastString	= null		// cached rendered string
 		
 		constructor(){
 			if (::IsEditor())										// Get logfile depending on program
@@ -52,9 +54,20 @@ if (kUseIngameLog) {
 		}
 		
 		function DrawHUD(){
-			local DLogString = "LOG OUTPUT:\n" + Logfile.slice(Logfile.find('\n', -770), 0).tostring()
-			::gGameOverlay.DrawString(DLogString,X, Y);
-			::gGameOverlay.GetStringSize(DLogString, SizeX, SizeY);
+		/* The log only changes when something is printed, but DrawHUD runs every frame.
+			Rescanning 770 bytes and rebuilding the string per frame was the single hottest
+			loop in the framework; file.len() on an open read stream does see the file grow,
+			so length is a sufficient invalidation key. */
+			local curlen = Logfile.len()
+			if (curlen != LastLen){
+				LastLen    = curlen
+				local from = Logfile.find('\n', -770)
+				if (from == null || from == false)		// shorter than the window, or no newline in it
+					from = -770
+				LastString = "LOG OUTPUT:\n" + Logfile.slice(from, 0).tostring()
+			}
+			::gGameOverlay.DrawString(LastString, X, Y);
+			::gGameOverlay.GetStringSize(LastString, SizeX, SizeY);
 		}
 		
 		function OnUIEnterMode(){
