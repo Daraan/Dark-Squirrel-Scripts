@@ -338,11 +338,43 @@ class dblob extends dfile
 	function toblob()
 		return myblob
 	
+	function _joinBytes(lo, hi){
+	/* Balanced binary concatenation over a half-open byte range. Squirrel strings are
+		immutable, so the obvious `str += c.tochar()` loop is O(n^2); merging halves is
+		O(n log n). Squirrel has no join(), or this would be one call. */
+		local n = hi - lo
+		if (n <= 0)
+			return ""
+		if (n <= 8){
+			local s = ""
+			for (local i = lo; i < hi; i++)
+				s += myblob[i].tochar()
+			return s
+		}
+		local mid = lo + n / 2
+		return _joinBytes(lo, mid) + _joinBytes(mid, hi)
+	}
+
 	function _tostring(){
+	/* Escape handling means the output is not a straight byte range, so scan for a
+		backslash first: when there is none - the overwhelmingly common case - hand the
+		whole blob to the balanced join. Only fall back to the per-byte loop otherwise. */
+		local n = myblob.len()
+		local hasEscape = false
+		for (local i = 0; i < n; i++){
+			if (myblob[i] == '\\'){
+				hasEscape = true
+				break
+			}
+		}
+		if (!hasEscape)
+			return _joinBytes(0, n)
 		local str = ""
-		for (local i = 0; i < myblob.len(); i++){	// TODO test, readn method or internal tostring again.
+		for (local i = 0; i < n; i++){
 			local c = myblob[i]
 			if (c == '\\'){							// escape Char, skip it and add next.
+				if (i + 1 >= n)						// lone trailing backslash - used to read past the end
+					break
 				c = myblob[i+1]
 				i += 1
 			}
