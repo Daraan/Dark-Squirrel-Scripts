@@ -45,7 +45,7 @@ yet, or the review found smaller problems than the ones below.
 | Script / feature | What to expect |
 |---|---|
 | `DRay` | Crashes on the **second** TurnOn in the default configuration, and never destroys the particle object it created on TurnOff. Its particle-count scaling is a no-op. |
-| Design Note parsing | Several operators are misparsed: `]objs]links` indexes the wrong parts, `==` in a `Condition` never matches, `&<LinkType` net traversal stops after one hop, and an empty value (`Foo=;`) throws instead of defaulting. |
+| Design Note parsing | Several operators are misparsed: `]objs]links` indexes the wrong parts, `==` in a `Condition` never matches, `&<LinkType` net traversal stops after one hop, the `&%anchor%LinkKind` re-anchor syntax throws a type error (T-28), and an empty value (`Foo=;`) throws instead of defaulting. |
 | QVar writes | Most `SetQVar` calls for non-default storage types throw instead of writing. The `"` append operator discards its result. `DTrapDeleteQVar` without an explicit `Type` fails. |
 | Mission init / cleanup | A misspelled data key makes the mission-init block re-run on every load, and mission-scoped bin tables are never purged between missions. |
 | HUD / per-frame updates | After the last consumer deregisters, the per-mid-frame subsystem refuses to re-attach until a save/reload. Affects `DHudObject`, `DHudCompass`, `DObjectPanTo`'s per-frame mode. |

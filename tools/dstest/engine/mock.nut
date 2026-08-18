@@ -20,12 +20,12 @@ function _DeepCopy(v) {
 	switch (typeof v) {
 		case "table": {
 			local t = {}
-			foreach (k, x in v) t[k] <- _DeepCopy(x)
+			foreach (k, x in v) t[k] <- ::_DeepCopy(x)
 			return t
 		}
 		case "array": {
 			local a = []
-			foreach (x in v) a.append(_DeepCopy(x))
+			foreach (x in v) a.append(::_DeepCopy(x))
 			return a
 		}
 		case "instance":
@@ -96,7 +96,7 @@ class vector {
 	function Scale(f)  { x*=f; y*=f; z*=f }
 	function Dot(v)    { return x*v.x + y*v.y + z*v.z }
 	function Cross(v)  { return ::vector(y*v.z-z*v.y, z*v.x-x*v.z, x*v.y-y*v.x) }
-	function Length()  { return sqrt(x*x + y*y + z*z) }
+	function Length()  { return ::sqrt(x*x + y*y + z*z) }
 	function Normalize() { local l = Length(); if (l>0){x/=l;y/=l;z/=l} }
 	function GetNormalized() { local v = clone this; v.Normalize(); return v }
 }
@@ -352,8 +352,20 @@ _MSG_CLASS <- {
 	function _NewObj(id, name, arch) {
 		objs[id] <- { name = name, arch = arch, metaprops = [], props = {},
 			pos = ::vector(), fac = ::vector(), contains = [] }
-		if (name != "") names[name.tolower()] <- id
+		if (name != "") {
+			names[name.tolower()] <- id
+			objs[id].props.SymName <- name        // engine: named objects possess SymName
+		}
+		// the engine expresses ancestry as MetaProp links (child -> parent);
+		// DScript.GetAllDescendants walks ~MetaProp, so these must exist
+		if (arch != 0) _RawLink("MetaProp", id, arch)
 		return id
+	}
+
+	function _RawLink(kind, from, to) {
+		nextLink++
+		links[nextLink] <- { kind = ::_LinkKind(kind), from = from, to = to, data = {} }
+		return nextLink
 	}
 
 	function NewArchetype(name, parent = 0) {
@@ -494,9 +506,26 @@ _MSG_CLASS <- {
 		if (!(id in instances)) instances[id] <- []
 		local rec = { name = className, inst = inst }
 		instances[id].append(rec)
-		if ("constructor" in cls) inst.constructor()   // run it with self already set
+		if ("constructor" in cls) cls.constructor.call(inst)   // run it with self already set
 		if (sendBegin) _SendTo(id, rec, _MkMsg("BeginScript", 0, id, {}))
 		return inst
+	}
+
+	// the engine instantiates scripts named in the "Scripts" property ("Script 0".."Script 3")
+	// when the object is created -- DScript relies on this to bring ::DHandler to life
+	function AttachScriptsFromProp(o) {
+		local id = ::_ObjID(o)
+		local sc = _PropLookup(id, "Scripts")
+		if (typeof sc == "string") sc = { ["Script 0"] = sc }
+		if (typeof sc != "table") return
+		for (local i = 0; i < 4; i++) {
+			local slot = "Script " + i
+			if (!(slot in sc)) continue
+			local name = sc[slot]
+			if (typeof name != "string" || name == "") continue
+			if (!(name in ::getroottable())) { Trace("World", "MissingScript", [id, name]); continue }
+			if (GetScript(id, name) == null) AddScript(id, name)
+		}
 	}
 
 	function GetScript(o, className) {
@@ -732,7 +761,12 @@ class _MockService {
 		local r = ::World.Obj(o); if (!r) return
 		if (r.name != "" && (r.name.tolower() in ::World.names)) delete ::World.names[r.name.tolower()]
 		r.name = n
-		if (n != "") ::World.names[n.tolower()] <- ::_ObjID(o)
+		if (n != "") {
+			::World.names[n.tolower()] <- ::_ObjID(o)
+			r.props.SymName <- n
+		} else if ("SymName" in r.props) {
+			delete r.props.SymName
+		}
 	}
 	function Archetype(o)  { local r = ::World.Obj(o); return r ? r.arch : 0 }
 	function InheritsFrom(o, parent) {
@@ -756,20 +790,30 @@ class _MockService {
 		if (fac != null) r.fac = clone fac
 	}
 	function BeginCreate(arch) { return ::World.NewObj(::_ObjID(arch)) }
-	function EndCreate(o)      { return 0 }
-	function Create(arch)      { return ::World.NewObj(::_ObjID(arch)) }
+	function EndCreate(o)      { ::World.AttachScriptsFromProp(o); return 0 }
+	function Create(arch) {
+		local id = ::World.NewObj(::_ObjID(arch))
+		::World.AttachScriptsFromProp(id)
+		return id
+	}
 	function Destroy(o)        { ::World.DestroyObj(o) }
 	function AddMetaProperty(o, mp) {
 		local r = ::World.Obj(o); if (!r) return
 		local id = ::_ObjID(mp)
 		if (id == 0 && typeof mp == "string") id = ::World.NewArchetype(mp)
-		if (r.metaprops.find(id) == null) r.metaprops.append(id)
+		if (r.metaprops.find(id) == null) {
+			r.metaprops.append(id)
+			::World._RawLink("MetaProp", ::_ObjID(o), id)
+		}
 	}
 	function RemoveMetaProperty(o, mp) {
 		local r = ::World.Obj(o); if (!r) return
 		local id = ::_ObjID(mp)
 		local i = r.metaprops.find(id)
-		if (i != null) r.metaprops.remove(i)
+		if (i != null) {
+			r.metaprops.remove(i)
+			::Link.Destroy(::Link.GetOne("MetaProp", o, id))
+		}
 	}
 	function HasMetaProperty(o, mp) {
 		local r = ::World.Obj(o); if (!r) return false
@@ -824,7 +868,7 @@ class _MockService {
 		local r = _Rec(o)
 		if (!(prop in r.props)) {
 			local inh = ::World._PropLookup(::_ObjID(o), prop)
-			r.props[prop] <- (inh == null) ? 0 : _DeepCopy(inh)
+			r.props[prop] <- (inh == null) ? 0 : ::_DeepCopy(inh)
 		}
 		return true
 	}
@@ -834,7 +878,7 @@ class _MockService {
 		if (fieldOrVal == null || fieldOrVal == "") { r.props[prop] <- val; return true }
 		if (!(prop in r.props) || typeof r.props[prop] != "table") {
 			local inh = ::World._PropLookup(::_ObjID(o), prop)
-			r.props[prop] <- (typeof inh == "table") ? _DeepCopy(inh) : {}
+			r.props[prop] <- (typeof inh == "table") ? ::_DeepCopy(inh) : {}
 		}
 		r.props[prop][fieldOrVal] <- val
 		return true
@@ -848,7 +892,7 @@ class _MockService {
 	function CopyFrom(to, prop, from) {
 		local v = ::World._PropLookup(::_ObjID(from), prop)
 		if (v == null) return false
-		_Rec(to).props[prop] <- _DeepCopy(v)
+		_Rec(to).props[prop] <- ::_DeepCopy(v)
 		return true
 	}
 })()
@@ -900,11 +944,11 @@ class _MockService {
 
 ::Data <- (class extends _MockService {
 	static _svc = "Data"
-	function RandInt(lo, hi)  { return lo + rand() % (hi - lo + 1) }   // inclusive, like the engine
-	function RandFlt0to1()    { return (rand() % 10000) / 10000.0 }
-	function RandFlt(...)     { return (rand() % 10000) / 10000.0 }
-	function RandFltNeg1to1() { return ((rand() % 20000) - 10000) / 10000.0 }
-	function RandFltNeg(...)  { return ((rand() % 20000) - 10000) / 10000.0 }
+	function RandInt(lo, hi)  { return lo + ::rand() % (hi - lo + 1) }   // inclusive, like the engine
+	function RandFlt0to1()    { return (::rand() % 10000) / 10000.0 }
+	function RandFlt(...)     { return (::rand() % 10000) / 10000.0 }
+	function RandFltNeg1to1() { return ((::rand() % 20000) - 10000) / 10000.0 }
+	function RandFltNeg(...)  { return ((::rand() % 20000) - 10000) / 10000.0 }
 	function GetString(resname, name, dflt = "", relpath = "") {
 		::World.Trace("Data", "GetString", [resname, name])
 		return dflt
@@ -1125,6 +1169,7 @@ class _MockService {
 
 // overlay plumbing -- enough for "DScript Overlays.nut" to load and register
 class IDarkOverlayHandler {
+	constructor() {}          // native classes always expose a callable constructor
 	// the real engine calls these; tests can invoke them via World if needed
 	function DrawHUD() {}
 	function DrawTOverlay() {}
@@ -1178,7 +1223,7 @@ foreach (n in [
 	"IShockWeaponScriptService", "IShockPsiScriptService", "IShockAIScriptService",
 	"IShockOverlayScriptService",
 ])
-	::getroottable()[n] <- class {}
+	::getroottable()[n] <- class { constructor() {} }
 
 // ---------------------------------------------------------------- SqRootScript
 

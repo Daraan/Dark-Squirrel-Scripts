@@ -1,5 +1,7 @@
 # dstest — run DScript without DromEd
 
+Quickstart: [USAGE.md](USAGE.md).
+
 A mock of the `squirrel.osm` engine API, executed by a vanilla Squirrel 3.2 `sq`
 binary. The real, unmodified `.nut` files from the repo root are loaded in engine
 filename order against the mock, so Design-Note parameter parsing, message flow,
@@ -68,6 +70,9 @@ World API worth knowing:
   (run before every test) restores the post-load baseline.
 - `World.TraceCalls("Sound", "PlaySchemaAtObject")` — stub services record their
   calls; assert on side effects that have no observable world state.
+- Scripts named in an object's `Scripts` property (`"Script 0"`..`"Script 3"`)
+  auto-attach at `Object.Create`/`EndCreate`, like the engine — that is how the
+  `DScriptHandler` marker comes alive and `::DHandler` becomes a real instance.
 
 ## When something is missing
 

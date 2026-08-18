@@ -87,6 +87,7 @@ flow through here.
 | T-25 | P2 | `DScript Core.nut:492` | `ObjectsLinkedFromSet(onlyfirst)` returns `[foundobjs[0]]` without an empty check | return `[]` when empty | ☐ |
 | T-26 | P3 | `DScript Core.nut:1083` | `if (str[1] == '|')` can index past the end for a 1-char `"["` parameter | length guard | ☐ |
 | T-27 | P3 | `DScript Core.nut:1370` | `+-` subset removal is O(n·m) and leaves a `.map` TODO; duplicates from `+` are deliberately not removed (documented decision) | optional | ⊘ |
+| T-28 | P1 | `DScript Core.nut:1103` | `&%anchor%LinkKind` branch: `DivideAtNext(str.slice(1), '%')` passes a **char literal** (integer), but `DivideAtNext` calls `str.find(char)`, which requires a string → runtime type error, the whole `&%…%` re-anchor syntax throws. `DivideAtNext`'s own doc comment warns "for strings it must be \"char\"". Found by `tools/dstest/tests/test_dscript_operators.nut` | `'%'` → `"%"` | ☐ |
 
 ---
 

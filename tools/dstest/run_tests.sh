@@ -16,21 +16,38 @@ fi
 
 cd "$REPO"
 
+# sq exits 0 even when the script throws, so success is judged from the
+# runner's summary line, not the exit code.
+run_one() {
+	local out
+	out="$(DSTEST_FILE="${1:-}" "$SQ" tools/dstest/runner.nut 2>&1)"
+	printf '%s\n' "$out"
+	case "$out" in
+		*"AN ERROR HAS OCCURRED"*) return 1 ;;
+		*", 0 failed"*) return 0 ;;
+		*"loaded OK"*) return 0 ;;
+	esac
+	return 1
+}
+
 if [ "${1:-}" = "--load-only" ]; then
-	DSTEST_FILE= "$SQ" tools/dstest/runner.nut
+	run_one ""
 	exit $?
 fi
 
 if [ $# -gt 0 ]; then
 	files=()
-	for a in "$@"; do files+=("$HERE/${a#tools/dstest/}"); done
+	for a in "$@"; do
+		if [ -f "$a" ]; then files+=("$a")
+		else files+=("$HERE/${a#tools/dstest/}"); fi
+	done
 else
 	files=("$HERE"/tests/test_*.nut)
 fi
 
 pass=0; fail=0; failed_files=()
 for f in "${files[@]}"; do
-	if DSTEST_FILE="$f" "$SQ" tools/dstest/runner.nut; then
+	if run_one "$f"; then
 		pass=$((pass+1))
 	else
 		fail=$((fail+1)); failed_files+=("$f")
